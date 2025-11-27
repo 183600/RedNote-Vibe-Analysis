@@ -11,7 +11,7 @@ The proliferation of Large Language Models (LLMs) has led to widespread AI-Gener
 
 ## Dataset Structure
 
-
+This paper is currently under review and revision. We will release the final version of the dataset upon acceptance. If you would like to receive notifications, please contact [mail](mailto:yudongli@tsinghua.edu.cn) to subscribe.
 
 [training_set_human.jsonl](https://drive.google.com/file/d/1W3NC_vUD-8p9B9SlvywCGdeI7TTNuEFy/view?usp=sharing)     Human-authored posts (pre-LLM period, before Nov 2022)
 

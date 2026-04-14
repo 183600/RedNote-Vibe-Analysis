@@ -110,7 +110,7 @@ Fine-grained identification among 17 specific AI models.
 If you use this dataset in your research, please cite our paper:
 
 ```bibtex
-@misc{li2025rednotevibedatasetcapturingtemporal,
+@misc{li2025rednote,
       title={RedNote-Vibe: A Dataset for Capturing Temporal Dynamics of AI-Generated Text in Social Media}, 
       author={Yudong Li and Yufei Sun and Yuhan Yao and Peiru Yang and Wanyue Li and Jiajun Zou and Yongfeng Huang and Linlin Shen},
       year={2025},

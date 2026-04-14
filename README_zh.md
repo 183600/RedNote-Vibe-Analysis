@@ -2,7 +2,7 @@
 
 [English](README.md) | [中文](README_zh.md)
 
-**一个用于捕捉社交媒体中 AI 生成文本时序动态的数据集** [arxiv](https://arxiv.org/abs/2509.22055)
+**社交媒体中 AI 生成文本时序动态的数据集** [arxiv](https://arxiv.org/abs/2509.22055)
 
 ![数据集概览](overview.png)
 
@@ -39,7 +39,7 @@
 | 运动       | 17.7k | 528.8 |   3.2 |   60.1 |    9.8 |   36.4 |
 | 情感       | 22.5k | 308.2 |   7.1 | 2663.6 |  275.8 |  593.9 |
 | 旅行       | 14.8k | 452.8 |  10.7 | 1102.4 |   86.6 |  662.0 |
-| 养生       | 16.0k | 396.5 |  10.5 | 2348.6 |  217.7 | 1025.8 |
+| 心理       | 16.0k | 396.5 |  10.5 | 2348.6 |  217.7 | 1025.8 |
 | 其他       | 16.9k | 220.9 |   8.9 |  208.8 | 1266.2 | 3225.0 |
 
 ### 数据格式
@@ -104,7 +104,7 @@ python quick_start.py
 如果本数据集对您的研究有所帮助，请引用我们的论文：
 
 ```bibtex
-@misc{li2025rednotevibedatasetcapturingtemporal,
+@misc{li2025rednote,
       title={RedNote-Vibe: A Dataset for Capturing Temporal Dynamics of AI-Generated Text in Social Media}, 
       author={Yudong Li and Yufei Sun and Yuhan Yao and Peiru Yang and Wanyue Li and Jiajun Zou and Yongfeng Huang and Linlin Shen},
       year={2025},

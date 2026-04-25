@@ -86,6 +86,61 @@ This script will:
 5. Save the trained model for future use
 
 
+## 📊 Fork Analysis
+
+This fork includes comprehensive data analysis of the RedNote-Vibe dataset. Key findings and visualizations are provided below.
+
+### Dataset Overview
+
+| Dataset | Records | Avg Content Length | Avg Title Length |
+|---------|---------|-------------------|------------------|
+| training_set_human | 51,878 | 488.1 | 15.7 |
+| training_set_aigc | 7,254 | 347.7 | 18.3 |
+| exploring_set | 91,517 | 322.6 | 15.0 |
+
+### Word Frequency Correlation Matrix
+
+**Content (note_content):**
+
+|                    | human | aigc | exploring |
+|--------------------|-------|------|------------|
+| training_set_human | 1.00  | 0.67 | 0.83       |
+| training_set_aigc  | 0.67  | 1.00 | 0.64       |
+| exploring_set      | 0.83  | 0.64 | 1.00       |
+
+**Title (note_title):**
+
+|                    | human | aigc | exploring |
+|--------------------|-------|------|------------|
+| training_set_human | 1.00  | 0.46 | 0.53       |
+| training_set_aigc  | 0.46  | 1.00 | 0.45       |
+| exploring_set      | 0.53  | 0.45 | 1.00       |
+
+### Key Findings
+
+1. **Title is a strong discriminator**: Human vs AIGC correlation in titles is only 0.46, much lower than in content (0.67)
+2. **Content length**: Human posts are longest (488 chars), AIGC medium (348), exploring shortest (323)
+3. **Title length**: AIGC titles are longest (18.3 chars), more formal and detailed
+4. **High-frequency words**: Human uses more emojis; AIGC frequently uses "姐妹们" (sisters)
+
+### Generated Visualizations
+
+| File | Description |
+|------|-------------|
+| `content_length_distribution.png` | Content length distribution across datasets |
+| `title_top_words.png` | Top words in titles |
+| `desc_top_words.png` | Top words in content |
+| `domain_distribution.png` | Domain distribution |
+| `scatter_*.png` | Word frequency correlation scatter plots |
+
+### Analysis Scripts
+
+- `complete_analysis.py` - Full dataset analysis
+- `word_freq_analysis.py` - Word frequency analysis
+- `quick_start.py` - Baseline model training
+
+---
+
 ## Supported Tasks
 
 ### 1. AIGT Classification (Binary)

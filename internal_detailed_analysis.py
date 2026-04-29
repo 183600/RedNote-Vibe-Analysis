@@ -113,19 +113,31 @@ analyze_domain(exploring_data, "Exploring")
 print("\n=== 2. Sentiment Analysis ===")
 
 
-def sentiment(data, name):
+def sentiment(data, name, use_title=False):
     pos = neg = 0
     for item in data:
-        text = get_text(item) + " " + item.get("note_title", "")
+        if use_title:
+            text = item.get("note_title", "")
+        else:
+            text = get_text(item) + " " + item.get("note_title", "")
         pos += sum(1 for w in positive_words if w in text)
         neg += sum(1 for w in negative_words if w in text)
     total = len(data)
-    print(f"\n{name}: Positive={pos}, Negative={neg}, Ratio={pos / neg:.2f}")
+    label = "Title" if use_title else "Content"
+    print(
+        f"\n{name} ({label}): Positive={pos}, Negative={neg}, Ratio={pos / neg if neg > 0 else pos:.2f}"
+    )
 
 
-sentiment(human_data, "Human")
-sentiment(aigc_data, "AIGC")
-sentiment(exploring_data, "Exploring")
+print("\n=== 2. Sentiment Analysis (Content) ===")
+sentiment(human_data, "Human", False)
+sentiment(aigc_data, "AIGC", False)
+sentiment(exploring_data, "Exploring", False)
+
+print("\n=== 2b. Sentiment Analysis (Title) ===")
+sentiment(human_data, "Human", True)
+sentiment(aigc_data, "AIGC", True)
+sentiment(exploring_data, "Exploring", True)
 
 # ==================== 3. Engagement ====================
 print("\n=== 3. Engagement Stats ===")
@@ -148,37 +160,50 @@ engagement(exploring_data, "Exploring")
 print("\n=== 4. Content Structure ===")
 
 
-def structure(data, name):
+def structure(data, name, use_title=False):
     para = lists = bullet = emoji = hashtag = 0
     emoji_pat = re.compile(
         r"[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF]"
     )
     for item in data:
-        text = get_text(item) + " " + item.get("note_title", "")
-        paras = [p for p in get_text(item).split("\n") if p.strip()]
+        if use_title:
+            text = item.get("note_title", "")
+        else:
+            text = get_text(item) + " " + item.get("note_title", "")
+        paras = [p for p in text.split("\n") if p.strip()]
         para += len(paras)
-        lists += len(re.findall(r"^\d+[.、]", get_text(item), re.MULTILINE))
-        bullet += len(re.findall(r"^[、•·]", get_text(item), re.MULTILINE))
+        lists += len(re.findall(r"^\d+[.、]", text, re.MULTILINE))
+        bullet += len(re.findall(r"^[、•·]", text, re.MULTILINE))
         emoji += len(emoji_pat.findall(text))
         hashtag += len(re.findall(r"#[\u4e00-\u9fff]+", text))
     n = len(data)
+    label = "Title" if use_title else "Content"
     print(
-        f"\n{name}: Para={para / n:.1f}, List={lists / n:.1f}, Emoji={emoji / n:.1f}, Tag={hashtag / n:.1f}"
+        f"\n{name} ({label}): Para={para / n:.1f}, List={lists / n:.1f}, Emoji={emoji / n:.1f}, Tag={hashtag / n:.1f}"
     )
 
 
-structure(human_data, "Human")
-structure(aigc_data, "AIGC")
-structure(exploring_data, "Exploring")
+print("\n=== 4. Content Structure (Content) ===")
+structure(human_data, "Human", False)
+structure(aigc_data, "AIGC", False)
+structure(exploring_data, "Exploring", False)
+
+print("\n=== 4b. Content Structure (Title) ===")
+structure(human_data, "Human", True)
+structure(aigc_data, "AIGC", True)
+structure(exploring_data, "Exploring", True)
 
 # ==================== 5. Complexity ====================
 print("\n=== 5. Text Complexity ===")
 
 
-def complexity(data, name):
+def complexity(data, name, use_title=False):
     chars_list = unique_ratios = sent_lens = []
     for item in data:
-        text = get_text(item)
+        if use_title:
+            text = item.get("note_title", "")
+        else:
+            text = get_text(item)
         chars = extract_chinese(text)
         if chars:
             total = sum(len(c) for c in chars)
@@ -193,14 +218,21 @@ def complexity(data, name):
     avg_chars = sum(chars_list) / len(chars_list) if chars_list else 0
     avg_ratio = sum(unique_ratios) / len(unique_ratios) if unique_ratios else 0
     avg_sent = sum(sent_lens) / len(sent_lens) if sent_lens else 0
+    label = "Title" if use_title else "Content"
     print(
-        f"\n{name}: AvgChars={avg_chars:.0f}, UniqueRatio={avg_ratio:.3f}, AvgSentLen={avg_sent:.0f}"
+        f"\n{name} ({label}): AvgChars={avg_chars:.0f}, UniqueRatio={avg_ratio:.3f}, AvgSentLen={avg_sent:.0f}"
     )
 
 
-complexity(human_data, "Human")
-complexity(aigc_data, "AIGC")
-complexity(exploring_data, "Exploring")
+print("\n=== 5. Text Complexity (Content) ===")
+complexity(human_data, "Human", False)
+complexity(aigc_data, "AIGC", False)
+complexity(exploring_data, "Exploring", False)
+
+print("\n=== 5b. Text Complexity (Title) ===")
+complexity(human_data, "Human", True)
+complexity(aigc_data, "AIGC", True)
+complexity(exploring_data, "Exploring", True)
 
 # ==================== 6. Title Style ====================
 print("\n=== 6. Title Style ===")
@@ -349,22 +381,32 @@ time_dist(exploring_data, "Exploring")
 print("\n=== 12. Character Patterns ===")
 
 
-def char_patterns(data, name):
-    punct = {"!": 0, "?": 0, "...": 0, "...": 0}
+def char_patterns(data, name, use_title=False):
+    punct = {"!": 0, "?": 0, "...": 0}
     for item in data:
-        text = get_text(item)
+        if use_title:
+            text = item.get("note_title", "")
+        else:
+            text = get_text(item)
         punct["!"] += text.count("!") + text.count("！")
         punct["?"] += text.count("?") + text.count("？")
         punct["..."] += text.count("...")
     n = len(data)
+    label = "Title" if use_title else "Content"
     print(
-        f"\n{name}: Exclaim={punct['!'] / n:.2f}, Question={punct['?'] / n:.2f}, Ellipsis={punct['...'] / n:.2f}"
+        f"\n{name} ({label}): Exclaim={punct['!'] / n:.2f}, Question={punct['?'] / n:.2f}, Ellipsis={punct['...'] / n:.2f}"
     )
 
 
-char_patterns(human_data, "Human")
-char_patterns(aigc_data, "AIGC")
-char_patterns(exploring_data, "Exploring")
+print("\n=== 12. Character Patterns (Content) ===")
+char_patterns(human_data, "Human", False)
+char_patterns(aigc_data, "AIGC", False)
+char_patterns(exploring_data, "Exploring", False)
+
+print("\n=== 12b. Character Patterns (Title) ===")
+char_patterns(human_data, "Human", True)
+char_patterns(aigc_data, "AIGC", True)
+char_patterns(exploring_data, "Exploring", True)
 
 # ==================== 13. Domain vs Length ====================
 print("\n=== 13. Domain vs Content Length ===")

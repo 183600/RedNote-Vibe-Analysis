@@ -215,12 +215,12 @@ def main():
         for f in files:
             ngrams = compute_ngrams(texts_data[f], n=2, use_title=use_title)
             top20 = ngrams.most_common(20)
-            print("\n" + f + " Top 20 bigrams:")
+            print("\n" + f + " Top 20 bigrams (" + label + "):")
             for ngram, count in top20:
                 print("  " + " ".join(ngram) + ": " + str(count))
 
     print("\n" + "=" * 70)
-    print("2. EMOJI ANALYSIS")
+    print("2. EMOJI ANALYSIS (Content)")
     print("=" * 70)
 
     for f in files:
@@ -228,12 +228,25 @@ def main():
         for item in texts_data[f]:
             text = item.get("desc", "") or item.get("note_content", "")
             all_emojis.update(extract_emojis(text))
-        print("\n" + f + " Top 20 Emojis:")
+        print("\n" + f + " Top 20 Emojis (Content):")
         for emoji, count in all_emojis.most_common(20):
             print("  " + emoji + ": " + str(count))
 
     print("\n" + "=" * 70)
-    print("3. HASHTAG ANALYSIS")
+    print("2b. EMOJI ANALYSIS (Title)")
+    print("=" * 70)
+
+    for f in files:
+        all_emojis = Counter()
+        for item in texts_data[f]:
+            title = item.get("note_title", "")
+            all_emojis.update(extract_emojis(title))
+        print("\n" + f + " Top 20 Emojis (Title):")
+        for emoji, count in all_emojis.most_common(20):
+            print("  " + emoji + ": " + str(count))
+
+    print("\n" + "=" * 70)
+    print("3. HASHTAG ANALYSIS (Content)")
     print("=" * 70)
 
     for f in files:
@@ -241,12 +254,25 @@ def main():
         for item in texts_data[f]:
             text = item.get("desc", "") or item.get("note_content", "")
             all_tags.update(extract_hashtags(text))
-        print("\n" + f + " Top 20 Hashtags:")
+        print("\n" + f + " Top 20 Hashtags (Content):")
         for tag, count in all_tags.most_common(20):
             print("  #" + tag + ": " + str(count))
 
     print("\n" + "=" * 70)
-    print("4. VOCABULARY OVERLAP ANALYSIS")
+    print("3b. HASHTAG ANALYSIS (Title)")
+    print("=" * 70)
+
+    for f in files:
+        all_tags = Counter()
+        for item in texts_data[f]:
+            title = item.get("note_title", "")
+            all_tags.update(extract_hashtags(title))
+        print("\n" + f + " Top 20 Hashtags (Title):")
+        for tag, count in all_tags.most_common(20):
+            print("  #" + tag + ": " + str(count))
+
+    print("\n" + "=" * 70)
+    print("4. VOCABULARY OVERLAP ANALYSIS (Content)")
     print("=" * 70)
 
     freqs = []
@@ -259,30 +285,66 @@ def main():
 
     overlap_results = analyze_vocabulary_overlap(freqs, file_names)
 
-    print("\n--- Vocabulary Statistics ---")
+    print("\n--- Vocabulary Statistics (Content) ---")
     for key, value in overlap_results.items():
         print("  " + key + ": " + str(value))
 
     print("\n" + "=" * 70)
-    print("5. UNIQUE WORDS ANALYSIS")
+    print("4b. VOCABULARY OVERLAP ANALYSIS (Title)")
+    print("=" * 70)
+
+    freqs_title = []
+    for f in files:
+        words = []
+        for item in texts_data[f]:
+            title = item.get("note_title", "")
+            words.extend(tokenize(title))
+        freqs_title.append(Counter(words))
+
+    overlap_results_title = analyze_vocabulary_overlap(freqs_title, file_names)
+
+    print("\n--- Vocabulary Statistics (Title) ---")
+    for key, value in overlap_results_title.items():
+        print("  " + key + ": " + str(value))
+
+    print("\n" + "=" * 70)
+    print("5. UNIQUE WORDS ANALYSIS (Content)")
     print("=" * 70)
 
     unique_results = analyze_unique_words(freqs, file_names)
 
-    print("\n--- Unique Words ---")
+    print("\n--- Unique Words (Content) ---")
     for key, words in unique_results.items():
         if key != "common_words":
             print("\n" + key + " (Top 10):")
             for w, c in words[:10]:
                 print("  " + w + ": " + str(c))
 
-    print("\n--- Common Words (All 3 datasets) ---")
+    print("\n--- Common Words (Content - All 3 datasets) ---")
     common_words = unique_results.get("common_words", [])
     for w, c in common_words[:20]:
         print("  " + w + ": " + str(c))
 
     print("\n" + "=" * 70)
-    print("6. ADDITIONAL LINGUISTIC PATTERNS")
+    print("5b. UNIQUE WORDS ANALYSIS (Title)")
+    print("=" * 70)
+
+    unique_results_title = analyze_unique_words(freqs_title, file_names)
+
+    print("\n--- Unique Words (Title) ---")
+    for key, words in unique_results_title.items():
+        if key != "common_words":
+            print("\n" + key + " (Top 10):")
+            for w, c in words[:10]:
+                print("  " + w + ": " + str(c))
+
+    print("\n--- Common Words (Title - All 3 datasets) ---")
+    common_words_title = unique_results_title.get("common_words", [])
+    for w, c in common_words_title[:20]:
+        print("  " + w + ": " + str(c))
+
+    print("\n" + "=" * 70)
+    print("6. ADDITIONAL LINGUISTIC PATTERNS (Content)")
     print("=" * 70)
 
     for f in files:
@@ -302,7 +364,36 @@ def main():
                 digit_counts += sum(1 for c in text if c.isdigit())
                 link_counts += len(re.findall(r"http[s]?://|www\.", text))
 
-        print("\n" + f + " Linguistic Patterns:")
+        print("\n" + f + " Linguistic Patterns (Content):")
+        print("  Exclamation marks: " + str(punct_counts["exclaim"]))
+        print("  Question marks: " + str(punct_counts["question"]))
+        print("  Ellipses: " + str(punct_counts["ellipsis"]))
+        print("  Uppercase chars: " + str(upper_counts))
+        print("  Digits: " + str(digit_counts))
+        print("  Links: " + str(link_counts))
+
+    print("\n" + "=" * 70)
+    print("6b. ADDITIONAL LINGUISTIC PATTERNS (Title)")
+    print("=" * 70)
+
+    for f in files:
+        punct_counts = {"exclaim": 0, "question": 0, "ellipsis": 0}
+        upper_counts = 0
+        digit_counts = 0
+        link_counts = 0
+
+        sample = texts_data[f][:5000]
+        for item in sample:
+            title = item.get("note_title", "")
+            if title:
+                punct_counts["exclaim"] += title.count("!")
+                punct_counts["question"] += title.count("?")
+                punct_counts["ellipsis"] += title.count("...")
+                upper_counts += sum(1 for c in title if c.isupper())
+                digit_counts += sum(1 for c in title if c.isdigit())
+                link_counts += len(re.findall(r"http[s]?://|www\.", title))
+
+        print("\n" + f + " Linguistic Patterns (Title):")
         print("  Exclamation marks: " + str(punct_counts["exclaim"]))
         print("  Question marks: " + str(punct_counts["question"]))
         print("  Ellipses: " + str(punct_counts["ellipsis"]))

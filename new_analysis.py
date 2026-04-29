@@ -147,7 +147,11 @@ def main():
             if rep.get("repeat_ratio", 0) > 0:
                 repeat_ratios.append(rep["repeat_ratio"])
 
-        print("\n1. URL/LINK ANALYSIS:")
+        print("\n" + "=" * 50)
+        print("Dataset: " + f + " - Content Analysis")
+        print("=" * 50)
+
+        print("\n1. URL/LINK ANALYSIS (Content):")
         print("   Total URLs: " + str(url_stats["total"]))
         top_domains = url_stats["domains"].most_common(5)
         if top_domains:
@@ -155,12 +159,12 @@ def main():
             for d, c in top_domains:
                 print("      " + d + ": " + str(c))
 
-        print("\n2. NUMBER USAGE:")
+        print("\n2. NUMBER USAGE (Content):")
         print("   Numbers found: " + str(num_stats["total"]))
         print("   With price info: " + str(num_stats["price"]))
         print("   With quantities: " + str(num_stats["count"]))
 
-        print("\n3. STRUCTURE:")
+        print("\n3. STRUCTURE (Content):")
         print(
             "   Avg paragraphs: " + str(round(struct_stats["paras"] / len(sample), 2))
         )
@@ -179,7 +183,7 @@ def main():
             + "%)"
         )
 
-        print("\n4. SENTENCE PATTERNS:")
+        print("\n4. SENTENCE PATTERNS (Content):")
         if sent_stats:
             avg_words = sum(s["avg_words"] for s in sent_stats) / len(sent_stats)
             avg_vocab = sum(s["vocab_richness"] for s in sent_stats) / len(sent_stats)
@@ -188,7 +192,97 @@ def main():
 
         if repeat_ratios:
             avg_repeat = sum(repeat_ratios) / len(repeat_ratios)
-            print("\n5. WORD REPETITION:")
+            print("\n5. WORD REPETITION (Content):")
+            print("   Avg repeat ratio: " + str(avg_repeat))
+
+        url_stats_title = {"total": 0, "domains": Counter()}
+        num_stats_title = {"total": 0, "price": 0, "count": 0}
+        struct_stats_title = {"paras": 0, "list": 0, "bullet": 0}
+        sent_stats_title = []
+        repeat_ratios_title = []
+
+        for item in sample:
+            title = item.get("note_title", "")
+            if not title:
+                continue
+
+            u = analyze_urls(title)
+            url_stats_title["total"] += u["num_urls"]
+            url_stats_title["domains"].update(u["domains"])
+
+            n = analyze_numbers(title)
+            num_stats_title["total"] += n["num_numbers"]
+            if n["has_price"]:
+                num_stats_title["price"] += 1
+            if n["has_count"]:
+                num_stats_title["count"] += 1
+
+            s = analyze_structure(title)
+            struct_stats_title["paras"] += s["num_paragraphs"]
+            if s["has_list"]:
+                struct_stats_title["list"] += 1
+            if s["has_bullet"]:
+                struct_stats_title["bullet"] += 1
+
+            sent = analyze_sentences(title)
+            if sent:
+                sent_stats_title.append(sent)
+
+            rep = analyze_repetition(title)
+            if rep.get("repeat_ratio", 0) > 0:
+                repeat_ratios_title.append(rep["repeat_ratio"])
+
+        print("\n" + "=" * 50)
+        print("Dataset: " + f + " - Title Analysis")
+        print("=" * 50)
+
+        print("\n1. URL/LINK ANALYSIS (Title):")
+        print("   Total URLs: " + str(url_stats_title["total"]))
+        top_domains_title = url_stats_title["domains"].most_common(5)
+        if top_domains_title:
+            print("   Top domains:")
+            for d, c in top_domains_title:
+                print("      " + d + ": " + str(c))
+
+        print("\n2. NUMBER USAGE (Title):")
+        print("   Numbers found: " + str(num_stats_title["total"]))
+        print("   With price info: " + str(num_stats_title["price"]))
+        print("   With quantities: " + str(num_stats_title["count"]))
+
+        print("\n3. STRUCTURE (Title):")
+        print(
+            "   Avg paragraphs: "
+            + str(round(struct_stats_title["paras"] / len(sample), 2))
+        )
+        print(
+            "   Has numbered lists: "
+            + str(struct_stats_title["list"])
+            + " ("
+            + str(round(100 * struct_stats_title["list"] / len(sample), 1))
+            + "%)"
+        )
+        print(
+            "   Has bullet points: "
+            + str(struct_stats_title["bullet"])
+            + " ("
+            + str(round(100 * struct_stats_title["bullet"] / len(sample), 1))
+            + "%)"
+        )
+
+        print("\n4. SENTENCE PATTERNS (Title):")
+        if sent_stats_title:
+            avg_words = sum(s["avg_words"] for s in sent_stats_title) / len(
+                sent_stats_title
+            )
+            avg_vocab = sum(s["vocab_richness"] for s in sent_stats_title) / len(
+                sent_stats_title
+            )
+            print("   Avg words/sentence: " + str(avg_words))
+            print("   Vocab richness: " + str(avg_vocab))
+
+        if repeat_ratios_title:
+            avg_repeat = sum(repeat_ratios_title) / len(repeat_ratios_title)
+            print("\n5. WORD REPETITION (Title):")
             print("   Avg repeat ratio: " + str(avg_repeat))
 
     print("\n" + "=" * 70)

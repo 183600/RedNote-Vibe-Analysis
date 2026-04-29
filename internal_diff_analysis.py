@@ -8,13 +8,10 @@ from collections import Counter
 import random
 import io
 
-reload(sys)
-sys.setdefaultencoding("utf-8")
-
 
 def load_jsonl(filepath):
     texts = []
-    with io.open(filepath, "r", encoding="utf-8") as f:
+    with open(filepath, "r", encoding="utf-8") as f:
         for line in f:
             try:
                 data = json.loads(line.strip())
@@ -26,9 +23,11 @@ def load_jsonl(filepath):
 
 def analyze_content(texts, sample_size=3000):
     if len(texts) < sample_size:
-        sample = texts
+        sample_size = len(texts)
     else:
-        sample = random.sample(texts, sample_size)
+        sample_size = min(sample_size, len(texts))
+    indices = random.sample(range(len(texts)), sample_size)
+    sample = [texts[i] for i in indices]
 
     lengths = []
     patterns = {
@@ -47,27 +46,24 @@ def analyze_content(texts, sample_size=3000):
         text = item.get("desc", "") or item.get("note_content", "")
         if not text:
             continue
-        try:
-            text = unicode(text)
-        except:
-            continue
+        text = str(text)
         lengths.append(len(text))
         patterns["!"] += text.count("!")
         patterns["?"] += text.count("?")
         patterns["..."] += text.count("...")
-        patterns["#"] += len(re.findall("#\S+", text))
-        patterns["@"] += len(re.findall("@\S+", text))
-        patterns["numbers"] += len(re.findall("\d+", text))
-        patterns["links"] += len(re.findall("http|www", text))
-        if "\u6211" in text or "\u6211\u4eec" in text:
+        patterns["#"] += len(re.findall(r"#\S+", text))
+        patterns["@"] += len(re.findall(r"@\S+", text))
+        patterns["numbers"] += len(re.findall(r"\d+", text))
+        patterns["links"] += len(re.findall(r"http|www", text))
+        if "我" in text or "我们" in text:
             patterns["first_person"] += 1
-        if re.search("\n\d+", text):
+        if re.search(r"\n\d+", text):
             patterns["list"] += 1
 
     return {
         "length": {
             "mean": round(sum(lengths) / len(lengths), 1) if lengths else 0,
-            "median": lengths[len(lengths) // 2] if lengths else 0,
+            "median": sorted(lengths)[len(lengths) // 2] if lengths else 0,
         },
         "patterns": {k: round(v / len(sample), 2) for k, v in patterns.items()},
     }
@@ -75,20 +71,42 @@ def analyze_content(texts, sample_size=3000):
 
 def analyze_title(texts):
     lengths = []
+    patterns = {
+        "!": 0,
+        "?": 0,
+        "...": 0,
+        "#": 0,
+        "@": 0,
+        "numbers": 0,
+        "links": 0,
+        "first_person": 0,
+        "list": 0,
+    }
+
     for item in texts:
         title = item.get("note_title", "")
-        if title:
-            try:
-                title = unicode(title)
-                lengths.append(len(title))
-            except:
-                pass
-    if not lengths:
-        return {}
-    lengths.sort()
+        if not title:
+            continue
+        title = str(title)
+        lengths.append(len(title))
+        patterns["!"] += title.count("!")
+        patterns["?"] += title.count("?")
+        patterns["..."] += title.count("...")
+        patterns["#"] += len(re.findall(r"#\S+", title))
+        patterns["@"] += len(re.findall(r"@\S+", title))
+        patterns["numbers"] += len(re.findall(r"\d+", title))
+        patterns["links"] += len(re.findall(r"http|www", title))
+        if "我" in title or "我们" in title:
+            patterns["first_person"] += 1
+        if re.search(r"\n\d+", title):
+            patterns["list"] += 1
+
     return {
-        "mean": round(sum(lengths) / len(lengths), 1),
-        "median": lengths[len(lengths) // 2],
+        "length": {
+            "mean": round(sum(lengths) / len(lengths), 1) if lengths else 0,
+            "median": sorted(lengths)[len(lengths) // 2] if lengths else 0,
+        },
+        "patterns": {k: round(v / len(texts), 2) for k, v in patterns.items()},
     }
 
 
@@ -130,17 +148,28 @@ def main():
         )
 
     print("\n" + "-" * 50)
-    print("2. TITLE LENGTH COMPARISON")
+    print("2. TITLE LENGTH & PATTERNS COMPARISON")
     print("-" * 50)
     for name, texts in datasets.items():
         r = analyze_title(texts)
         print(
-            name
-            + ": mean="
-            + str(r.get("mean", "N/A"))
+            "\n"
+            + name
+            + " (Title): mean="
+            + str(r["length"]["mean"])
             + ", median="
-            + str(r.get("median", "N/A"))
+            + str(r["length"]["median"])
         )
+        p = r["patterns"]
+        print("  Exclamation marks: " + str(p["!"]))
+        print("  Question marks: " + str(p["?"]))
+        print("  Ellipses: " + str(p["..."]))
+        print("  Hashtags (#): " + str(p["#"]))
+        print("  @mentions: " + str(p["@"]))
+        print("  Numbers: " + str(p["numbers"]))
+        print("  Links: " + str(p["links"]))
+        print("  First person (I/we): " + str(p["first_person"]) + "%")
+        print("  List format: " + str(p["list"]) + "%")
 
     print("\n" + "-" * 50)
     print("3. FORMATTING PATTERNS (avg per post)")

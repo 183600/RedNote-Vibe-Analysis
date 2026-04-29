@@ -246,10 +246,13 @@ def plot_domain_distribution(domain_freqs, files, output_prefix):
     print("Saved: " + output_prefix + "_domain_distribution.png")
 
 
-def analyze_hashtag(texts):
+def analyze_hashtag(texts, use_title=False):
     hashtags = Counter()
     for item in texts:
-        text = item.get("desc", "") or item.get("note_content", "")
+        if use_title:
+            text = item.get("note_title", "")
+        else:
+            text = item.get("desc", "") or item.get("note_content", "")
         if text:
             matches = re.findall(r"#(\w+)", text)
             for tag in matches:
@@ -320,9 +323,16 @@ def main():
         for domain, count in domains.most_common(10):
             print(f"  {domain}: {count}")
 
-    print("\n--- Hashtag Analysis ---")
-    hashtag_freqs = [analyze_hashtag(texts_data[f]) for f in files]
+    print("\n--- Hashtag Analysis (Content) ---")
+    hashtag_freqs = [analyze_hashtag(texts_data[f], False) for f in files]
     for f, hashtags in zip(files, hashtag_freqs):
+        print(f"\n{f}:")
+        for tag, count in hashtags.most_common(15):
+            print(f"  #{tag}: {count}")
+
+    print("\n--- Hashtag Analysis (Title) ---")
+    hashtag_freqs_title = [analyze_hashtag(texts_data[f], True) for f in files]
+    for f, hashtags in zip(files, hashtag_freqs_title):
         print(f"\n{f}:")
         for tag, count in hashtags.most_common(15):
             print(f"  #{tag}: {count}")

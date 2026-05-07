@@ -1,0 +1,17 @@
+Loading exploring_set_fixed.jsonl
+Loaded: 33224
+Loading training_set_human_fixed.jsonl
+Loaded: 33224
+Total notes: 33224
+Total users: 26740
+Active users: 3366
+Cross-domain words: 326
+3366 users, 326 words
+Valid words: 3
+Words: [u'\u7ea2\u8272\u5fc3\u5f62', u'\u5927\u7b11', u'\u65f6\u523b']
+Not enough variance, trying lower threshold...
+Valid words (std>0.5): 3
+Computing correlations...
+Total pairs: 3
+Positive: 0
+Negative: 0

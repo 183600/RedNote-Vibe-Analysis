@@ -11,14 +11,31 @@ from collections import Counter, defaultdict
 import warnings
 import os
 
+
+def extract_face_emojis(text):
+    """Extract emoji count excluding [话题] topic tags"""
+    all_emojis = re.findall(r"\[.*?\]", text)
+    return len([e for e in all_emojis if e != "[话题]"])
+
+
 font_dir = "/usr/share/fonts/noto-cjk"
-for f in os.listdir(font_dir):
-    if "NotoSansCJK" in f and f.endswith(".ttc"):
-        font_path = os.path.join(font_dir, f)
-        font_manager.fontManager.addfont(font_path)
-        prop = font_manager.FontProperties(fname=font_path)
-        plt.rcParams["font.sans-serif"] = [prop.get_name()]
-        break
+noto_files = sorted(
+    [f for f in os.listdir(font_dir) if "NotoSansCJK" in f and f.endswith(".ttc")]
+)
+if noto_files:
+    font_path = os.path.join(font_dir, noto_files[0])
+    prop = font_manager.FontProperties(fname=font_path)
+    plt.rcParams["font.family"] = prop.get_name()
+else:
+    for fallback in [
+        "Noto Sans CJK SC",
+        "WenQuanYi Micro Hei",
+        "SimHei",
+        "Microsoft YaHei",
+    ]:
+        if any(fallback in f.get_name() for f in font_manager.fontManager.ttflist):
+            plt.rcParams["font.family"] = fallback
+            break
 plt.rcParams["axes.unicode_minus"] = False
 
 warnings.filterwarnings("ignore")
@@ -167,8 +184,8 @@ def analyze_domain_differences(texts_data, output_dir):
                 words = clean_tokenize(desc)
                 word_freq.update(words)
 
-                emojis = re.findall(r"\[.*?\]", desc)
-                emoji_counts.append(len(emojis))
+                emojis = extract_face_emojis(desc)
+                emoji_counts.append(emojis)
 
         results[domain] = {
             "count": len(domain_texts),
@@ -262,8 +279,14 @@ def compare_aigc_vs_human_by_domain(human_data, aigc_data, output_dir):
             len(t.get("desc", "") or t.get("note_content", "")) for t in aigc_texts
         ]
 
-        h_emoji = [len(re.findall(r"\[.*?\]", t.get("desc", ""))) for t in human_texts]
-        a_emoji = [len(re.findall(r"\[.*?\]", t.get("desc", ""))) for t in aigc_texts]
+        h_emoji = [
+            extract_face_emojis(t.get("desc", "") or t.get("note_content", ""))
+            for t in human_texts
+        ]
+        a_emoji = [
+            extract_face_emojis(t.get("desc", "") or t.get("note_content", ""))
+            for t in aigc_texts
+        ]
 
         h_eng = [
             t.get("liked_count", 0)
@@ -305,10 +328,10 @@ def compare_aigc_vs_human_by_domain(human_data, aigc_data, output_dir):
     for domain, data in comparison.items():
         print(f"\n{domain}:")
         print(
-            f"  Human: {data['human_count']} samples, avg_length={data['human_avg_length']:.1f}, emoji={data['human_avg_emoji']:.2f}"
+            f"  Human: {data['human_count']} samples, avg_length={data['human_avg_length']:.1f}, emoji={data['human_avg_emoji']:.2f}, eng={data['human_avg_engagement']:.1f}"
         )
         print(
-            f"  AIGC:  {data['aigc_count']} samples, avg_length={data['aigc_avg_length']:.1f}, emoji={data['aigc_avg_emoji']:.2f}"
+            f"  AIGC:  {data['aigc_count']} samples, avg_length={data['aigc_avg_length']:.1f}, emoji={data['aigc_avg_emoji']:.2f}, eng={data['aigc_avg_engagement']:.1f}"
         )
 
     plot_aigc_human_comparison(comparison, output_dir)
@@ -593,8 +616,8 @@ def main():
     os.makedirs(output_dir, exist_ok=True)
 
     print("Loading data...")
-    human_data = load_jsonl("training_set_human.jsonl")
-    aigc_data = load_jsonl("training_set_aigc.jsonl")
+    human_data = load_jsonl("training_set_human_fixed.jsonl")
+    aigc_data = load_jsonl("exploring_set_fixed.jsonl")
 
     print(f"Human: {len(human_data)} records")
     print(f"AIGC: {len(aigc_data)} records")

@@ -1,0 +1,5 @@
+line 0: 'ascii' codec can't encode characters in position 0-1: ordinal not in range(128)
+line 1: 'ascii' codec can't encode characters in position 0-11: ordinal not in range(128)
+line 2: 'ascii' codec can't encode characters in position 0-8: ordinal not in range(128)
+line 3: 'ascii' codec can't encode characters in position 0-20: ordinal not in range(128)
+line 4: 'ascii' codec can't encode characters in position 0-13: ordinal not in range(128)

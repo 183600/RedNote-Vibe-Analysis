@@ -15,13 +15,23 @@ import pandas as pd
 from pandas import Timestamp, DatetimeIndex
 
 font_dir = "/usr/share/fonts/noto-cjk"
-for f in os.listdir(font_dir):
-    if "NotoSansCJK" in f and f.endswith(".ttc"):
-        font_path = os.path.join(font_dir, f)
-        font_manager.fontManager.addfont(font_path)
-        prop = font_manager.FontProperties(fname=font_path)
-        plt.rcParams["font.sans-serif"] = [prop.get_name()]
-        break
+noto_files = sorted(
+    [f for f in os.listdir(font_dir) if "NotoSansCJK" in f and f.endswith(".ttc")]
+)
+if noto_files:
+    font_path = os.path.join(font_dir, noto_files[0])
+    prop = font_manager.FontProperties(fname=font_path)
+    plt.rcParams["font.family"] = prop.get_name()
+else:
+    for fallback in [
+        "Noto Sans CJK SC",
+        "WenQuanYi Micro Hei",
+        "SimHei",
+        "Microsoft YaHei",
+    ]:
+        if any(fallback in f.get_name() for f in font_manager.fontManager.ttflist):
+            plt.rcParams["font.family"] = fallback
+            break
 plt.rcParams["axes.unicode_minus"] = False
 
 warnings.filterwarnings("ignore")
@@ -463,7 +473,7 @@ def main():
             c2 = len(emoji_counts[j])
             total1 = len(texts_data[files[i]])
             total2 = len(texts_data[files[j]])
-            chi2, p_value = compute_chi_square([c1, c2], [total1, total2])
+            chi2, p_value = compute_chi_square(c1, c2, total1, total2)
             print(
                 f"  {file_names[i]} vs {file_names[j]}: chi2={chi2:.2f}, p={p_value:.4f}"
             )

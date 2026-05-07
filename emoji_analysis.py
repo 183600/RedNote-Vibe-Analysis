@@ -11,14 +11,22 @@ from collections import Counter, defaultdict
 import warnings
 import os
 
-font_dir = "/usr/share/fonts/noto-cjk"
-for f in os.listdir(font_dir):
-    if "NotoSansCJK" in f and f.endswith(".ttc"):
-        font_path = os.path.join(font_dir, f)
-        font_manager.fontManager.addfont(font_path)
-        prop = font_manager.FontProperties(fname=font_path)
-        plt.rcParams["font.sans-serif"] = [prop.get_name()]
-        break
+# Configure font for Chinese character support
+noto_fonts = sorted([f for f in font_manager.findSystemFonts() if "NotoSansCJK" in f])
+if noto_fonts:
+    font_path = noto_fonts[0]
+    prop = font_manager.FontProperties(fname=font_path)
+    plt.rcParams["font.family"] = prop.get_name()
+else:
+    for fallback in [
+        "Noto Sans CJK SC",
+        "WenQuanYi Micro Hei",
+        "SimHei",
+        "Microsoft YaHei",
+    ]:
+        if any(fallback in f.get_name() for f in font_manager.fontManager.ttflist):
+            plt.rcParams["font.family"] = fallback
+            break
 plt.rcParams["axes.unicode_minus"] = False
 
 warnings.filterwarnings("ignore")
@@ -66,7 +74,7 @@ print("Loading data...")
 texts_data = {}
 for f in files:
     data = load_jsonl(f)
-    print(f"  {f}: {len(data)} records")
+    print("  {}: {} records".format(f, len(data)))
     texts_data[f] = data[:5000]
 
 print("\n=== Emoji Analysis ===")
@@ -80,12 +88,12 @@ for f in files:
 
     emoji_counts.append(Counter(all_emojis))
 
-    print(f"\n{f}:")
-    print(f"  Total emojis: {len(all_emojis)}")
-    print(f"  Unique emojis: {len(emoji_counts[-1])}")
+    print("\n{}:".format(f))
+    print("  Total emojis: {}".format(len(all_emojis)))
+    print("  Unique emojis: {}".format(len(emoji_counts[-1])))
     if emoji_counts[-1]:
         top5 = emoji_counts[-1].most_common(5)
-        print(f"  Top 5: {top5}")
+        print("  Top 5: {}".format(top5))
 
 fig, axes = plt.subplots(1, 3, figsize=(18, 6))
 

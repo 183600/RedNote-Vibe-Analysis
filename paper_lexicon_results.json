@@ -1,0 +1,726 @@
+{
+ "aigc_words": [
+  {
+   "word": "能",
+   "z": 45.67,
+   "aigc_per10k": 47.68,
+   "human_per10k": 21.92
+  },
+  {
+   "word": "超",
+   "z": 45.42,
+   "aigc_per10k": 15.92,
+   "human_per10k": 3.13
+  },
+  {
+   "word": "姐妹",
+   "z": 44.52,
+   "aigc_per10k": 20.62,
+   "human_per10k": 5.73
+  },
+  {
+   "word": "简直",
+   "z": 43.13,
+   "aigc_per10k": 13.31,
+   "human_per10k": 2.31
+  },
+  {
+   "word": "们",
+   "z": 39.16,
+   "aigc_per10k": 26.2,
+   "human_per10k": 10.39
+  },
+  {
+   "word": "别",
+   "z": 35.1,
+   "aigc_per10k": 9.26,
+   "human_per10k": 1.75
+  },
+  {
+   "word": "真的",
+   "z": 33.16,
+   "aigc_per10k": 43.74,
+   "human_per10k": 24.75
+  },
+  {
+   "word": "最近",
+   "z": 32.82,
+   "aigc_per10k": 14.97,
+   "human_per10k": 5.22
+  },
+  {
+   "word": "瞬间",
+   "z": 32.74,
+   "aigc_per10k": 7.28,
+   "human_per10k": 1.14
+  },
+  {
+   "word": "啦",
+   "z": 30.4,
+   "aigc_per10k": 26.89,
+   "human_per10k": 13.65
+  },
+  {
+   "word": "像",
+   "z": 29.95,
+   "aigc_per10k": 15.79,
+   "human_per10k": 6.36
+  },
+  {
+   "word": "让",
+   "z": 29.84,
+   "aigc_per10k": 38.79,
+   "human_per10k": 22.56
+  },
+  {
+   "word": "搭",
+   "z": 29.36,
+   "aigc_per10k": 13.74,
+   "human_per10k": 5.23
+  },
+  {
+   "word": "穿",
+   "z": 29.24,
+   "aigc_per10k": 20.22,
+   "human_per10k": 9.42
+  },
+  {
+   "word": "绝",
+   "z": 28.79,
+   "aigc_per10k": 6.36,
+   "human_per10k": 1.24
+  },
+  {
+   "word": "记得",
+   "z": 28.77,
+   "aigc_per10k": 9.4,
+   "human_per10k": 2.82
+  },
+  {
+   "word": "超级",
+   "z": 27.3,
+   "aigc_per10k": 13.07,
+   "human_per10k": 5.25
+  },
+  {
+   "word": "哦",
+   "z": 24.88,
+   "aigc_per10k": 17.88,
+   "human_per10k": 9.04
+  },
+  {
+   "word": "但",
+   "z": 24.77,
+   "aigc_per10k": 26.47,
+   "human_per10k": 15.35
+  },
+  {
+   "word": "那些",
+   "z": 24.59,
+   "aigc_per10k": 7.58,
+   "human_per10k": 2.45
+  },
+  {
+   "word": "分享",
+   "z": 24.51,
+   "aigc_per10k": 18.55,
+   "human_per10k": 9.62
+  },
+  {
+   "word": "搭配",
+   "z": 23.57,
+   "aigc_per10k": 11.36,
+   "human_per10k": 4.94
+  },
+  {
+   "word": "小",
+   "z": 23.41,
+   "aigc_per10k": 31.65,
+   "human_per10k": 19.87
+  },
+  {
+   "word": "必备",
+   "z": 23.35,
+   "aigc_per10k": 5.92,
+   "human_per10k": 1.71
+  },
+  {
+   "word": "轻松",
+   "z": 23.15,
+   "aigc_per10k": 6.52,
+   "human_per10k": 2.06
+  },
+  {
+   "word": "发现",
+   "z": 22.93,
+   "aigc_per10k": 14.01,
+   "human_per10k": 6.86
+  },
+  {
+   "word": "夏日",
+   "z": 22.16,
+   "aigc_per10k": 4.31,
+   "human_per10k": 1.0
+  },
+  {
+   "word": "温柔",
+   "z": 21.99,
+   "aigc_per10k": 6.07,
+   "human_per10k": 1.96
+  },
+  {
+   "word": "宝藏",
+   "z": 21.91,
+   "aigc_per10k": 5.75,
+   "human_per10k": 1.8
+  },
+  {
+   "word": "直接",
+   "z": 21.8,
+   "aigc_per10k": 11.95,
+   "human_per10k": 5.71
+  },
+  {
+   "word": "冲",
+   "z": 21.61,
+   "aigc_per10k": 5.73,
+   "human_per10k": 1.83
+  },
+  {
+   "word": "啊",
+   "z": 21.49,
+   "aigc_per10k": 14.8,
+   "human_per10k": 7.78
+  },
+  {
+   "word": "快",
+   "z": 21.04,
+   "aigc_per10k": 9.44,
+   "human_per10k": 4.19
+  },
+  {
+   "word": "懂",
+   "z": 20.75,
+   "aigc_per10k": 5.24,
+   "human_per10k": 1.66
+  },
+  {
+   "word": "得",
+   "z": 20.72,
+   "aigc_per10k": 14.28,
+   "human_per10k": 7.61
+  },
+  {
+   "word": "搞定",
+   "z": 20.56,
+   "aigc_per10k": 3.24,
+   "human_per10k": 0.63
+  },
+  {
+   "word": "绝对",
+   "z": 20.38,
+   "aigc_per10k": 5.13,
+   "human_per10k": 1.64
+  },
+  {
+   "word": "居然",
+   "z": 20.02,
+   "aigc_per10k": 4.25,
+   "human_per10k": 1.2
+  },
+  {
+   "word": "神器",
+   "z": 19.86,
+   "aigc_per10k": 3.42,
+   "human_per10k": 0.78
+  },
+  {
+   "word": "完美",
+   "z": 19.82,
+   "aigc_per10k": 5.01,
+   "human_per10k": 1.64
+  },
+  {
+   "word": "偷偷",
+   "z": 19.69,
+   "aigc_per10k": 2.68,
+   "human_per10k": 0.43
+  },
+  {
+   "word": "感",
+   "z": 19.69,
+   "aigc_per10k": 10.54,
+   "human_per10k": 5.2
+  },
+  {
+   "word": "惊喜",
+   "z": 19.58,
+   "aigc_per10k": 4.71,
+   "human_per10k": 1.5
+  },
+  {
+   "word": "试试",
+   "z": 19.46,
+   "aigc_per10k": 5.28,
+   "human_per10k": 1.84
+  },
+  {
+   "word": "爆棚",
+   "z": 19.27,
+   "aigc_per10k": 2.21,
+   "human_per10k": 0.23
+  },
+  {
+   "word": "鸭",
+   "z": 19.18,
+   "aigc_per10k": 3.52,
+   "human_per10k": 0.9
+  },
+  {
+   "word": "秘籍",
+   "z": 18.85,
+   "aigc_per10k": 2.38,
+   "human_per10k": 0.08
+  },
+  {
+   "word": "关键",
+   "z": 18.77,
+   "aigc_per10k": 3.87,
+   "human_per10k": 1.13
+  },
+  {
+   "word": "太",
+   "z": 18.77,
+   "aigc_per10k": 17.31,
+   "human_per10k": 10.41
+  },
+  {
+   "word": "救星",
+   "z": 18.66,
+   "aigc_per10k": 2.06,
+   "human_per10k": 0.2
+  },
+  {
+   "word": "藏",
+   "z": 18.64,
+   "aigc_per10k": 2.95,
+   "human_per10k": 0.66
+  },
+  {
+   "word": "记住",
+   "z": 18.43,
+   "aigc_per10k": 2.94,
+   "human_per10k": 0.67
+  },
+  {
+   "word": "安利",
+   "z": 18.39,
+   "aigc_per10k": 3.24,
+   "human_per10k": 0.83
+  },
+  {
+   "word": "谁",
+   "z": 18.38,
+   "aigc_per10k": 7.15,
+   "human_per10k": 3.17
+  },
+  {
+   "word": "超有",
+   "z": 18.36,
+   "aigc_per10k": 1.97,
+   "human_per10k": 0.17
+  },
+  {
+   "word": "爱心",
+   "z": 18.22,
+   "aigc_per10k": 2.74,
+   "human_per10k": 0.59
+  },
+  {
+   "word": "告别",
+   "z": 18.17,
+   "aigc_per10k": 2.22,
+   "human_per10k": 0.34
+  },
+  {
+   "word": "被",
+   "z": 17.95,
+   "aigc_per10k": 22.05,
+   "human_per10k": 14.4
+  },
+  {
+   "word": "甜蜜",
+   "z": 17.91,
+   "aigc_per10k": 2.12,
+   "human_per10k": 0.31
+  },
+  {
+   "word": "这次",
+   "z": 17.85,
+   "aigc_per10k": 7.24,
+   "human_per10k": 3.31
+  }
+ ],
+ "human_words": [
+  {
+   "word": "很",
+   "z": -37.51,
+   "aigc_per10k": 23.68,
+   "human_per10k": 51.12
+  },
+  {
+   "word": "可以",
+   "z": -36.86,
+   "aigc_per10k": 23.74,
+   "human_per10k": 50.56
+  },
+  {
+   "word": "没有",
+   "z": -35.27,
+   "aigc_per10k": 8.24,
+   "human_per10k": 27.54
+  },
+  {
+   "word": "的",
+   "z": -33.8,
+   "aigc_per10k": 485.58,
+   "human_per10k": 565.29
+  },
+  {
+   "word": "有",
+   "z": -33.21,
+   "aigc_per10k": 40.56,
+   "human_per10k": 68.72
+  },
+  {
+   "word": "但是",
+   "z": -28.8,
+   "aigc_per10k": 4.89,
+   "human_per10k": 17.52
+  },
+  {
+   "word": "因为",
+   "z": -26.07,
+   "aigc_per10k": 5.6,
+   "human_per10k": 16.61
+  },
+  {
+   "word": "所以",
+   "z": -25.0,
+   "aigc_per10k": 4.63,
+   "human_per10k": 14.54
+  },
+  {
+   "word": "是",
+   "z": -24.95,
+   "aigc_per10k": 109.62,
+   "human_per10k": 139.93
+  },
+  {
+   "word": "一个",
+   "z": -24.4,
+   "aigc_per10k": 18.59,
+   "human_per10k": 32.94
+  },
+  {
+   "word": "不",
+   "z": -23.44,
+   "aigc_per10k": 40.29,
+   "human_per10k": 58.76
+  },
+  {
+   "word": "比较",
+   "z": -23.14,
+   "aigc_per10k": 2.28,
+   "human_per10k": 10.15
+  },
+  {
+   "word": "非常",
+   "z": -22.32,
+   "aigc_per10k": 2.92,
+   "human_per10k": 10.51
+  },
+  {
+   "word": "吃",
+   "z": -20.94,
+   "aigc_per10k": 21.97,
+   "human_per10k": 34.62
+  },
+  {
+   "word": "去",
+   "z": -20.93,
+   "aigc_per10k": 20.17,
+   "human_per10k": 32.4
+  },
+  {
+   "word": "会",
+   "z": -20.78,
+   "aigc_per10k": 24.43,
+   "human_per10k": 37.51
+  },
+  {
+   "word": "时候",
+   "z": -20.57,
+   "aigc_per10k": 9.64,
+   "human_per10k": 18.78
+  },
+  {
+   "word": "孩子",
+   "z": -20.36,
+   "aigc_per10k": 7.19,
+   "human_per10k": 15.38
+  },
+  {
+   "word": "他",
+   "z": -19.76,
+   "aigc_per10k": 19.24,
+   "human_per10k": 30.44
+  },
+  {
+   "word": "很多",
+   "z": -19.44,
+   "aigc_per10k": 7.16,
+   "human_per10k": 14.84
+  },
+  {
+   "word": "也",
+   "z": -17.27,
+   "aigc_per10k": 63.52,
+   "human_per10k": 79.44
+  },
+  {
+   "word": "然后",
+   "z": -16.59,
+   "aigc_per10k": 4.01,
+   "human_per10k": 9.18
+  },
+  {
+   "word": "做",
+   "z": -16.04,
+   "aigc_per10k": 15.74,
+   "human_per10k": 23.8
+  },
+  {
+   "word": "之后",
+   "z": -15.85,
+   "aigc_per10k": 2.41,
+   "human_per10k": 6.63
+  },
+  {
+   "word": "如果",
+   "z": -15.72,
+   "aigc_per10k": 7.31,
+   "human_per10k": 13.16
+  },
+  {
+   "word": "应该",
+   "z": -15.41,
+   "aigc_per10k": 1.39,
+   "human_per10k": 5.0
+  },
+  {
+   "word": "需要",
+   "z": -15.23,
+   "aigc_per10k": 6.81,
+   "human_per10k": 12.29
+  },
+  {
+   "word": "并",
+   "z": -15.13,
+   "aigc_per10k": 2.33,
+   "human_per10k": 6.23
+  },
+  {
+   "word": "进行",
+   "z": -14.32,
+   "aigc_per10k": 0.88,
+   "human_per10k": 3.9
+  },
+  {
+   "word": "以",
+   "z": -13.78,
+   "aigc_per10k": 1.07,
+   "human_per10k": 3.95
+  },
+  {
+   "word": "以后",
+   "z": -13.69,
+   "aigc_per10k": 1.5,
+   "human_per10k": 4.53
+  },
+  {
+   "word": "喜欢",
+   "z": -13.63,
+   "aigc_per10k": 10.94,
+   "human_per10k": 16.67
+  },
+  {
+   "word": "对于",
+   "z": -13.58,
+   "aigc_per10k": 1.21,
+   "human_per10k": 4.08
+  },
+  {
+   "word": "等",
+   "z": -13.41,
+   "aigc_per10k": 8.25,
+   "human_per10k": 13.28
+  },
+  {
+   "word": "什么",
+   "z": -13.38,
+   "aigc_per10k": 9.75,
+   "human_per10k": 15.1
+  },
+  {
+   "word": "一直",
+   "z": -13.23,
+   "aigc_per10k": 5.06,
+   "human_per10k": 9.17
+  },
+  {
+   "word": "买",
+   "z": -13.0,
+   "aigc_per10k": 7.29,
+   "human_per10k": 11.9
+  },
+  {
+   "word": "这个",
+   "z": -12.94,
+   "aigc_per10k": 16.21,
+   "human_per10k": 22.55
+  },
+  {
+   "word": "能够",
+   "z": -12.59,
+   "aigc_per10k": 0.99,
+   "human_per10k": 3.43
+  },
+  {
+   "word": "过",
+   "z": -12.51,
+   "aigc_per10k": 6.99,
+   "human_per10k": 11.32
+  },
+  {
+   "word": "可",
+   "z": -12.47,
+   "aigc_per10k": 5.26,
+   "human_per10k": 9.14
+  },
+  {
+   "word": "以及",
+   "z": -12.39,
+   "aigc_per10k": 0.87,
+   "human_per10k": 3.2
+  },
+  {
+   "word": "及",
+   "z": -12.37,
+   "aigc_per10k": 0.48,
+   "human_per10k": 2.7
+  },
+  {
+   "word": "事情",
+   "z": -12.33,
+   "aigc_per10k": 2.21,
+   "human_per10k": 5.07
+  },
+  {
+   "word": "一般",
+   "z": -12.2,
+   "aigc_per10k": 1.72,
+   "human_per10k": 4.33
+  },
+  {
+   "word": "使用",
+   "z": -12.07,
+   "aigc_per10k": 2.38,
+   "human_per10k": 5.2
+  },
+  {
+   "word": "好",
+   "z": -12.07,
+   "aigc_per10k": 29.08,
+   "human_per10k": 36.66
+  },
+  {
+   "word": "好吃",
+   "z": -11.86,
+   "aigc_per10k": 4.34,
+   "human_per10k": 7.72
+  },
+  {
+   "word": "知道",
+   "z": -11.76,
+   "aigc_per10k": 7.77,
+   "human_per10k": 11.95
+  },
+  {
+   "word": "里面",
+   "z": -11.74,
+   "aigc_per10k": 3.42,
+   "human_per10k": 6.49
+  },
+  {
+   "word": "为",
+   "z": -11.62,
+   "aigc_per10k": 5.81,
+   "human_per10k": 9.49
+  },
+  {
+   "word": "将",
+   "z": -11.6,
+   "aigc_per10k": 2.55,
+   "human_per10k": 5.28
+  },
+  {
+   "word": "我",
+   "z": -11.59,
+   "aigc_per10k": 141.81,
+   "human_per10k": 156.85
+  },
+  {
+   "word": "妈妈",
+   "z": -11.59,
+   "aigc_per10k": 3.31,
+   "human_per10k": 6.3
+  },
+  {
+   "word": "并且",
+   "z": -11.46,
+   "aigc_per10k": 0.28,
+   "human_per10k": 2.25
+  },
+  {
+   "word": "就是",
+   "z": -11.46,
+   "aigc_per10k": 18.52,
+   "human_per10k": 24.38
+  },
+  {
+   "word": "原因",
+   "z": -11.39,
+   "aigc_per10k": 0.9,
+   "human_per10k": 2.93
+  },
+  {
+   "word": "所",
+   "z": -11.35,
+   "aigc_per10k": 0.73,
+   "human_per10k": 2.68
+  },
+  {
+   "word": "目前",
+   "z": -11.31,
+   "aigc_per10k": 0.59,
+   "human_per10k": 2.49
+  },
+  {
+   "word": "不错",
+   "z": -11.28,
+   "aigc_per10k": 2.94,
+   "human_per10k": 5.71
+  }
+ ]
+}

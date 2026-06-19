@@ -1,0 +1,183 @@
+# -*- coding: utf-8 -*-
+"""第七步：补充论文图。
+
+1. 重绘漂移时间线：标注人类集 2022.07 的采样断层，阴性对照只在干净窗口内检验
+2. 差中差对比图（同采样层的前后 LLM 对比）
+3. 词表 log-odds 图
+并把修正后的趋势数字合并进 paper_drift_results.json。
+"""
+import json
+import os
+
+import numpy as np
+import pandas as pd
+import matplotlib
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
+from matplotlib import font_manager
+from scipy.stats import spearmanr
+
+BASE = "/home/qwe12345678/RedNote-Vibe-Analysis/"
+FIGS = BASE + "paper_figs/"
+
+font_dir = "/usr/share/fonts/noto-cjk"
+for f in sorted(os.listdir(font_dir)):
+    if "NotoSansCJK" in f and f.endswith(".ttc"):
+        font_manager.fontManager.addfont(os.path.join(font_dir, f))
+        prop = font_manager.FontProperties(fname=os.path.join(font_dir, f))
+        plt.rcParams["font.family"] = prop.get_name()
+        break
+plt.rcParams["axes.unicode_minus"] = False
+
+
+def score(df, model):
+    feats = model["robust_features"]
+    mean = np.array(model["robust_scaler_mean"])
+    scale = np.array(model["robust_scaler_scale"])
+    coef = np.array(model["robust_coef"])
+    b = model["robust_intercept"]
+    z = (df[feats].fillna(0).values - mean) / scale
+    return 1 / (1 + np.exp(-(z @ coef + b)))
+
+
+with open(BASE + "paper_detector_model.json", encoding="utf-8") as f:
+    model = json.load(f)
+human = pd.read_csv(BASE + "paper_features_human.csv.gz")
+human["month"] = human["month"].astype(str)
+human["p_ai"] = score(human, model)
+expl = pd.read_csv(BASE + "paper_features_exploring.csv.gz")
+expl["month"] = expl["month"].astype(str)
+expl["p_ai"] = score(expl, model)
+
+ms_h = human.groupby("month")["p_ai"].agg(["size", "mean"])
+ms_h = ms_h[ms_h["size"] >= 100].sort_index()
+ms_e = expl.groupby("month")["p_ai"].agg(["size", "mean"])
+ms_e = ms_e[ms_e["size"] >= 100].sort_index()
+
+clean_months = [m for m in ms_h.index if m <= "202206"]
+rho_clean, p_clean = spearmanr(range(len(clean_months)),
+                               ms_h.loc[clean_months, "mean"].values)
+rho_e, p_e = spearmanr(range(len(ms_e)), ms_e["mean"].values)
+
+with open(BASE + "paper_drift_results.json", encoding="utf-8") as f:
+    drift = json.load(f)
+adj = drift["domain_adjusted_monthly"]
+
+# ---- 图1：修正版时间线 ----
+fig, axes = plt.subplots(1, 2, figsize=(14, 4.8),
+                         gridspec_kw={"width_ratios": [1, 1.45]})
+ax = axes[0]
+x_h = np.arange(len(ms_h))
+split = ms_h.index.get_loc("202207")
+ax.plot(x_h[:split], ms_h["mean"].values[:split], "o-", color="#4C72B0",
+        ms=3.5, lw=1.3, label="回溯爬取窗口")
+ax.plot(x_h[split:], ms_h["mean"].values[split:], "o-", color="#DD8452",
+        ms=3.5, lw=1.3, label="实时爬取窗口")
+ax.axvspan(split - 0.5, len(ms_h) - 0.5, color="#DD8452", alpha=0.08)
+base_clean = ms_h.loc[clean_months, "mean"].mean()
+ax.axhline(base_clean, color="gray", ls="--", lw=0.9)
+ax.annotate("采样断层\n(爬取批次切换)", xy=(split, 0.26), fontsize=9,
+            ha="center", color="#7f3b08")
+ax.set_xticks(x_h[::4])
+ax.set_xticklabels(ms_h.index[::4], rotation=45, fontsize=8)
+ax.set_ylabel("平均 P(AI)")
+ax.set_title(f"人类集（前LLM时代）按月得分\n干净窗口趋势 ρ={rho_clean:.2f} (p={p_clean:.2f})")
+ax.set_ylim(0, 0.65)
+ax.legend(fontsize=8, loc="upper left")
+
+ax = axes[1]
+x_e = np.arange(len(ms_e))
+ax.plot(x_e, ms_e["mean"].values, "o-", color="#C44E52", ms=3.5, lw=1.3,
+        label="原始月度均值")
+adj_idx = [list(ms_e.index).index(m) for m in adj if m in set(ms_e.index)]
+ax.plot(adj_idx, [adj[m] for m in adj if m in set(ms_e.index)],
+        "s--", color="#55A868", ms=3.5, lw=1.2, label="领域调整后")
+ax.axhline(base_clean, color="gray", ls="--", lw=0.9, label=f"前LLM干净基线 {base_clean:.2f}")
+ax.set_xticks(x_e[::3])
+ax.set_xticklabels(ms_e.index[::3], rotation=45, fontsize=8)
+ax.set_title(f"探索集（后LLM时代，热帖）按月得分\n趋势 ρ={rho_e:.2f} (p={p_e:.2f})")
+ax.set_ylim(0, 0.65)
+ax.legend(fontsize=8, loc="lower right")
+fig.suptitle("AI 风格得分的时间演化（稳健特征检测器）", y=1.0, fontsize=13)
+fig.tight_layout()
+fig.savefig(FIGS + "drift_score_timeline.png", dpi=150, bbox_inches="tight")
+plt.close(fig)
+
+# ---- 图2：差中差 ----
+clean = human[human["month"] <= "202206"]
+late = human[human["month"] >= "202207"]
+e = expl[expl["month"] >= "202301"]
+groups = {
+    "新帖/低互动层": (late["p_ai"], e[e["likes"] < 100]["p_ai"]),
+    "热帖层": (clean[clean["likes"] > 1000]["p_ai"], e[e["likes"] >= 1000]["p_ai"]),
+}
+fig, axes = plt.subplots(1, 2, figsize=(11, 4.2))
+for i, metric in enumerate(["mean", "hi"]):
+    ax = axes[i]
+    labels = list(groups)
+    pre = [g[0].mean() if metric == "mean" else (g[0] > 0.9).mean() * 100 for g in groups.values()]
+    post = [g[1].mean() if metric == "mean" else (g[1] > 0.9).mean() * 100 for g in groups.values()]
+    x = np.arange(len(labels))
+    ax.bar(x - 0.18, pre, 0.36, label="前LLM (≤2022.11)", color="#4C72B0")
+    ax.bar(x + 0.18, post, 0.36, label="后LLM (2023.01–2025.06)", color="#C44E52")
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels)
+    for xi, (a, b) in enumerate(zip(pre, post)):
+        fmt = "{:.3f}" if metric == "mean" else "{:.1f}%"
+        ax.text(xi - 0.18, a, fmt.format(a), ha="center", va="bottom", fontsize=9)
+        ax.text(xi + 0.18, b, fmt.format(b), ha="center", va="bottom", fontsize=9)
+    ax.set_ylabel("平均 P(AI)" if metric == "mean" else "P(AI)>0.9 占比 (%)")
+    ax.set_title("平均 AI 风格得分" if metric == "mean" else "高置信 AI 风格帖占比")
+    ax.legend(fontsize=9)
+fig.suptitle("同类采样层的前后 LLM 时代对比（差中差）", fontsize=13)
+fig.tight_layout()
+fig.savefig(FIGS + "did_comparison.png", dpi=150)
+plt.close(fig)
+
+# ---- 图3：词表 log-odds ----
+with open(BASE + "paper_lexicon_results.json", encoding="utf-8") as f:
+    lex = json.load(f)
+STOP = {"能", "们", "但", "小", "得", "啊", "搭", "穿", "夏日", "搭配", "像", "吃",
+        "去", "做", "买", "孩子", "他", "是", "的", "有", "不", "很", "也", "等",
+        "什么", "这个", "一个", "过", "会", "以", "并"}
+aw = [d for d in lex["aigc_words"] if d["word"] not in STOP][:15]
+hw = [d for d in lex["human_words"] if d["word"] not in STOP][:15]
+fig, axes = plt.subplots(1, 2, figsize=(11, 5.2))
+ax = axes[0]
+ax.barh([d["word"] for d in aw][::-1], [d["z"] for d in aw][::-1], color="#C44E52")
+ax.set_title("AIGC 显著偏好词（log-odds z 分数）")
+ax.set_xlabel("z 分数")
+ax = axes[1]
+ax.barh([d["word"] for d in hw][::-1], [-d["z"] for d in hw][::-1], color="#4C72B0")
+ax.set_title("人类显著偏好词（log-odds |z| 分数）")
+ax.set_xlabel("|z| 分数")
+fig.suptitle("区分 AIGC 与人类的风格词（informative Dirichlet log-odds）", fontsize=12)
+fig.tight_layout()
+fig.savefig(FIGS + "lexicon_logodds.png", dpi=150)
+plt.close(fig)
+
+# ---- 合并修正数字 ----
+drift["trend"]["human_control_clean_window"] = {
+    "rho": round(float(rho_clean), 3), "p": float(p_clean),
+    "months": f"202012-202206 ({len(clean_months)}个月)"}
+drift["sampling_discontinuity"] = {
+    "note": "人类集2022.07起点赞>0比例从~70%骤降至~20%，且各领域得分同步上升，判定为爬取批次切换（回溯爬取->实时爬取）",
+    "clean_window_meanP": round(float(clean["p_ai"].mean()), 4),
+    "clean_window_hi": round(float((clean["p_ai"] > 0.9).mean()), 4),
+    "late_window_meanP": round(float(late["p_ai"].mean()), 4),
+    "late_window_hi": round(float((late["p_ai"] > 0.9).mean()), 4),
+}
+drift["did"] = {
+    "fresh_stratum": {"pre": round(float(late["p_ai"].mean()), 3),
+                      "post": round(float(e[e["likes"] < 100]["p_ai"].mean()), 3),
+                      "pre_hi": round(float((late["p_ai"] > 0.9).mean()), 4),
+                      "post_hi": round(float((e[e["likes"] < 100]["p_ai"] > 0.9).mean()), 4)},
+    "hot_stratum": {"pre": round(float(clean[clean["likes"] > 1000]["p_ai"].mean()), 3),
+                    "post": round(float(e[e["likes"] >= 1000]["p_ai"].mean()), 3),
+                    "pre_hi": round(float((clean[clean["likes"] > 1000]["p_ai"] > 0.9).mean()), 4),
+                    "post_hi": round(float((e[e["likes"] >= 1000]["p_ai"] > 0.9).mean()), 4)},
+}
+with open(BASE + "paper_drift_results.json", "w", encoding="utf-8") as f:
+    json.dump(drift, f, ensure_ascii=False, indent=1)
+print("完成：drift_score_timeline.png(修正), did_comparison.png, lexicon_logodds.png")
+print(f"干净窗口阴性对照: rho={rho_clean:.3f} p={p_clean:.3f}")

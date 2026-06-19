@@ -1,0 +1,220 @@
+{
+ "cv_metrics": {
+  "auc": 0.9402,
+  "f1": 0.6255,
+  "acc": 0.8734
+ },
+ "cv_metrics_robust": {
+  "auc": 0.9294,
+  "f1": 0.605
+ },
+ "family_auc": {
+  "Claude": 0.9362,
+  "DeepSeek": 0.9808,
+  "Gemini": 0.99,
+  "GLM": 0.8952,
+  "GPT": 0.93,
+  "Qwen": 0.9585
+ },
+ "coefficients": {
+  "avg_line_len": -1.3728,
+  "hum_lex100": -0.8363,
+  "title_len": -0.4499,
+  "uniq_bigram_ratio": -0.4349,
+  "p_很": -0.4236,
+  "n_lines": -0.3233,
+  "xhsemo100": -0.2893,
+  "pause100": -0.2541,
+  "title_num": -0.2305,
+  "p_的": -0.1708,
+  "p_了": -0.169,
+  "p_有": -0.1258,
+  "emoji_distinct": -0.1052,
+  "p_不": -0.0874,
+  "title_pipe": -0.0235,
+  "n_hashtags": -0.0217,
+  "title_bracket": -0.0065,
+  "p_就": -0.0042,
+  "emoji100": 0.0087,
+  "p_是": 0.0157,
+  "ellip100": 0.0272,
+  "list_line_ratio": 0.0382,
+  "comma100": 0.0706,
+  "tilde100": 0.089,
+  "colon_line_ratio": 0.0913,
+  "p_你": 0.1372,
+  "title_ques": 0.1704,
+  "p_都": 0.1766,
+  "ques100": 0.1787,
+  "title_emoji": 0.204,
+  "p_我": 0.2564,
+  "excl100": 0.2706,
+  "period100": 0.3009,
+  "ai_lex100": 0.5683,
+  "title_excl": 0.584,
+  "content_len": 1.0801,
+  "uniq_char_ratio": 1.7781
+ },
+ "stat_tests": [
+  {
+   "feature": "excl100",
+   "label": "感叹号/百字",
+   "human_mean": 0.4695,
+   "aigc_mean": 1.5301,
+   "human_median": 0.0,
+   "aigc_median": 1.083,
+   "p_value": 0.0,
+   "cliffs_delta": 0.483
+  },
+  {
+   "feature": "emoji100",
+   "label": "emoji/百字",
+   "human_mean": 0.8195,
+   "aigc_mean": 1.4079,
+   "human_median": 0.0,
+   "aigc_median": 0.7505,
+   "p_value": 6.599317338286497e-230,
+   "cliffs_delta": 0.217
+  },
+  {
+   "feature": "xhsemo100",
+   "label": "小红书表情/百字",
+   "human_mean": 0.3238,
+   "aigc_mean": 0.1795,
+   "human_median": 0.0,
+   "aigc_median": 0.0,
+   "p_value": 1.8774261340153915e-144,
+   "cliffs_delta": -0.145
+  },
+  {
+   "feature": "ai_lex100",
+   "label": "AI味词/百字",
+   "human_mean": 0.14,
+   "aigc_mean": 0.5422,
+   "human_median": 0.0,
+   "aigc_median": 0.3546,
+   "p_value": 0.0,
+   "cliffs_delta": 0.41
+  },
+  {
+   "feature": "hum_lex100",
+   "label": "逻辑连接词/百字",
+   "human_mean": 1.1044,
+   "aigc_mean": 0.4476,
+   "human_median": 0.9585,
+   "aigc_median": 0.2642,
+   "p_value": 0.0,
+   "cliffs_delta": -0.501
+  },
+  {
+   "feature": "content_len",
+   "label": "正文长度",
+   "human_mean": 472.1796,
+   "aigc_mean": 320.3781,
+   "human_median": 401.0,
+   "aigc_median": 294.0,
+   "p_value": 0.0,
+   "cliffs_delta": -0.393
+  },
+  {
+   "feature": "p_的",
+   "label": "「的」",
+   "human_mean": 2.7057,
+   "aigc_mean": 2.4807,
+   "human_median": 2.678,
+   "aigc_median": 2.3823,
+   "p_value": 5.3123044690806085e-49,
+   "cliffs_delta": -0.106
+  },
+  {
+   "feature": "p_是",
+   "label": "「是」",
+   "human_mean": 1.1368,
+   "aigc_mean": 0.9564,
+   "human_median": 1.0309,
+   "aigc_median": 0.8264,
+   "p_value": 1.2094063586788728e-96,
+   "cliffs_delta": -0.151
+  },
+  {
+   "feature": "p_我",
+   "label": "「我」",
+   "human_mean": 0.9088,
+   "aigc_mean": 0.8194,
+   "human_median": 0.5277,
+   "aigc_median": 0.5263,
+   "p_value": 1.0232253612851989e-07,
+   "cliffs_delta": -0.038
+  },
+  {
+   "feature": "uniq_char_ratio",
+   "label": "独特字比率",
+   "human_mean": 0.4507,
+   "aigc_mean": 0.5783,
+   "human_median": 0.4541,
+   "aigc_median": 0.573,
+   "p_value": 0.0,
+   "cliffs_delta": 0.633
+  },
+  {
+   "feature": "title_excl",
+   "label": "标题含感叹号",
+   "human_mean": 0.1263,
+   "aigc_mean": 0.4631,
+   "human_median": 0.0,
+   "aigc_median": 0.0,
+   "p_value": 0.0,
+   "cliffs_delta": 0.337
+  },
+  {
+   "feature": "title_emoji",
+   "label": "标题含emoji",
+   "human_mean": 0.1566,
+   "aigc_mean": 0.3007,
+   "human_median": 0.0,
+   "aigc_median": 0.0,
+   "p_value": 1.2867396464211268e-201,
+   "cliffs_delta": 0.144
+  },
+  {
+   "feature": "n_hashtags",
+   "label": "话题标签数",
+   "human_mean": 2.9723,
+   "aigc_mean": 3.9505,
+   "human_median": 1.0,
+   "aigc_median": 4.0,
+   "p_value": 5.373443692394368e-205,
+   "cliffs_delta": 0.212
+  },
+  {
+   "feature": "tilde100",
+   "label": "波浪号/百字",
+   "human_mean": 0.1755,
+   "aigc_mean": 0.3352,
+   "human_median": 0.0,
+   "aigc_median": 0.0,
+   "p_value": 1.3162354095942483e-243,
+   "cliffs_delta": 0.191
+  },
+  {
+   "feature": "list_line_ratio",
+   "label": "列表行占比",
+   "human_mean": 0.0461,
+   "aigc_mean": 0.0604,
+   "human_median": 0.0,
+   "aigc_median": 0.0,
+   "p_value": 3.1849417254788248e-52,
+   "cliffs_delta": 0.058
+  },
+  {
+   "feature": "colon_line_ratio",
+   "label": "冒号行占比",
+   "human_mean": 0.0826,
+   "aigc_mean": 0.1123,
+   "human_median": 0.0,
+   "aigc_median": 0.0,
+   "p_value": 6.737837430965605e-161,
+   "cliffs_delta": 0.132
+  }
+ ]
+}

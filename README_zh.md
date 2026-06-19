@@ -16,6 +16,19 @@
 - `training_set_aigc.jsonl` — 由 17 个 LLM 生成的帖子
 - `exploration_set.jsonl` — LLM 出现后的帖子（2023–2025），用于时序分析
 
+## 📄 论文
+
+基于本仓库全部分析撰写的完整论文见 **[paper.md](paper.md)**：《"AI 味"的解剖、扩散与代价：基于 RedNote-Vibe 的社交媒体 AI 生成文本风格计量研究》。
+
+核心结论：
+1. **"AI 味"的解剖**：AIGC 过用强化语气词（简直/瞬间/超级）与营销话术（宝藏/神器/必备），欠用逻辑连接词（但是/因为/所以，Cliff's δ=-0.50）与平台原生表情 `[xxR]`
+2. **17 个 LLM 仿人度排名**：GLM-3、Qwen2.5 最像人；Gemini 全系最不像；家族排序 GPT<GLM<Claude<Qwen<DeepSeek<Gemini；模型更新不必然更像人
+3. **可解释检测器**：35 个透明风格特征的逻辑回归达 5 折 CV AUC=0.940
+4. **台阶式扩散**：控制采样层后，后 LLM 时代高置信 AI 风格帖占比从 0.6%–1.9% 跃升至 14.6%–22.2%，随后 31 个月平稳；并发现原数据集人类子集 2022.07 存在采样断层
+5. **AI 味惩罚**：风格越像 AI 互动越差——最像人十分位点赞中位数 785 vs 最像 AI 十分位 106.5（7.4 倍），且 2023–2025 稳定存在
+
+复现脚本：`paper_lexicon.py` → `paper_features.py` → `paper_model_fingerprint.py` → `paper_detector.py` → `paper_drift.py` → `paper_extra_figs.py` → `paper_engagement.py`（图表在 `paper_figs/`）。
+
 ## 📊 Fork 分析
 
 本 fork 对 RedNote-Vibe 数据集进行了全面的数据分析，主要发现和可视化如下：

@@ -1,0 +1,139 @@
+# -*- coding: utf-8 -*-
+"""第一步：数据驱动地发现区分 AIGC 与人类的词汇（informative Dirichlet log-odds）。
+
+输出 paper_lexicon_results.json：AIGC 偏好词与人类偏好词各 Top-60，
+供人工筛选出"风格词表"（排除纯话题词），并写入论文表格。
+"""
+import json
+import re
+import random
+import math
+from collections import Counter
+
+import jieba
+
+BASE = "/home/qwe12345678/RedNote-Vibe-Analysis/"
+HUATI = re.compile(r"\[话题\]")
+HASHTAG = re.compile(r"#[^#\s]{1,30}")
+XHS_EMO = re.compile(r"\[[^\[\]]{1,8}R\]")
+
+
+def clean(text):
+    """去掉爬取痕迹与话题标签，保留正文风格。"""
+    text = HUATI.sub("", text)
+    text = HASHTAG.sub(" ", text)
+    return text
+
+
+def load_texts(path, key_candidates=("note_content", "desc"), sample=None, seed=42):
+    texts = []
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            d = json.loads(line)
+            t = ""
+            for k in key_candidates:
+                if d.get(k):
+                    t = d[k]
+                    break
+            title = d.get("note_title") or ""
+            texts.append(title + "\n" + t)
+    if sample and len(texts) > sample:
+        random.seed(seed)
+        texts = random.sample(texts, sample)
+    return texts
+
+
+def count_words(texts):
+    cnt = Counter()
+    for t in texts:
+        for w in jieba.cut(clean(t)):
+            w = w.strip()
+            if not w:
+                continue
+            # 只保留含中文的词或常见拼音化网络词
+            if re.search(r"[一-鿿]", w) or re.fullmatch(r"[a-zA-Z]{2,10}", w):
+                cnt[w] += 1
+    return cnt
+
+
+def log_odds(cnt_a, cnt_b, min_count=30):
+    """Monroe et al. (2008) informative Dirichlet prior log-odds, z-score."""
+    vocab = set(cnt_a) | set(cnt_b)
+    n_a = sum(cnt_a.values())
+    n_b = sum(cnt_b.values())
+    prior = Counter()
+    for w in vocab:
+        prior[w] = cnt_a[w] + cnt_b[w]
+    n_p = sum(prior.values())
+    alpha0 = 500.0  # 先验强度
+    results = {}
+    for w in vocab:
+        if cnt_a[w] + cnt_b[w] < min_count:
+            continue
+        pw = prior[w] / n_p
+        aw = alpha0 * pw
+        la = math.log((cnt_a[w] + aw) / (n_a + alpha0 - cnt_a[w] - aw))
+        lb = math.log((cnt_b[w] + aw) / (n_b + alpha0 - cnt_b[w] - aw))
+        delta = la - lb
+        var = 1.0 / (cnt_a[w] + aw) + 1.0 / (cnt_b[w] + aw)
+        results[w] = delta / math.sqrt(var)
+    return results
+
+
+def rate(cnt, n, w):
+    return cnt[w] / n * 1e4  # 每万词
+
+
+def main():
+    print("加载文本 ...")
+    human = load_texts(BASE + "training_set_human_fixed.jsonl", sample=20000)
+    aigc = load_texts(BASE + "training_set_aigc.jsonl")
+    print(f"human sample={len(human)}, aigc={len(aigc)}")
+
+    print("分词统计 ...")
+    cnt_h = count_words(human)
+    cnt_a = count_words(aigc)
+    n_h = sum(cnt_h.values())
+    n_a = sum(cnt_a.values())
+    print(f"tokens: human={n_h}, aigc={n_a}")
+
+    z = log_odds(cnt_a, cnt_h, min_count=30)
+    top_aigc = sorted(z.items(), key=lambda x: -x[1])[:60]
+    top_human = sorted(z.items(), key=lambda x: x[1])[:60]
+
+    out = {
+        "aigc_words": [
+            {
+                "word": w,
+                "z": round(s, 2),
+                "aigc_per10k": round(rate(cnt_a, n_a, w), 2),
+                "human_per10k": round(rate(cnt_h, n_h, w), 2),
+            }
+            for w, s in top_aigc
+        ],
+        "human_words": [
+            {
+                "word": w,
+                "z": round(s, 2),
+                "aigc_per10k": round(rate(cnt_a, n_a, w), 2),
+                "human_per10k": round(rate(cnt_h, n_h, w), 2),
+            }
+            for w, s in top_human
+        ],
+    }
+    with open(BASE + "paper_lexicon_results.json", "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False, indent=1)
+
+    print("\n=== AIGC 偏好词 Top-40 ===")
+    for item in out["aigc_words"][:40]:
+        print(f"{item['word']}\tz={item['z']}\tA={item['aigc_per10k']}\tH={item['human_per10k']}")
+    print("\n=== 人类偏好词 Top-40 ===")
+    for item in out["human_words"][:40]:
+        print(f"{item['word']}\tz={item['z']}\tA={item['aigc_per10k']}\tH={item['human_per10k']}")
+
+
+if __name__ == "__main__":
+    main()

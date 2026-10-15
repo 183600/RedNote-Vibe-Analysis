@@ -1,0 +1,844 @@
+name: Continuous Loop
+
+on:
+  workflow_dispatch:
+  # 每 5 分钟一次「心跳」+ 下面 concurrency 排队，保证「一个 job 结束后立刻触发下一个」：
+  # 任何时刻组内最多 1 个 running + 1 个 pending；当前 run 无论以何种方式结束
+  # （成功 / 失败 / 被取消 / runner 意外宕机），队列中的下一个 run 都会在几秒内开始。
+  # 即使收尾的 self-dispatch 步骤被 GitHub 跳过（runner 宕机时连 if: always()
+  # 步骤也不会执行），下一次心跳也能在 ≤5 分钟内补位续跑，链条永不断。
+  schedule:
+    - cron: '*/5 * * * *'
+
+concurrency:
+  group: continuous-loop
+  cancel-in-progress: false
+
+jobs:
+  run-opencode:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    permissions:
+      contents: write
+      actions: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Free up disk space (keep miniconda)
+        run: |
+          set +e
+          echo "=== disk before cleanup ==="
+          df -h /
+          sudo rm -rf /usr/share/dotnet \
+                      /usr/share/swift \
+                      /usr/local/lib/android \
+                      /usr/local/share/boost \
+                      /opt/ghc \
+                      /opt/hostedtoolcache/CodeQL 2>/dev/null || true
+          sudo apt-get clean
+          echo "=== disk after cleanup ==="
+          df -h /
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Python and analysis dependencies
+        run: |
+          set +e
+          python3 --version
+          python3 -m pip install --quiet --upgrade pip 2>/dev/null || true
+          # 本仓库分析脚本的常用依赖（门禁 ci_gate.py 本身零第三方依赖，不受网络波动影响）
+          python3 -m pip install --quiet numpy pandas matplotlib scipy scikit-learn jieba \
+            || echo "[warn] 部分分析依赖安装失败，opencode 运行分析脚本时可能受限"
+          # quick_start.py（BERT 分类演示）需要 torch/transformers/datasets；尽力安装，失败仅降级
+          if python3 -m pip install --quiet torch --index-url https://download.pytorch.org/whl/cpu; then
+            echo "[ok] CPU torch installed for quick_start.py"
+          elif python3 -m pip install --quiet torch; then
+            echo "[ok] torch installed (default index)"
+          else
+            echo "[warn] torch install failed; quick_start.py 本轮不可运行（不影响门禁）"
+          fi
+          python3 -m pip install --quiet transformers datasets 2>/dev/null \
+            || echo "[warn] transformers/datasets 安装失败（仅影响 quick_start.py）"
+          python3 -c "import numpy, pandas, matplotlib, scipy, sklearn, jieba; print('analysis deps OK')" 2>/dev/null \
+            || echo "[warn] 分析依赖不完整"
+
+      - name: Configure swap (safe version)
+        run: |
+          set -e
+          echo "=== Before ==="
+          free -h
+          df -h /
+
+          sudo systemctl disable --now systemd-oomd.socket systemd-oomd.service 2>/dev/null || true
+
+          sudo modprobe zram 2>/dev/null || true
+          if [ -e /dev/zram0 ]; then
+            sudo swapoff /dev/zram0 2>/dev/null || true
+            echo 8G | sudo tee /sys/block/zram0/disksize >/dev/null || true
+            sudo mkswap /dev/zram0 >/dev/null 2>&1 || true
+            sudo swapon -p 100 /dev/zram0 2>/dev/null && echo "[ok] zram enabled (8G, prio=100)" \
+              || echo "[warn] zram enable failed"
+          else
+            echo "[info] zram not available, skip"
+          fi
+
+          AVAIL_KB=$(df --output=avail / | tail -1)
+          AVAIL_MB=$((AVAIL_KB / 1024))
+          WANT_MB=$((AVAIL_MB - 3072))
+          if [ "$WANT_MB" -gt 8192 ]; then WANT_MB=8192; fi
+          if [ "$WANT_MB" -lt 2048 ]; then WANT_MB=2048; fi
+          echo "[info] available disk: ${AVAIL_MB}MB, will create swapfile: ${WANT_MB}MB"
+
+          sudo swapoff /swapfile 2>/dev/null || true
+          sudo rm -f /swapfile
+          if ! sudo fallocate -l "${WANT_MB}M" /swapfile 2>/dev/null; then
+            echo "[info] fallocate failed, falling back to dd"
+            sudo dd if=/dev/zero of=/swapfile bs=1M count=$WANT_MB status=none
+          fi
+          sudo chmod 600 /swapfile
+          sudo mkswap /swapfile >/dev/null
+          sudo swapon -p 10 /swapfile && echo "[ok] swapfile enabled"
+
+          sudo sysctl -w vm.swappiness=100
+          sudo sysctl -w vm.vfs_cache_pressure=200
+          sudo sysctl -w vm.overcommit_memory=1
+          sudo sysctl -w vm.dirty_ratio=40
+          sudo sysctl -w vm.dirty_background_ratio=10
+          sudo sysctl -w vm.watermark_scale_factor=200 2>/dev/null || true
+
+          echo "=== After ==="
+          free -h
+          swapon --show
+          df -h /
+
+      - name: Install opencode
+        run: npm i -g opencode-ai
+
+      - name: Configure opencode (free models + tamper protection)
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+        run: |
+          # opencode 自带的 OpenCode Zen 免费 provider 无需任何 API key；
+          # 如需更高限额，可在仓库 secrets 里可选配置 OPENCODE_API_KEY。
+          if [ -n "$OPENCODE_API_KEY" ]; then
+            echo "[info] OPENCODE_API_KEY 已配置（用于提升免费模型限额）"
+          else
+            echo "[info] 未配置 OPENCODE_API_KEY，匿名使用免费模型（有速率限制）"
+          fi
+          mkdir -p ~/.config/opencode
+          cat > ~/.config/opencode/opencode.json <<'EOF'
+          {
+            "$schema": "https://opencode.ai/config.json",
+            "permission": {
+              "*": "allow",
+              "edit": {
+                "*": "allow",
+                ".github/**": "deny",
+                "**/.github/**": "deny",
+                "ci_gate.py": "deny",
+                "**/ci_gate.py": "deny",
+                "*.jsonl": "deny",
+                "**/*.jsonl": "deny",
+                "*.csv.gz": "deny",
+                "**/*.csv.gz": "deny"
+              },
+              "bash": {
+                "*": "allow",
+                "rm -rf .github*": "deny",
+                "rm -r .github*": "deny",
+                "rm .github*": "deny",
+                "mv .github*": "deny",
+                "git rm -r .github*": "deny",
+                "git push*": "deny",
+                "git checkout --orphan*": "deny",
+                "git switch --orphan*": "deny",
+                "git filter-branch*": "deny",
+                "git rebase*": "deny",
+                "git branch -D*": "deny",
+                "git update-ref*": "deny",
+                "git symbolic-ref*": "deny",
+                "git reflog*": "deny",
+                "git gc*": "deny",
+                "git remote add*": "deny",
+                "git remote remove*": "deny",
+                "git remote set-url*": "deny",
+                "rm *ci_gate*": "deny",
+                "mv *ci_gate*": "deny",
+                "rm *.jsonl*": "deny",
+                "mv *.jsonl*": "deny",
+                "cp *.jsonl*": "deny",
+                "git rm *.jsonl*": "deny",
+                "git mv *.jsonl*": "deny",
+                "shred *.jsonl*": "deny",
+                "truncate *.jsonl*": "deny",
+                "unlink *.jsonl*": "deny",
+                "dd *of=*.jsonl*": "deny",
+                "rm *.csv.gz*": "deny",
+                "mv *.csv.gz*": "deny",
+                "cp *.csv.gz*": "deny",
+                "git rm *.csv.gz*": "deny",
+                "git mv *.csv.gz*": "deny",
+                "shred *.csv.gz*": "deny",
+                "truncate *.csv.gz*": "deny",
+                "unlink *.csv.gz*": "deny",
+                "dd *of=*.csv.gz*": "deny"
+              }
+            }
+          }
+          EOF
+          echo "[guard] opencode 权限已锁定：edit/bash 对 .github/**、ci_gate.py 与研究数据文件（*.jsonl / *.csv.gz）禁止操作"
+
+          echo "=== OpenCode Zen 可用模型目录 ==="
+          opencode models opencode 2>/dev/null \
+            || opencode models 2>/dev/null | grep -F 'opencode/' \
+            || echo "[warn] 暂时无法获取模型列表，将在运行时重试"
+
+      - name: Configure git
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Run opencode for ~5 hours (4 phases per iteration)
+        timeout-minutes: 300
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+        run: |
+          set +e
+          set -o pipefail
+          BRANCH="${GITHUB_REF_NAME:-main}"
+          OUT=/tmp/oc_out.log
+          DEADLINE=$(( $(date +%s) + 5*3600 - 900 ))
+
+          # ================= 四阶段提示词（perf / bug / improve / clean） =================
+          # improve 阶段为新增的「改进这个项目」任务，由用户指定优先使用 xuen 模型（见下方 IMPROVE_MODEL）。
+          PROMPT_PERF='优化分析代码的性能和内存占用。这是一个小红书 AIGT 数据分析项目，数据文件（.jsonl / .csv.gz）体积很大：优先考虑流式读取与分块处理、避免一次性全量加载、减少重复计算、提升绘图与统计脚本的执行效率，并保证统计口径和分析结论不变。所有 .jsonl 和 .csv.gz 数据文件是研究数据，绝对不能删除、修改或移动。每次改动后运行 python3 ci_gate.py 自检，不通过就自己修好。不要输出或写入"优化了哪些内容"的报告。另外，.github 目录是 CI 配置，绝对不要删除、修改或移动其中任何文件；README.md、README_zh.md、ci_gate.py 同样绝对不能删除、修改或移动。'
+          PROMPT_BUG='仔细检查分析代码中是否存在 bug 或统计方法层面的问题（例如指标计算错误、统计检验误用、数据泄漏、采样偏差、对比基线不一致、绘图逻辑错误等），如果有就修复。修复必须保持已有分析结论的方向与口径不变，不得篡改研究数据。所有 .jsonl 和 .csv.gz 数据文件绝对不能删除、修改或移动。每次修复后运行 python3 ci_gate.py 确认通过。不要输出或写入"修复了哪些内容"的报告。另外，.github 目录是 CI 配置，绝对不要删除、修改或移动其中任何文件；README.md、README_zh.md、ci_gate.py 同样绝对不能删除、修改或移动。'
+          PROMPT_IMPROVE='改进这个项目。这是 RedNote-Vibe 小红书 AIGT 数据集的配套分析仓库：请从项目结构、代码质量与可复用性、分析维度的丰富与深入、图表质量、README 文档完善等方面着手，做出实质性的改进。改进必须建立在现有研究数据之上，不得改变已有分析结论的准确性；如新增分析或图表，需实际运行验证并保存结果。所有 .jsonl 和 .csv.gz 数据文件是研究数据，绝对不能删除、修改或移动。每次改动后运行 python3 ci_gate.py 确认通过。不要输出或写入"改进了哪些内容"的报告。另外，.github 目录是 CI 配置，绝对不要删除、修改或移动其中任何文件；ci_gate.py 是 CI 质量门禁脚本，同样绝对不能删除、修改或移动；README.md 和 README_zh.md 可以完善但绝对不能删除。'
+          PROMPT_CLEAN='清理仓库中的垃圾文件和临时文件：删除 __pycache__ 目录、*.pyc、debug*.txt、debug.log、err.txt 等调试残留，删除 AI 运行过程中产生的报告类文件（如 REPORT*.md）以及其他与数据分析无关的多余内容；如果 .gitignore 缺失就补一个，至少忽略 __pycache__/ 和 *.pyc。注意：.github 目录是 CI 配置，必须原样保留，绝对不能删除、修改或移动其中任何文件，它不属于"多余的内容"；README.md 和 README_zh.md 是项目说明文档，必须保留，绝对不能删除或移动；ci_gate.py 是 CI 质量门禁脚本，必须原样保留；所有 .jsonl 和 .csv.gz 数据文件是研究数据，绝对不能删除、修改或移动，也不属于"多余的内容"；已有的分析脚本（*.py）、分析报告（*.md）和图表（*.png、output/、paper_figs/）是项目成果，除非明显重复或已损坏，否则应予保留。'
+
+          # 每阶段单次调用的最大时长（秒）
+          PERF_TIMEOUT=$((60*60))     # 1h
+          BUG_TIMEOUT=$((60*60))      # 1h
+          IMPROVE_TIMEOUT=$((60*60))  # 1h（改进项目，指定使用 xuen）
+          CLEAN_TIMEOUT=$((30*60))    # 30m
+
+          # ================= 动态模型池（不写死，实时读取线上目录） =================
+          # 池直接来自 `opencode models opencode` 的实时输出：模型上新自动入池、
+          # 下线自动出池，无需再改本文件。目录暂时不可达时池置空，
+          # pick_model 会在每个阶段开始时惰性重建重试。
+          # 现在同时通过 --verbose 读取每个模型支持的 variant（思考强度档位）。
+          declare -A MODEL_VARIANTS=()
+          # ================= 优先模型：deepseek-v4.1-flash-free =================
+          # 池中存在时始终优先选用；不存在时保持随机选择。
+          # 同一阶段内若优先模型刚失败/限流，则暂时回退随机，下个阶段开始时自动恢复优先。
+          PREFERRED_MODEL="opencode/deepseek-v4.1-flash-free"
+          PREFERRED_BROKEN=0
+          # ================= 阶段指定模型：improve 阶段使用 xuen =================
+          # improve（改进这个项目）阶段由用户指定使用 xuen 模型：
+          # 1) xuen 在池中且本阶段内未刚失败/限流时，必定优先选用；
+          # 2) 池中无精确项时，尝试 ID 含 xuen/xwen/qwen 的近似模型（同一指定的常见写法）；
+          # 3) 仍无则本阶段回退常规选择（优先模型/随机），保证阶段不因模型暂缺而空转。
+          IMPROVE_MODEL="opencode/xuen"
+          PHASE_MODEL=""
+          PHASE_MODEL_BROKEN=0
+          # ---- 解析脚本：从 --verbose 输出提取模型 ID + 支持的 variant 列表 ----
+          # `opencode models --verbose` 在每个模型行后输出一段 JSON 元数据，其中
+          # variants 字段列出该模型支持的思考强度档位（如 deepseek-v4.1-flash-free
+          # 有 low/high/max）。输出两列（\t 分隔）：opencode/<model-id>  逗号分隔 variant。
+          cat > /tmp/parse_model_variants.py <<'PYEOF'
+          import sys, json, re
+          text = sys.stdin.read()
+          parts = re.split(r'(?m)^opencode/([A-Za-z0-9][A-Za-z0-9._-]*)[ \t]*$', text)
+          for i in range(1, len(parts) - 1, 2):
+              mid, blob = parts[i], parts[i + 1]
+              try:
+                  meta = json.loads(blob)
+              except Exception:
+                  try:
+                      meta = json.loads(blob[:blob.rindex('}') + 1])
+                  except Exception:
+                      continue
+              variants = sorted((meta.get('variants') or {}).keys())
+              print('opencode/%s\t%s' % (mid, ','.join(variants)))
+          PYEOF
+          build_model_pool() {
+            local out tsv m v
+            local pool=()
+            # --refresh 强制拉取线上最新目录（避免 runner 本地缓存过期、错过新上的模型）；
+            # refresh 失败时自动回退缓存目录，仍失败则返回空，由 pick_model 惰性重建重试。
+            out="$(opencode models opencode --verbose --refresh 2>/dev/null \
+              || opencode models opencode --verbose 2>/dev/null \
+              || opencode models --verbose 2>/dev/null \
+              || true)"
+            [ -z "$out" ] && return 1
+            tsv="$(printf '%s\n' "$out" | python3 /tmp/parse_model_variants.py 2>/dev/null)" || true
+            [ -z "$tsv" ] && return 1
+            MODEL_VARIANTS=()
+            while IFS=$'\t' read -r m v; do
+              [ -n "$m" ] || continue
+              pool+=("$m")
+              MODEL_VARIANTS["$m"]="$v"
+            done <<< "$tsv"
+            [ ${#pool[@]} -eq 0 ] && return 1
+            FREE_MODELS=("${pool[@]}")
+            echo "[info] 动态模型池（${#FREE_MODELS[@]} 个）: ${FREE_MODELS[*]}"
+            if printf '%s\n' "${FREE_MODELS[@]}" | grep -qx -- "$PREFERRED_MODEL"; then
+              echo "[info] 优先模型在池中: $PREFERRED_MODEL (variant: ${MODEL_VARIANTS[$PREFERRED_MODEL]:-无})"
+            else
+              echo "[warn] 优先模型 $PREFERRED_MODEL 不在池中，常规阶段改用随机模型"
+            fi
+            if [ -n "$IMPROVE_MODEL" ] && printf '%s\n' "${FREE_MODELS[@]}" | grep -qx -- "$IMPROVE_MODEL"; then
+              echo "[info] improve 阶段指定模型在池中: $IMPROVE_MODEL (variant: ${MODEL_VARIANTS[$IMPROVE_MODEL]:-无})"
+            elif [ -n "$IMPROVE_MODEL" ] && printf '%s\n' "${FREE_MODELS[@]}" | grep -qiE 'xuen|xwen|qwen'; then
+              echo "[info] improve 阶段指定模型 $IMPROVE_MODEL 不在池中，将使用近似模型: $(printf '%s\n' "${FREE_MODELS[@]}" | grep -iE 'xuen|xwen|qwen' | head -1)"
+            else
+              echo "[warn] improve 阶段指定模型 $IMPROVE_MODEL 不在池中（且无 xwen/qwen 近似项），该阶段将回退常规选择"
+            fi
+            return 0
+          }
+          if ! build_model_pool; then
+            echo "[warn] 启动时读取模型目录失败，模型池暂空；将随阶段重试自动重建"
+            FREE_MODELS=()
+            MODEL_VARIANTS=()
+          fi
+
+          # ================= workflow 防删自愈 =================
+          # opencode 的 clean 阶段可能把 .github 当作“多余内容”删除。
+          # 启动时保存触发版本的 workflow 原始副本（触发 commit 必然包含它），
+          # 每次提交前校验，一旦被删/被改立即恢复，保证循环链条永不断。
+          WF_PATH=".github/workflows/continuous-loop.yml"
+          PRISTINE=/tmp/wf_pristine.yml
+
+          fetch_pristine() {
+            # 优先：raw 直读触发 commit 的 workflow 文件（公共仓库免鉴权）
+            if curl -fsSL "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_SHA}/${WF_PATH}" -o "$PRISTINE" 2>/dev/null && [ -s "$PRISTINE" ]; then
+              return 0
+            fi
+            # 备选：仓库工作区副本（私有仓库 raw 不可达时）
+            if [ -f "$WF_PATH" ]; then
+              cp "$WF_PATH" "$PRISTINE"
+              return 0
+            fi
+            return 1
+          }
+
+          ensure_workflow() {
+            [ -s "$PRISTINE" ] || return 0
+            if [ ! -f "$WF_PATH" ] || ! cmp -s "$WF_PATH" "$PRISTINE"; then
+              mkdir -p "$(dirname "$WF_PATH")"
+              cp "$PRISTINE" "$WF_PATH"
+              echo "[guard] 检测到 workflow 文件被删除/篡改，已自动恢复"
+            fi
+          }
+
+          if fetch_pristine && grep -q "Continuous Loop" "$PRISTINE"; then
+            echo "[guard] workflow 原始副本就绪（$(wc -l < "$PRISTINE") 行）"
+          else
+            echo "[warn] 无法获取 workflow 原始副本，自愈保护不可用"
+          fi
+          ensure_workflow
+
+          # ================= 研究数据防删自愈 =================
+          # 所有 .jsonl / .csv.gz 是研究数据（RedNote-Vibe 数据集及派生特征文件），
+          # 绝不允许因 AI 改动而丢失或被篡改。启动时记录清单；每次提交前逐字节
+          # 与 HEAD 比对，一旦缺失或内容被改，立即从 HEAD 恢复（恢复而非否决，
+          # 保住阶段内的其他有效改动；新建的数据文件不受此限）。
+          DATA_MANIFEST=/tmp/data_manifest.txt
+          ls -1 -- *.jsonl *.csv.gz 2>/dev/null | sort -u > "$DATA_MANIFEST"
+          echo "[guard] 数据文件清单就绪（$(wc -l < "$DATA_MANIFEST") 个 .jsonl/.csv.gz）"
+
+          ensure_datafiles() {
+            local f
+            while IFS= read -r f; do
+              [ -z "$f" ] && continue
+              if [ ! -f "$f" ]; then
+                if git show "HEAD:$f" > /tmp/df_restore.tmp 2>/dev/null && [ -s /tmp/df_restore.tmp ]; then
+                  mv /tmp/df_restore.tmp "$f"
+                  echo "[guard] 检测到数据文件 $f 被删除，已从 HEAD 恢复"
+                else
+                  echo "[error] 数据文件 $f 缺失且无法从 HEAD 恢复"
+                fi
+                continue
+              fi
+              if git cat-file -e "HEAD:$f" 2>/dev/null; then
+                if ! git show "HEAD:$f" | cmp -s - "$f"; then
+                  git show "HEAD:$f" > "$f.restore_tmp" && mv "$f.restore_tmp" "$f"
+                  echo "[guard] 检测到数据文件 $f 内容被修改，已从 HEAD 还原"
+                fi
+              fi
+            done < "$DATA_MANIFEST"
+            rm -f /tmp/df_restore.tmp
+          }
+          ensure_datafiles
+
+          # ================= README 防删自愈 =================
+          # clean 阶段可能把 README 当作“多余内容”删除。
+          # 每次提交前校验：一旦被删，立即从 HEAD（其次最近一个包含它的历史版本）恢复；
+          # 只防删除，允许正常的内容修改（improve 阶段可以完善 README）。
+          ensure_readme() {
+            # 保护所有语言版本的 README（README.md / README_zh.md / README_en.md）。
+            # 只防删除；内容修改不受影响。
+            for f in README.md README_zh.md README_en.md; do
+              [ -f "$f" ] && continue
+              if git show "HEAD:$f" > /tmp/readme_restore.md 2>/dev/null && [ -s /tmp/readme_restore.md ]; then
+                mv /tmp/readme_restore.md "$f"
+                echo "[guard] 检测到 $f 被删除，已从 HEAD 恢复"
+                continue
+              fi
+              F_SHA=$(git log --format=%H --diff-filter=AM -- "$f" 2>/dev/null | head -1)
+              if [ -n "$F_SHA" ] && git show "${F_SHA}:$f" > /tmp/readme_restore2.md 2>/dev/null && [ -s /tmp/readme_restore2.md ]; then
+                mv /tmp/readme_restore2.md "$f"
+                echo "[guard] 检测到 $f 被删除，已从历史版本 ${F_SHA:0:7} 恢复"
+              else
+                echo "[warn] $f 缺失且找不到可恢复的历史版本"
+              fi
+            done
+          }
+          ensure_readme
+
+          # ================= 质量门禁（ci_gate.py）防篡改 =================
+          # ci_gate.py：语法检查 + 研究数据完整性校验；不通过则整段撤销。
+          # 启动时保存工作区副本（= 触发 commit 的版本），每次运行前校验，
+          # 一旦被删/被改立即恢复，防止 AI 通过改门禁来绕过门禁。
+          GATE_PATH="ci_gate.py"
+          GATE_PRISTINE=/tmp/gate_pristine.py
+
+          if [ -f "$GATE_PATH" ]; then
+            cp "$GATE_PATH" "$GATE_PRISTINE"
+            echo "[guard] ci_gate.py 启动副本就绪（$(wc -l < "$GATE_PRISTINE") 行）"
+          else
+            echo "[warn] 工作区未找到 ci_gate.py，门禁防篡改不可用"
+          fi
+
+          ensure_gate() {
+            if [ -s "$GATE_PRISTINE" ]; then
+              if [ ! -f "$GATE_PATH" ] || ! cmp -s "$GATE_PATH" "$GATE_PRISTINE"; then
+                cp "$GATE_PRISTINE" "$GATE_PATH"
+                echo "[guard] 检测到 ci_gate.py 被删除/篡改，已恢复"
+              fi
+            elif [ ! -f "$GATE_PATH" ]; then
+              if git show "HEAD:ci_gate.py" > "$GATE_PATH" 2>/dev/null; then
+                echo "[guard] ci_gate.py 缺失，已从 HEAD 恢复"
+              else
+                echo "[warn] ci_gate.py 缺失且无法恢复"
+              fi
+            fi
+          }
+
+          gate_check() {
+            ensure_gate
+            echo "=========== GATE CHECK (syntax + data integrity) ==========="
+            python3 "$GATE_PATH"
+            local EC=$?
+            if [ $EC -eq 0 ]; then
+              echo "[gate] PASS"
+            else
+              echo "[gate] FAIL (exit=$EC) —— 本阶段改动将被撤销"
+            fi
+            return $EC
+          }
+
+          reject_phase() {
+            echo "[gate] git reset --hard HEAD + git clean -fd —— 撤销本阶段全部改动"
+            git reset --hard HEAD
+            git clean -fd
+            ensure_gate
+            ensure_datafiles
+          }
+
+          i=0
+          FAIL_COUNT=0
+          RATE_COUNT=0
+          CURRENT_MODEL=""
+          PREVIOUS_MODEL=""
+
+          commit_and_push() {
+            ensure_workflow
+            ensure_readme
+            ensure_datafiles
+            ensure_gate
+            git add -A || true
+            git commit -m "auto: iteration $1" || true
+            git pull --rebase origin "$BRANCH" || git rebase --abort || true
+            git push origin "HEAD:${BRANCH}" || echo "[warn] push $1 failed"
+          }
+
+          on_shutdown() {
+            echo "[trap] 收到 runner 终止信号，保存未提交的改动..."
+            ensure_workflow
+            ensure_readme
+            ensure_datafiles
+            ensure_gate
+            # 语法快速检查：半成品代码不允许进入历史
+            if [ -f "$GATE_PATH" ] && ! python3 "$GATE_PATH" --syntax-only; then
+              echo "[trap] 语法检查未通过，丢弃未提交改动"
+              git reset --hard HEAD
+              git clean -fd
+              exit 0
+            fi
+            git add -A || true
+            if ! git diff --cached --quiet; then
+              git commit -m "auto: partial work saved on shutdown" || true
+              git pull --rebase origin "$BRANCH" || git rebase --abort || true
+              git push origin "HEAD:${BRANCH}" || true
+              echo "[trap] partial work committed & pushed"
+            else
+              echo "[trap] nothing to commit"
+            fi
+            exit 0
+          }
+          trap on_shutdown TERM INT
+
+          # ---------- 选模型：improve 阶段优先 xuen；其余阶段优先 deepseek-v4.1-flash-free ----------
+          # 1) 阶段指定模型（improve → xuen）在池中、且本阶段内未刚失败/限流时，必定优先；
+          #    无精确项时尝试 ID 含 xuen/xwen/qwen 的近似模型，仍无则回退常规选择；
+          # 2) 常规选择：优先模型在池中、且本阶段内未刚失败/限流时优先选用，
+          #    否则保持随机选择，并尽量避免和上次相同。
+          # 池为空时先惰性重建（目录 API 瞬时故障的自愈）；
+          # 重建后仍为空则返回 1，由调用方计入失败并稍后重试。
+          pick_model() {
+            if [ ${#FREE_MODELS[@]} -eq 0 ]; then
+              build_model_pool || true
+            fi
+            local n=${#FREE_MODELS[@]}
+            if [ "$n" -eq 0 ]; then
+              CURRENT_MODEL=""
+              return 1
+            fi
+            local m="" x
+            # ---- 阶段指定模型（improve → xuen）：最高优先级 ----
+            if [ -n "${PHASE_MODEL:-}" ] && [ "${PHASE_MODEL_BROKEN:-0}" -ne 1 ]; then
+              for x in "${FREE_MODELS[@]}"; do
+                if [ "$x" = "$PHASE_MODEL" ]; then m="$x"; break; fi
+              done
+              if [ -z "$m" ]; then
+                for x in "${FREE_MODELS[@]}"; do
+                  if printf '%s' "$x" | grep -qiE 'xuen|xwen|qwen'; then m="$x"; break; fi
+                done
+              fi
+              if [ -n "$m" ]; then
+                echo "[info] 阶段指定模型命中: $m"
+              else
+                echo "[warn] 阶段指定模型 $PHASE_MODEL 不在池中（且无 xwen/qwen 近似项），本阶段回退常规选择"
+              fi
+            fi
+            # ---- 常规选择：优先 PREFERRED_MODEL（本阶段未刚失败/限流），否则随机 ----
+            if [ -z "$m" ] && [ -n "$PREFERRED_MODEL" ] && [ "$PREFERRED_BROKEN" -ne 1 ]; then
+              for x in "${FREE_MODELS[@]}"; do
+                if [ "$x" = "$PREFERRED_MODEL" ]; then m="$x"; break; fi
+              done
+            fi
+            if [ -z "$m" ]; then
+              for _ in 1 2 3; do
+                m="${FREE_MODELS[$((RANDOM % n))]}"
+                if [ "$n" -le 1 ] || [ "$m" != "$PREVIOUS_MODEL" ]; then break; fi
+              done
+            fi
+            PREVIOUS_MODEL="$m"
+            CURRENT_MODEL="$m"
+            return 0
+          }
+
+          # ---------- 确定模型思考强度：优先 max，无 max 用 high，都不支持则不设置 ----------
+          # 从模型官方元数据公布的 variant 列表中选取；都不支持时按默认方式启动
+          # （不传 --variant），避免传无效值导致启动失败。
+          variant_for() {
+            local v="${MODEL_VARIANTS[$1]:-}"
+            case ",$v," in
+              *,max,*)  echo "max" ;;
+              *,high,*) echo "high" ;;
+              *)        echo "" ;;
+            esac
+          }
+
+          # ---------- 单阶段执行（带重试 + 换模型） ----------
+          # 参数: phase_name  prompt  timeout_seconds
+          # 返回: 0 成功 / 124|137|143 超时被杀 / 1 放弃
+          run_phase() {
+            local phase="$1" prompt="$2" budget="$3"
+            local attempt=0
+            FAIL_COUNT=0
+            RATE_COUNT=0
+            # 每个阶段开始时恢复优先模型与阶段指定模型
+            PREFERRED_BROKEN=0
+            PHASE_MODEL_BROKEN=0
+
+            while [ $attempt -lt 3 ]; do
+              attempt=$((attempt+1))
+
+              if [ "$(date +%s)" -ge "$DEADLINE" ]; then
+                echo "[info] phase=$phase 全局时间已用尽，跳过"
+                return 1
+              fi
+
+              if ! pick_model; then
+                FAIL_COUNT=$((FAIL_COUNT+1))
+                echo "[warn] phase=$phase 模型池为空（目录不可达），连续 $FAIL_COUNT 次，120s 后重试"
+                if [ $FAIL_COUNT -ge 3 ]; then
+                  echo "[warn] 连续 3 次拿不到模型目录，放弃该阶段"
+                  return 1
+                fi
+                sleep 120
+                continue
+              fi
+              # 思考强度：模型支持则尽量调 max（无 max 用 high），都不支持则不设置
+              local EFFORT="" VARFLAG=()
+              EFFORT="$(variant_for "$CURRENT_MODEL")"
+              if [ -n "$EFFORT" ]; then
+                VARFLAG=(--variant "$EFFORT")
+                echo "[info] model=$CURRENT_MODEL 思考强度=$EFFORT"
+              else
+                echo "[info] model=$CURRENT_MODEL 不支持调节思考强度，按默认档位启动"
+              fi
+              echo "=========== iter #$i | phase=$phase | attempt=$attempt | model=$CURRENT_MODEL effort=${EFFORT:-none} ==========="
+
+              timeout --kill-after=180 "$budget" opencode run -m "$CURRENT_MODEL" ${VARFLAG[@]+"${VARFLAG[@]}"} "$prompt" 2>&1 | tee "$OUT"
+              local EC=$?
+
+              # 成功
+              if [ $EC -eq 0 ]; then
+                return 0
+              fi
+
+              # 超时 / 被杀
+              if [ $EC -eq 124 ] || [ $EC -eq 137 ] || [ $EC -eq 143 ]; then
+                echo "[warn] phase=$phase 超时/被杀 (exit=$EC)"
+                return $EC
+              fi
+
+              # 429 限流：休息一会儿，换一个免费模型再试
+              if tail -40 "$OUT" | grep -qiE "too many requests|rate.?limit|status.{0,3}429"; then
+                RATE_COUNT=$((RATE_COUNT+1))
+                echo "[warn] phase=$phase 命中限流(429) (连续: $RATE_COUNT)，90s 后换模型重试"
+                if [ "$CURRENT_MODEL" = "$PREFERRED_MODEL" ]; then
+                  PREFERRED_BROKEN=1
+                  echo "[info] 优先模型命中限流，本阶段内改用随机模型"
+                fi
+                if [ -n "${PHASE_MODEL:-}" ] && [ "$CURRENT_MODEL" = "$PHASE_MODEL" ]; then
+                  PHASE_MODEL_BROKEN=1
+                  echo "[info] 阶段指定模型命中限流，本阶段内回退常规选择"
+                fi
+                if [ $RATE_COUNT -ge 8 ]; then
+                  echo "[warn] 连续 8 次限流，放弃该阶段"
+                  return 1
+                fi
+                sleep 90
+                continue
+              fi
+
+              # 鉴权类错误提示（免费模型匿名限额耗尽/需要 key 时的排查线索）
+              if tail -40 "$OUT" | grep -qiE "401|unauthorized|invalid.{0,4}api.?key|missing.{0,4}api.?key"; then
+                echo "[hint] 疑似鉴权问题：匿名限额可能耗尽。可在仓库 secrets 配置 OPENCODE_API_KEY 提升限额后重试"
+              fi
+
+              # 其它非零退出：换一个免费模型重试
+              FAIL_COUNT=$((FAIL_COUNT+1))
+              echo "[warn] phase=$phase 模型 $CURRENT_MODEL 失败 (连续: $FAIL_COUNT)，换模型重试"
+              if [ "$CURRENT_MODEL" = "$PREFERRED_MODEL" ]; then
+                PREFERRED_BROKEN=1
+                echo "[info] 优先模型失败，本阶段内改用随机模型"
+              fi
+              if [ -n "${PHASE_MODEL:-}" ] && [ "$CURRENT_MODEL" = "$PHASE_MODEL" ]; then
+                PHASE_MODEL_BROKEN=1
+                echo "[info] 阶段指定模型失败，本阶段内回退常规选择"
+              fi
+              if [ $FAIL_COUNT -ge 3 ]; then
+                echo "[warn] 连续 3 次失败，放弃该阶段"
+                return 1
+              fi
+              sleep 30
+            done
+
+            return 1
+          }
+
+          # ================= 主循环 =================
+          while [ "$(date +%s)" -lt "$DEADLINE" ]; do
+            i=$((i+1))
+
+            AVAIL_MB=$(( $(df --output=avail / | tail -1) / 1024 ))
+            echo "--- iteration #$i | free disk: ${AVAIL_MB}MB ---"
+            free -h | head -2
+            if [ "$AVAIL_MB" -lt 2048 ]; then
+              echo "[error] 磁盘剩余不足 2GB，提前结束循环，交给收尾步骤清理"
+              break
+            fi
+
+            # ----- 四个阶段：perf -> bug -> improve -> clean -----
+            # improve 为新增的「改进这个项目」阶段（指定 xuen 模型）；
+            # 原 ada-squash 的 apply 阶段（检查算力申请.md）因本仓库无该文件而移除。
+            for phase in perf bug improve clean; do
+              PHASE_MODEL=""
+              PHASE_MODEL_BROKEN=0
+              case "$phase" in
+                perf)    P="$PROMPT_PERF";    T="$PERF_TIMEOUT"   ;;
+                bug)     P="$PROMPT_BUG";     T="$BUG_TIMEOUT"    ;;
+                improve) P="$PROMPT_IMPROVE"; T="$IMPROVE_TIMEOUT"; PHASE_MODEL="$IMPROVE_MODEL" ;;
+                clean)   P="$PROMPT_CLEAN";   T="$CLEAN_TIMEOUT"  ;;
+              esac
+
+              # 收窄到剩余时间
+              REMAIN=$(( DEADLINE - $(date +%s) ))
+              if [ "$REMAIN" -le 0 ]; then
+                echo "[info] 全局时间已到，退出循环"
+                break 2
+              fi
+              if [ "$T" -gt "$REMAIN" ]; then T="$REMAIN"; fi
+
+              echo ">>> iteration #$i | phase=$phase | budget=${T}s"
+              run_phase "$phase" "$P" "$T"
+
+              # ---- 质量门禁：通过才提交；不通过则整段撤销 ----
+              # （数据文件先按 HEAD 还原——数据是恢复而非否决，保住其他有效改动）
+              ensure_datafiles
+              if gate_check; then
+                commit_and_push "$i-$phase"
+              else
+                reject_phase
+              fi
+
+              sleep 5
+            done
+          done
+
+      - name: Cleanup repo artifacts
+        if: always()
+        run: |
+          set +e
+          # AI 过程报告与调试残留（不触碰研究数据与分析成果）
+          find . -type f -name 'REPORT*.md'  -not -path './.git/*' -delete
+          find . -type f -name 'debug*.txt'  -not -path './.git/*' -delete
+          find . -type f -name 'debug*.log'  -not -path './.git/*' -delete
+          find . -type f -name 'err.txt'     -not -path './.git/*' -delete
+          find . -type f -name '*.pyc'       -not -path './.git/*' -delete
+          find . -type d -name '__pycache__' -not -path './.git/*' -exec rm -rf {} +
+
+      - name: Final commit and push
+        if: always()
+        run: |
+          set +e
+          # 防删自愈：收尾提交前恢复被删/改的 workflow
+          WF=".github/workflows/continuous-loop.yml"
+          PRISTINE=/tmp/wf_pristine.yml
+          if [ ! -s "$PRISTINE" ] && [ -n "${GITHUB_SHA:-}" ]; then
+            curl -fsSL "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_SHA}/${WF}" -o "$PRISTINE" 2>/dev/null || true
+          fi
+          if [ -s "$PRISTINE" ] && { [ ! -f "$WF" ] || ! cmp -s "$WF" "$PRISTINE"; }; then
+            mkdir -p .github/workflows
+            cp "$PRISTINE" "$WF"
+            echo "[guard] 收尾阶段发现 workflow 被删/改，已恢复"
+          fi
+          # 防删自愈：收尾提交前恢复被删的 README（README.md / README_zh.md / README_en.md）
+          for f in README.md README_zh.md README_en.md; do
+            if [ ! -f "$f" ]; then
+              if git show "HEAD:$f" > /tmp/readme_restore.md 2>/dev/null && [ -s /tmp/readme_restore.md ]; then
+                mv /tmp/readme_restore.md "$f"
+              else
+                R_SHA=$(git log --format=%H --diff-filter=AM -- "$f" 2>/dev/null | head -1)
+                if [ -n "$R_SHA" ] && git show "${R_SHA}:$f" > /tmp/readme_restore2.md 2>/dev/null && [ -s /tmp/readme_restore2.md ]; then
+                  mv /tmp/readme_restore2.md "$f"
+                fi
+              fi
+              [ -f "$f" ] && echo "[guard] 收尾阶段发现 $f 被删，已恢复"
+            fi
+          done
+          # 防删自愈：研究数据（.jsonl / .csv.gz）以 HEAD 为准逐字节校验还原
+          if [ -s /tmp/data_manifest.txt ]; then
+            while IFS= read -r f; do
+              [ -n "$f" ] || continue
+              if [ ! -f "$f" ] || ! git show "HEAD:$f" 2>/dev/null | cmp -s - "$f"; then
+                git checkout HEAD -- "$f" 2>/dev/null && echo "[guard] 收尾阶段发现数据文件 $f 被删/改，已还原"
+              fi
+            done < /tmp/data_manifest.txt
+          else
+            git ls-tree --name-only HEAD 2>/dev/null | grep -E '\.(jsonl|csv\.gz)$' | while IFS= read -r f; do
+              [ -n "$f" ] || continue
+              if [ ! -f "$f" ] || ! git show "HEAD:$f" 2>/dev/null | cmp -s - "$f"; then
+                git checkout HEAD -- "$f" 2>/dev/null && echo "[guard] 收尾阶段发现数据文件 $f 被删/改，已还原"
+              fi
+            done
+          fi
+          # 防篡改：ci_gate.py 以启动副本为基准恢复
+          GATE_PRISTINE=/tmp/gate_pristine.py
+          if [ ! -s "$GATE_PRISTINE" ] && [ -n "${GITHUB_SHA:-}" ]; then
+            curl -fsSL "https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_SHA}/ci_gate.py" -o "$GATE_PRISTINE" 2>/dev/null || true
+          fi
+          if [ -s "$GATE_PRISTINE" ] && { [ ! -f ci_gate.py ] || ! cmp -s ci_gate.py "$GATE_PRISTINE"; }; then
+            cp "$GATE_PRISTINE" ci_gate.py
+            echo "[guard] 收尾阶段发现 ci_gate.py 被删/改，已恢复"
+          fi
+          # 质量门禁：收尾状态必须可运行，否则回退到最后一次已验证状态
+          if [ -f ci_gate.py ] && ! python3 ci_gate.py; then
+            echo "[gate] 收尾状态未通过，回退到 HEAD"
+            git reset --hard HEAD
+            git clean -fd
+          fi
+          git add -A
+          git commit -m "auto: end of 5h run, cleanup" || echo "nothing to commit"
+          BRANCH="${GITHUB_REF_NAME:-main}"
+          git pull --rebase origin "$BRANCH" || git rebase --abort || true
+          git push origin "HEAD:${BRANCH}" || echo "[warn] final push failed"
+
+      - name: Push to Gitee
+        if: always()
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          GITEE_REPO: ${{ secrets.GITEE_REPO }}
+        run: |
+          set +e
+          if [ -z "$GITEE_TOKEN" ] || [ -z "$GITEE_REPO" ]; then
+            echo "GITEE_TOKEN or GITEE_REPO not set, skipping Gitee push."
+            exit 0
+          fi
+          BRANCH="${GITHUB_REF_NAME:-main}"
+          git remote remove gitee 2>/dev/null || true
+          git remote add gitee "https://oauth2:${GITEE_TOKEN}@gitee.com/${GITEE_REPO}.git"
+          git push gitee "HEAD:${BRANCH}" --force || echo "[warn] push to Gitee failed"
+
+      - name: Trigger next workflow run (self-loop)
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+          BRANCH="${GITHUB_REF_NAME:-main}"
+
+          # 派发前最新 run 的 id，用来确认新 run 确实进入队列
+          BEFORE=$(gh run list --workflow=continuous-loop.yml --limit 1 \
+                    --json databaseId --jq '.[0].databaseId // 0' 2>/dev/null || echo 0)
+          echo "[info] newest run before dispatch: #${BEFORE}"
+
+          # 重试 3 次：瞬时 API 故障不再打断链条
+          DISPATCHED=0
+          for attempt in 1 2 3; do
+            if gh workflow run continuous-loop.yml --ref "$BRANCH"; then
+              echo "[ok] dispatch accepted on ${BRANCH} (attempt ${attempt})"
+              DISPATCHED=1
+              break
+            fi
+            echo "[warn] dispatch attempt ${attempt} failed, retry in 15s"
+            sleep 15
+          done
+
+          if [ "$DISPATCHED" -eq 1 ]; then
+            # 最多等 60 秒，确认新 run 已出现在队列中
+            for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+              sleep 5
+              AFTER=$(gh run list --workflow=continuous-loop.yml --limit 1 \
+                        --json databaseId --jq '.[0].databaseId // 0' 2>/dev/null || echo 0)
+              if [ "$AFTER" != "0" ] && [ "$AFTER" != "$BEFORE" ]; then
+                echo "[ok] next run #${AFTER} queued — loop continues"
+                exit 0
+              fi
+            done
+            echo "[warn] dispatch accepted but no new run visible yet"
+          fi
+
+          echo "[warn] self-dispatch failed; */5 cron heartbeat will start the next run"

@@ -20,7 +20,7 @@ with open('exploring_set_fixed.jsonl', 'rb') as f:
             domain = item.get('domain', 'unknown')
             domain_counts[domain] += 1
             text = item.get('note_title', '') + ' ' + item.get('desc', '')
-            words = re.findall(ur'[\u4e00-\u9fff]+', text)
+            words = re.findall(r'[\u4e00-\u9fff]+', text)
             for w in set(words):
                 if len(w) >= 2 and w not in exclude:
                     word_doc_freq[w] += 1

@@ -24,7 +24,7 @@ with open("exploring_set_fixed.jsonl", "rb") as f:
             if not user_id:
                 continue
             text = item.get("note_title", "") + " " + item.get("desc", "")
-            words = re.findall(ur"[\u4e00-\u9fff]+", text)
+            words = re.findall(r"[\u4e00-\u9fff]+", text)
             for w in words:
                 if w in cross_topic_words:
                     note_by_user[user_id][w] += 1

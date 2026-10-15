@@ -532,6 +532,23 @@ def compute_detailed_correlation(particle_stats, files, top_particles):
                     print("  {}: corr={}, p-value={}".format(p, corr, pval))
 
 
+def _mean_ratios(stats_list, key_particles, chunk_size=20000):
+    """分块累加每个 particle 的平均 ratio，避免一次性构造大矩阵。"""
+    k = len(key_particles)
+    n = len(stats_list)
+    if n == 0:
+        return np.zeros(k)
+    total = np.zeros(k)
+    for start in range(0, n, chunk_size):
+        block = stats_list[start:start + chunk_size]
+        arr = np.array(
+            [item["ratios"].get(p, 0) for item in block for p in key_particles],
+            dtype=float,
+        ).reshape(len(block), k)
+        total += arr.sum(axis=0)
+    return total / n
+
+
 def plot_particle_heatmap(particle_stats, files, top_particles):
     print("\n" + "=" * 80)
     print("Generating Particle Heatmap")
@@ -638,16 +655,10 @@ def plot_particle_heatmap(particle_stats, files, top_particles):
         "exploring_set.jsonl": "Exploring",
     }
 
+    mean_by_file = {f: _mean_ratios(particle_stats[f], key_particles) for f in files}
     for idx, f in enumerate(files):
         ax = axes[idx]
-        stats_list = particle_stats[f]
-        means = []
-        for item in stats_list:
-            for p in key_particles:
-                means.append(item["ratios"].get(p, 0))
-
-        np_means = np.array(means).reshape(len(stats_list), len(key_particles))
-        mean_vals = np.mean(np_means, axis=0)
+        mean_vals = mean_by_file[f]
 
         ax.barh(range(len(key_particles)), mean_vals)
         ax.set_yticks(range(len(key_particles)))
@@ -664,12 +675,7 @@ def plot_particle_heatmap(particle_stats, files, top_particles):
     matrix = []
     labels = []
     for f in files:
-        stats_list = particle_stats[f]
-        mean_vals = []
-        for p in key_particles:
-            ratios = [item["ratios"].get(p, 0) for item in stats_list]
-            mean_vals.append(np.mean(ratios))
-        matrix.append(mean_vals)
+        matrix.append(mean_by_file[f])
         labels.append(label_map[f])
 
     matrix = np.array(matrix)

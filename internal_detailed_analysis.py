@@ -11,6 +11,16 @@ from collections import Counter, defaultdict
 from datetime import datetime
 import math
 
+RE_CJK = re.compile(r"[\u4e00-\u9fff]+")
+RE_SENT_SPLIT = re.compile(r"[。！？\n]")
+RE_LIST_ITEM = re.compile(r"^\d+[.、]", re.MULTILINE)
+RE_BULLET = re.compile(r"^[、•·]", re.MULTILINE)
+RE_HASHTAG_CJK = re.compile(r"#[\u4e00-\u9fff]+")
+RE_EMOJI = re.compile(
+    r"[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF]"
+)
+RE_DIGIT = re.compile(r"\d")
+
 
 def load_jsonl(path):
     data = []
@@ -41,7 +51,7 @@ def load_jsonl(path):
 def extract_chinese(text):
     if not text:
         return []
-    return re.findall(r"[\u4e00-\u9fff]+", text)
+    return RE_CJK.findall(text)
 
 
 def get_text(item):
@@ -140,10 +150,10 @@ def sentiment(data, name, use_title=False):
         for item in data:
             title = item.get("note_title", "")
             text = get_text(item) + " " + title
-            pos_c += sum(1 for w in positive_words if w in text)
-            neg_c += sum(1 for w in negative_words if w in text)
-            pos_t += sum(1 for w in positive_words if w in title)
-            neg_t += sum(1 for w in negative_words if w in title)
+            pos_c += sum(map(text.__contains__, positive_words))
+            neg_c += sum(map(text.__contains__, negative_words))
+            pos_t += sum(map(title.__contains__, positive_words))
+            neg_t += sum(map(title.__contains__, negative_words))
         _sentiment_cache[name] = (pos_c, neg_c, pos_t, neg_t)
     pos_c, neg_c, pos_t, neg_t = _sentiment_cache[name]
     pos, neg = (pos_t, neg_t) if use_title else (pos_c, neg_c)
@@ -186,9 +196,6 @@ print("\n=== 4. Content Structure ===")
 
 def structure(data, name, use_title=False):
     para = lists = bullet = emoji = hashtag = 0
-    emoji_pat = re.compile(
-        r"[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF]"
-    )
     for item in data:
         if use_title:
             text = item.get("note_title", "")
@@ -196,10 +203,10 @@ def structure(data, name, use_title=False):
             text = get_text(item) + " " + item.get("note_title", "")
         paras = [p for p in text.split("\n") if p.strip()]
         para += len(paras)
-        lists += len(re.findall(r"^\d+[.、]", text, re.MULTILINE))
-        bullet += len(re.findall(r"^[、•·]", text, re.MULTILINE))
-        emoji += len(emoji_pat.findall(text))
-        hashtag += len(re.findall(r"#[\u4e00-\u9fff]+", text))
+        lists += len(RE_LIST_ITEM.findall(text))
+        bullet += len(RE_BULLET.findall(text))
+        emoji += len(RE_EMOJI.findall(text))
+        hashtag += len(RE_HASHTAG_CJK.findall(text))
     n = len(data)
     label = "Title" if use_title else "Content"
     print(
@@ -230,14 +237,15 @@ def complexity(data, name, use_title=False):
             text = get_text(item)
         chars = extract_chinese(text)
         if chars:
-            total = sum(len(c) for c in chars)
+            total = sum(map(len, chars))
             unique = len(set("".join(chars)))
             chars_list.append(total)
             unique_ratios.append(unique / total if total > 0 else 0)
-        sents = re.split(r"[。！？\n]", text)
+        sents = RE_SENT_SPLIT.split(text)
         for s in sents:
-            if s.strip():
-                sent_lens.append(len(s.strip()))
+            s = s.strip()
+            if s:
+                sent_lens.append(len(s))
 
     avg_chars = sum(chars_list) / len(chars_list) if chars_list else 0
     avg_ratio = sum(unique_ratios) / len(unique_ratios) if unique_ratios else 0
@@ -264,9 +272,6 @@ print("\n=== 6. Title Style ===")
 
 def title_style(data, name):
     q = ex = num = emo = empty = 0
-    emoji_pat = re.compile(
-        r"[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF]"
-    )
     for item in data:
         title = item.get("note_title", "")
         if not title:
@@ -276,9 +281,9 @@ def title_style(data, name):
             q += 1
         if "!" in title or "！" in title:
             ex += 1
-        if re.search(r"\d", title):
+        if RE_DIGIT.search(title):
             num += 1
-        if emoji_pat.search(title):
+        if RE_EMOJI.search(title):
             emo += 1
     n = len(data)
     print(
@@ -340,8 +345,8 @@ def domain_style(data, name):
     for item in data:
         domain = item.get("domain", "Unknown")
         text = get_text(item)
-        pos = sum(1 for w in positive_words if w in text)
-        neg = sum(1 for w in negative_words if w in text)
+        pos = sum(map(text.__contains__, positive_words))
+        neg = sum(map(text.__contains__, negative_words))
         domain_sent[domain][0] += pos
         domain_sent[domain][1] += neg
 
@@ -365,11 +370,12 @@ def consistency(data, name):
     for item in data:
         text = get_text(item)
         title = item.get("note_title", "")
-        if not text.strip():
+        stripped = text.strip()
+        if not stripped:
             empty_desc += 1
         if not title:
             empty_title += 1
-        if text and len(text.strip()) < 20:
+        if text and len(stripped) < 20:
             short += 1
     dup = sum(1 for t, c in Counter(titles).items() if c > 1)
     n = len(data)

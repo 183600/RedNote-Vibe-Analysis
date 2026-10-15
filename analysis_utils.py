@@ -144,9 +144,24 @@ def bootstrap_auc(y, proba, n_boot: int = 1000, seed: int = 42) -> dict:
     aucs = []
     for _ in range(n_boot):
         idx = rng.integers(0, n, n)
-        if y[idx].min() == y[idx].max():
+        yb = y[idx]
+        pos_val = yb.max()
+        if yb.min() == pos_val:
             continue
-        aucs.append(roc_auc_score(y[idx], proba[idx]))
+        pb = proba[idx]
+        order = np.argsort(pb)
+        ps = pb[order]
+        ys = yb[order]
+        starts = np.flatnonzero(ps[1:] != ps[:-1]) + 1
+        starts = np.concatenate(([0], starts))
+        sizes = np.diff(np.append(starts, n))
+        avg_ranks = starts + (sizes + 1) / 2.0
+        pos_cnt = np.add.reduceat((ys == pos_val).astype(np.int64), starts)
+        n1 = float(pos_cnt.sum())
+        n0 = n - n1
+        aucs.append(
+            (float(np.dot(pos_cnt, avg_ranks)) - n1 * (n1 + 1) / 2.0) / (n1 * n0)
+        )
     aucs = np.asarray(aucs)
     return {
         "auc": float(roc_auc_score(y, proba)),

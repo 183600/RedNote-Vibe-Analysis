@@ -34,6 +34,11 @@ plt.rcParams["axes.unicode_minus"] = False
 
 warnings.filterwarnings("ignore")
 
+RE_TOPIC_TAG = re.compile(r"#\w+\[话题\]")
+RE_HASHTAG = re.compile(r"#(\w+)")
+RE_PUNCT = re.compile(r"[^\w\s]")
+RE_DIGITS = re.compile(r"\d+")
+
 STOPWORDS = set(
     [
         "de",
@@ -122,10 +127,10 @@ def clean_tokenize(text):
     if not text:
         return []
     text = str(text)
-    text = re.sub(r"#\w+\[话题\]", " ", text)
-    text = re.sub(r"#(\w+)", r"\1", text)
-    text = re.sub(r"[^\w\s]", " ", text)
-    text = re.sub(r"\d+", "", text)
+    text = RE_TOPIC_TAG.sub(" ", text)
+    text = RE_HASHTAG.sub(r"\1", text)
+    text = RE_PUNCT.sub(" ", text)
+    text = RE_DIGITS.sub("", text)
     return [
         w
         for w in text.lower().split()

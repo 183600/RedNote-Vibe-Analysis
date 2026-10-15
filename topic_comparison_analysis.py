@@ -11,10 +11,16 @@ from collections import Counter, defaultdict
 import warnings
 import os
 
+RE_TOPIC_TAG = re.compile(r"#\w+\[话题\]")
+RE_HASHTAG = re.compile(r"#(\w+)")
+RE_PUNCT = re.compile(r"[^\w\s]")
+RE_DIGITS = re.compile(r"\d+")
+RE_BRACKET = re.compile(r"\[.*?\]")
+
 
 def extract_face_emojis(text):
     """Extract emoji count excluding [话题] topic tags"""
-    all_emojis = re.findall(r"\[.*?\]", text)
+    all_emojis = RE_BRACKET.findall(text)
     return len([e for e in all_emojis if e != "[话题]"])
 
 
@@ -194,10 +200,10 @@ def clean_tokenize(text):
     if not text:
         return []
     text = str(text)
-    text = re.sub(r"#\w+\[话题\]", " ", text)
-    text = re.sub(r"#(\w+)", r"\1", text)
-    text = re.sub(r"[^\w\s]", " ", text)
-    text = re.sub(r"\d+", "", text)
+    text = RE_TOPIC_TAG.sub(" ", text)
+    text = RE_HASHTAG.sub(r"\1", text)
+    text = RE_PUNCT.sub(" ", text)
+    text = RE_DIGITS.sub("", text)
     return [w for w in text.split() if len(w) > 1 and w not in STOPWORDS]
 
 

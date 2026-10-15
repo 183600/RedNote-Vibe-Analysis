@@ -4,13 +4,20 @@ from collections import defaultdict, Counter
 import numpy as np
 
 
+RE_TOPIC_TAG = re.compile(r"#\w+\[话题\]")
+RE_HASHTAG = re.compile(r"#\w+")
+RE_ASTRAL = re.compile(r"[\U00010000-\U0010ffff]")
+RE_ALNUM = re.compile(r"[0-9a-zA-Z]+")
+RE_NON_CJK = re.compile(r"[^\u4e00-\u9fff]")
+
+
 def clean_text(text):
     text = str(text)
-    text = re.sub(r"#\w+\[话题\]", " ", text)
-    text = re.sub(r"#\w+", " ", text)
-    text = re.sub(r"[\U00010000-\U0010ffff]", " ", text)
-    text = re.sub(r"[0-9a-zA-Z]+", " ", text)
-    text = re.sub(r"[^\u4e00-\u9fff]", " ", text)
+    text = RE_TOPIC_TAG.sub(" ", text)
+    text = RE_HASHTAG.sub(" ", text)
+    text = RE_ASTRAL.sub(" ", text)
+    text = RE_ALNUM.sub(" ", text)
+    text = RE_NON_CJK.sub(" ", text)
     words = text.split()
     return [w for w in words if len(w) >= 2]
 

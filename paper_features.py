@@ -37,6 +37,8 @@ HUMAN_WORDS = [
 ]
 PARTICLES = list("的了是我你就都很有不")
 
+RE_DIGIT = re.compile(r"\d")
+
 FIELDS = [
     # 元数据
     "dataset", "domain", "month", "model_family", "model",
@@ -112,15 +114,16 @@ def extract(title, content):
     feats["hum_lex100"] = per100(sum(body.count(w) for w in HUMAN_WORDS))
 
     feats["uniq_char_ratio"] = round(len(set(body)) / n_safe, 4)
-    bigrams = [body[i:i + 2] for i in range(0, max(n - 1, 0))]
-    feats["uniq_bigram_ratio"] = round(len(set(bigrams)) / max(len(bigrams), 1), 4)
+    n_bigrams = max(n - 1, 0)
+    uniq_bigrams = len({body[i:i + 2] for i in range(n_bigrams)})
+    feats["uniq_bigram_ratio"] = round(uniq_bigrams / max(n_bigrams, 1), 4)
 
     feats["title_len"] = len(title)
     feats["title_excl"] = int("！" in title or "!" in title)
     feats["title_ques"] = int("？" in title or "?" in title)
     feats["title_emoji"] = int(bool(EMOJI.search(title)))
     feats["title_pipe"] = int("｜" in title or "|" in title)
-    feats["title_num"] = int(bool(re.search(r"\d", title)))
+    feats["title_num"] = int(bool(RE_DIGIT.search(title)))
     feats["title_bracket"] = int("【" in title or "】" in title)
     return feats
 

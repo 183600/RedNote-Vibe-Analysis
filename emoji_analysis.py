@@ -40,13 +40,19 @@ def load_jsonl(filepath, limit=SAMPLE_LIMIT):
     total = 0
     with open(filepath, "r", encoding="utf-8") as f:
         for line in f:
+            if len(texts) >= limit:
+                if line.strip():
+                    total += 1
+                continue
+            line = line.strip()
+            if not line:
+                continue
             try:
-                item = json.loads(line.strip())
+                item = json.loads(line)
             except Exception:
                 continue
             total += 1
-            if len(texts) < limit:
-                texts.append(item)
+            texts.append(item)
     return texts, total
 
 

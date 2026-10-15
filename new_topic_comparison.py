@@ -178,6 +178,11 @@ EMOJI_PATTERN = re.compile(
     flags=re.UNICODE,
 )
 
+RE_TOPIC_TAG = re.compile(r"#\w+\[话题\]")
+RE_HASHTAG = re.compile(r"#(\w+)")
+RE_PUNCT = re.compile(r"[^\w\s]")
+RE_DIGITS = re.compile(r"\d+")
+
 
 def setup_fonts():
     font_dir = "/usr/share/fonts/noto-cjk"
@@ -220,10 +225,10 @@ def clean_tokenize(text):
     if not text:
         return []
     text = str(text)
-    text = re.sub(r"#\w+\[话题\]", " ", text)
-    text = re.sub(r"#(\w+)", r"\1", text)
-    text = re.sub(r"[^\w\s]", " ", text)
-    text = re.sub(r"\d+", "", text)
+    text = RE_TOPIC_TAG.sub(" ", text)
+    text = RE_HASHTAG.sub(r"\1", text)
+    text = RE_PUNCT.sub(" ", text)
+    text = RE_DIGITS.sub("", text)
     return [w for w in text.split() if len(w) > 1 and w not in STOPWORDS]
 
 
@@ -660,15 +665,14 @@ def analyze_keyword_cooccurrence(grouped, word_counters):
                 continue
 
             top_words = [w for w, c in word_counters[ds_name][domain][:30]]
+            top_set = set(top_words)
 
             co_word_counts = defaultdict(Counter)
             for item in domain_items:
                 words = set(clean_tokenize(get_text(item)))
-                for w in words:
-                    if w in top_words:
-                        for w2 in words:
-                            if w2 != w and w2 in top_words:
-                                co_word_counts[w][w2] += 1
+                hits = words & top_set
+                for w in hits:
+                    co_word_counts[w].update(hits - {w})
 
             strong_pairs = []
             for w1, counter in co_word_counts.items():

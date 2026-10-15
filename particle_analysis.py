@@ -232,35 +232,40 @@ def compute_all_particle_ratios(text, particles):
 
 
 def load_particle_data(files, particles):
-    data = {}
-    for f in files:
-        dataset = load_jsonl(f)
-        data[f] = dataset
-        print("Loaded {}: {} records".format(f, len(dataset)))
+    stored_particles = particles[:65]
 
     particle_stats = {}
     for f in files:
-        dataset = data[f]
         stats_list = []
-        for item in dataset:
-            title = item.get("note_title", "")
-            desc = item.get("desc", "") or item.get("note_content", "")
-            text = title + " " + (desc if desc else "")
+        total = 0
+        with open(f, "r", encoding="utf-8") as fh:
+            for line in fh:
+                try:
+                    item = json.loads(line.strip())
+                except Exception:
+                    continue
+                total += 1
+                title = item.get("note_title", "")
+                desc = item.get("desc", "") or item.get("note_content", "")
+                text = title + " " + (desc if desc else "")
 
-            ratios = compute_all_particle_ratios(text, particles)
-            stats_list.append(
-                {
-                    "title": title,
-                    "desc": desc,
-                    "text": text,
-                    "ratios": ratios,
-                    "domain": item.get("domain", ""),
-                    "local_time": item.get("local_time", ""),
-                    "liked_count": item.get("liked_count", 0),
-                    "collected_count": item.get("collected_count", 0),
-                }
-            )
+                if not text or len(text) == 0:
+                    ratios = {p: 0 for p in stored_particles}
+                else:
+                    text_len = len(text)
+                    ratios = {p: text.count(p) / text_len for p in stored_particles}
+
+                stats_list.append(
+                    {
+                        "text_len": len(text),
+                        "ratios": ratios,
+                        "domain": item.get("domain", ""),
+                        "local_time": item.get("local_time", ""),
+                        "liked_count": item.get("liked_count", 0),
+                    }
+                )
         particle_stats[f] = stats_list
+        print("Loaded {}: {} records".format(f, total))
     return particle_stats
 
 
@@ -274,11 +279,11 @@ def analyze_particle_distribution(particle_stats, files, top_particles):
         stats_list = particle_stats[f]
         all_ratios = defaultdict(list)
         for item in stats_list:
-            for p in top_particles:
+            for p in top_particles[:30]:
                 all_ratios[p].append(item["ratios"].get(p, 0))
 
         results[f] = {}
-        for p in top_particles:
+        for p in top_particles[:30]:
             ratios = all_ratios[p]
             results[f][p] = {
                 "mean": np.mean(ratios) if ratios else 0,
@@ -314,7 +319,7 @@ def analyze_particle_by_domain(particle_stats, files, top_particles):
         stats_list = particle_stats[f]
         for item in stats_list:
             domain = item.get("domain", "unknown")
-            for p in top_particles:
+            for p in top_particles[:10]:
                 domain_results[f][domain][p].append(item["ratios"].get(p, 0))
 
     for f in files:
@@ -343,7 +348,7 @@ def analyze_particle_by_time(particle_stats, files, top_particles):
                 month = local_time[:6]
             else:
                 month = "unknown"
-            for p in top_particles:
+            for p in ["的", "了", "是", "在"]:
                 time_results[f][month][p].append(item["ratios"].get(p, 0))
 
     for f in files:
@@ -458,8 +463,7 @@ def analyze_content_length_with_particles(particle_stats, files, top_particles):
         particle_counts = {p: [] for p in top_particles[:10]}
 
         for item in stats_list:
-            text = item.get("text", "")
-            text_len = len(text)
+            text_len = item.get("text_len", 0)
             if text_len > 0:
                 lengths.append(text_len)
                 for p in top_particles[:10]:
@@ -712,8 +716,7 @@ def analyze_particle_pairs(particle_stats, files, top_particles):
             counts1 = []
             counts2 = []
             for item in stats_list:
-                text = item.get("text", "")
-                text_len = len(text) if text else 1
+                text_len = item.get("text_len", 0) or 1
                 if text_len > 0:
                     r1 = item["ratios"].get(p1, 0) * text_len
                     r2 = item["ratios"].get(p2, 0) * text_len

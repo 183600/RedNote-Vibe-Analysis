@@ -35,16 +35,22 @@ plt.rcParams["axes.unicode_minus"] = False
 warnings.filterwarnings("ignore")
 
 
-def load_jsonl(filepath):
+SAMPLE_LIMIT = 5000
+
+
+def load_jsonl(filepath, limit=SAMPLE_LIMIT):
     texts = []
+    total = 0
     with open(filepath, "r", encoding="utf-8") as f:
         for line in f:
             try:
-                data = json.loads(line.strip())
-                texts.append(data)
-            except:
+                item = json.loads(line.strip())
+            except Exception:
                 continue
-    return texts
+            total += 1
+            if len(texts) < limit:
+                texts.append(item)
+    return texts, total
 
 
 def parse_timestamp(ts):
@@ -77,9 +83,9 @@ files = ["training_set_human.jsonl", "training_set_aigc.jsonl", "exploring_set.j
 print("Loading data...")
 texts_data = {}
 for f in files:
-    data = load_jsonl(f)
-    print(f"  {f}: {len(data)} records")
-    texts_data[f] = data[:5000]
+    data, total = load_jsonl(f)
+    print(f"  {f}: {total} records")
+    texts_data[f] = data
 
 print("\n=== Time Series Analysis ===")
 timestamps = []

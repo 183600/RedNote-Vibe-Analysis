@@ -128,16 +128,49 @@ def tokenize(text):
     return [w for w in words if len(w) > 1 and w not in STOPWORDS]
 
 
-def load_jsonl(filepath):
-    texts = []
+def stream_stats(filepath):
+    freq_desc = Counter()
+    freq_title = Counter()
+    lengths_desc = []
+    lengths_title = []
+    domains = Counter()
+    hashtags_desc = Counter()
+    hashtags_title = Counter()
+    total = 0
     with open(filepath, "r", encoding="utf-8") as f:
         for line in f:
             try:
-                data = json.loads(line.strip())
-                texts.append(data)
-            except:
+                item = json.loads(line.strip())
+            except Exception:
                 continue
-    return texts
+            total += 1
+
+            text = item.get("desc", "") or item.get("note_content", "")
+            freq_desc.update(tokenize(text))
+            if text:
+                lengths_desc.append(len(text))
+                hashtags_desc.update(re.findall(r"#(\w+)", text))
+
+            title = item.get("note_title", "")
+            freq_title.update(tokenize(title))
+            if title:
+                lengths_title.append(len(title))
+                hashtags_title.update(re.findall(r"#(\w+)", title))
+
+            domain = item.get("domain", "unknown")
+            if domain:
+                domains[domain] += 1
+
+    return {
+        "total": total,
+        "freq_desc": freq_desc,
+        "freq_title": freq_title,
+        "lengths_desc": lengths_desc,
+        "lengths_title": lengths_title,
+        "domains": domains,
+        "hashtags_desc": hashtags_desc,
+        "hashtags_title": hashtags_title,
+    }
 
 
 def compute_word_freq(texts, use_title=False):
@@ -281,13 +314,13 @@ def main():
     print("Additional Analysis Results")
     print("=" * 60)
 
-    texts_data = {}
+    stats = {}
     for f in files:
-        texts_data[f] = load_jsonl(f)
-        print(f"Loaded {f}: {len(texts_data[f])} records")
+        stats[f] = stream_stats(f)
+        print(f"Loaded {f}: {stats[f]['total']} records")
 
     print("\n--- Top Words (Content/Desc) ---")
-    freqs = [compute_word_freq(texts_data[f], False) for f in files]
+    freqs = [stats[f]["freq_desc"] for f in files]
     for f, freq in zip(files, freqs):
         top10 = freq.most_common(10)
         print(f"\n{f}:")
@@ -295,7 +328,7 @@ def main():
             print(f"  {w}: {c}")
 
     print("\n--- Top Words (Title) ---")
-    freqs_title = [compute_word_freq(texts_data[f], True) for f in files]
+    freqs_title = [stats[f]["freq_title"] for f in files]
     for f, freq in zip(files, freqs_title):
         top10 = freq.most_common(10)
         print(f"\n{f}:")
@@ -311,7 +344,7 @@ def main():
 
     print("\n--- Content Length Statistics ---")
     for f in files:
-        lengths = analyze_content_length(texts_data[f])
+        lengths = stats[f]["lengths_desc"]
         print(f"\n{f}:")
         print(f"  Mean: {np.mean(lengths):.1f}")
         print(f"  Median: {np.median(lengths):.1f}")
@@ -321,27 +354,27 @@ def main():
 
     print("\n--- Title Length Statistics ---")
     for f in files:
-        lengths = analyze_title_length(texts_data[f])
+        lengths = stats[f]["lengths_title"]
         print(f"\n{f}:")
         print(f"  Mean: {np.mean(lengths):.1f}")
         print(f"  Median: {np.median(lengths):.1f}")
 
     print("\n--- Domain Distribution (Top 10) ---")
-    domain_freqs = [analyze_domain(texts_data[f]) for f in files]
+    domain_freqs = [stats[f]["domains"] for f in files]
     for f, domains in zip(files, domain_freqs):
         print(f"\n{f}:")
         for domain, count in domains.most_common(10):
             print(f"  {domain}: {count}")
 
     print("\n--- Hashtag Analysis (Content) ---")
-    hashtag_freqs = [analyze_hashtag(texts_data[f], False) for f in files]
+    hashtag_freqs = [stats[f]["hashtags_desc"] for f in files]
     for f, hashtags in zip(files, hashtag_freqs):
         print(f"\n{f}:")
         for tag, count in hashtags.most_common(15):
             print(f"  #{tag}: {count}")
 
     print("\n--- Hashtag Analysis (Title) ---")
-    hashtag_freqs_title = [analyze_hashtag(texts_data[f], True) for f in files]
+    hashtag_freqs_title = [stats[f]["hashtags_title"] for f in files]
     for f, hashtags in zip(files, hashtag_freqs_title):
         print(f"\n{f}:")
         for tag, count in hashtags.most_common(15):
@@ -350,7 +383,7 @@ def main():
     plot_top_words_comparison(freqs, files, "desc")
     plot_top_words_comparison(freqs_title, files, "title")
 
-    all_lengths = [analyze_content_length(texts_data[f]) for f in files]
+    all_lengths = [stats[f]["lengths_desc"] for f in files]
     plot_length_distribution(all_lengths, files, "content")
 
     plot_domain_distribution(domain_freqs, files, "domain")

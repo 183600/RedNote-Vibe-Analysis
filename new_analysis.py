@@ -6,16 +6,22 @@ import codecs
 from collections import Counter
 
 
-def load_jsonl(filepath):
+SAMPLE_LIMIT = 5000
+
+
+def load_jsonl(filepath, limit=SAMPLE_LIMIT):
     texts = []
+    total = 0
     with codecs.open(filepath, "r", encoding="utf-8") as f:
         for line in f:
             try:
-                data = json.loads(line.strip())
-                texts.append(data)
-            except:
+                item = json.loads(line.strip())
+            except Exception:
                 continue
-    return texts
+            total += 1
+            if len(texts) < limit:
+                texts.append(item)
+    return texts, total
 
 
 def analyze_structure(text):
@@ -104,9 +110,9 @@ def main():
     print("=" * 70)
 
     for f in files:
-        data = load_jsonl(f)
+        data, n_records = load_jsonl(f)
         print("\n" + "=" * 50)
-        print("Dataset: " + f + " (" + str(len(data)) + " records)")
+        print("Dataset: " + f + " (" + str(n_records) + " records)")
         print("=" * 50)
 
         url_stats = {"total": 0, "domains": Counter()}
@@ -115,7 +121,7 @@ def main():
         sent_stats = []
         repeat_ratios = []
 
-        sample = data[:5000]
+        sample = data
         for item in sample:
             text = item.get("desc", "") or item.get("note_content", "")
             if not text:

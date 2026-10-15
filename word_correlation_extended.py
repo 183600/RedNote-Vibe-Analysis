@@ -3,24 +3,7 @@ import json
 import re
 import math
 from collections import defaultdict, Counter
-
-
-def mean(lst):
-    return sum(lst) / len(lst) if lst else 0
-
-
-def pearsonr(x, y):
-    n = len(x)
-    if n == 0:
-        return 0.0
-    mx = mean(x)
-    my = mean(y)
-    cov = sum((x[i] - mx) * (y[i] - my) for i in xrange(n))
-    sx = math.sqrt(sum((xi - mx) ** 2 for xi in x))
-    sy = math.sqrt(sum((yi - my) ** 2 for yi in y))
-    if sx == 0 or sy == 0:
-        return 0.0
-    return cov / (sx * sy)
+import numpy as np
 
 
 exclude = set([u"话题", u"时尚薯", u"生活薯", u"知识薯", u"美食薯", u"校园薯",
@@ -70,26 +53,29 @@ for uid in user_ids:
     row = [active_users[uid].get(w, 0) / total if total > 0 else 0 for w in top_words]
     matrix.append(row)
 
-def get_col(col_idx):
-    return [matrix[row][col_idx] for row in xrange(n_users)]
+cols = np.ascontiguousarray(np.array(matrix, dtype=np.float64).T)
 
-def std(lst):
-    m = mean(lst)
-    return math.sqrt(sum((x - m) ** 2 for x in lst) / len(lst))
-
-valid = [j for j in xrange(n_words) if std(get_col(j)) > 0]
+valid = [j for j in range(n_words) if cols[j].std() > 0]
 print("Valid: " + str(len(valid)))
 
 if len(valid) < 2:
     print("Not enough!")
-    exit(1)
+    raise SystemExit(1)
 
 print("Computing...")
 all_results = []
-for j1i in xrange(len(valid)):
-    for j2i in xrange(j1i + 1, len(valid)):
+for j1i in range(len(valid)):
+    for j2i in range(j1i + 1, len(valid)):
         j1, j2 = valid[j1i], valid[j2i]
-        r = pearsonr(get_col(j1), get_col(j2))
+        x = cols[j1]
+        y = cols[j2]
+        mx = x.mean()
+        my = y.mean()
+        xc = x - mx
+        yc = y - my
+        sx = math.sqrt(float((xc * xc).sum()))
+        sy = math.sqrt(float((yc * yc).sum()))
+        r = float((xc * yc).sum()) / (sx * sy) if sx != 0 and sy != 0 else 0.0
         if not math.isnan(r):
             all_results.append((top_words[j1], top_words[j2], r))
 

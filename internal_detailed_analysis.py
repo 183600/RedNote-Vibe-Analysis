@@ -16,7 +16,25 @@ def load_jsonl(path):
     data = []
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
-            data.append(json.loads(line))
+            item = json.loads(line)
+            rec = {}
+            if "note_content" in item:
+                rec["note_content"] = item["note_content"]
+            else:
+                rec["desc"] = item.get("desc", "")
+            for key in (
+                "note_title",
+                "domain",
+                "local_time",
+                "user_id",
+                "time",
+                "liked_count",
+                "collected_count",
+                "comments_count",
+            ):
+                if key in item:
+                    rec[key] = item[key]
+            data.append(rec)
     return data
 
 
@@ -113,16 +131,22 @@ analyze_domain(exploring_data, "Exploring")
 print("\n=== 2. Sentiment Analysis ===")
 
 
+_sentiment_cache = {}
+
+
 def sentiment(data, name, use_title=False):
-    pos = neg = 0
-    for item in data:
-        if use_title:
-            text = item.get("note_title", "")
-        else:
-            text = get_text(item) + " " + item.get("note_title", "")
-        pos += sum(1 for w in positive_words if w in text)
-        neg += sum(1 for w in negative_words if w in text)
-    total = len(data)
+    if name not in _sentiment_cache:
+        pos_c = neg_c = pos_t = neg_t = 0
+        for item in data:
+            title = item.get("note_title", "")
+            text = get_text(item) + " " + title
+            pos_c += sum(1 for w in positive_words if w in text)
+            neg_c += sum(1 for w in negative_words if w in text)
+            pos_t += sum(1 for w in positive_words if w in title)
+            neg_t += sum(1 for w in negative_words if w in title)
+        _sentiment_cache[name] = (pos_c, neg_c, pos_t, neg_t)
+    pos_c, neg_c, pos_t, neg_t = _sentiment_cache[name]
+    pos, neg = (pos_t, neg_t) if use_title else (pos_c, neg_c)
     label = "Title" if use_title else "Content"
     print(
         f"\n{name} ({label}): Positive={pos}, Negative={neg}, Ratio={pos / neg if neg > 0 else pos:.2f}"

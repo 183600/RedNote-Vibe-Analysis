@@ -126,6 +126,77 @@ def compute_ngrams(texts, n=2, use_title=False, sample_size=5000):
     return all_ngrams
 
 
+def stream_all(filepath, sample_size=5000):
+    emoji_desc = Counter()
+    emoji_title = Counter()
+    tags_desc = Counter()
+    tags_title = Counter()
+    freq_desc = Counter()
+    freq_title = Counter()
+    bigrams_desc = Counter()
+    bigrams_title = Counter()
+    ling_desc = {"exclaim": 0, "question": 0, "ellipsis": 0, "upper": 0, "digit": 0, "link": 0}
+    ling_title = {"exclaim": 0, "question": 0, "ellipsis": 0, "upper": 0, "digit": 0, "link": 0}
+    total = 0
+    with codecs.open(filepath, "r", encoding="utf-8") as f:
+        for line in f:
+            try:
+                item = json.loads(line.strip())
+            except Exception:
+                continue
+
+            text = item.get("desc", "") or item.get("note_content", "")
+            title = item.get("note_title", "")
+
+            emoji_desc.update(extract_emojis(text))
+            emoji_title.update(extract_emojis(title))
+            tags_desc.update(extract_hashtags(text))
+            tags_title.update(extract_hashtags(title))
+
+            words = tokenize(text)
+            words_title = tokenize(title)
+
+            if total < sample_size:
+                if len(words) >= 2:
+                    for i in range(len(words) - 1):
+                        bigrams_desc[tuple(words[i : i + 2])] += 1
+                if len(words_title) >= 2:
+                    for i in range(len(words_title) - 1):
+                        bigrams_title[tuple(words_title[i : i + 2])] += 1
+                if text:
+                    ling_desc["exclaim"] += text.count("!")
+                    ling_desc["question"] += text.count("?")
+                    ling_desc["ellipsis"] += text.count("...")
+                    ling_desc["upper"] += sum(1 for c in text if c.isupper())
+                    ling_desc["digit"] += sum(1 for c in text if c.isdigit())
+                    ling_desc["link"] += len(re.findall(r"http[s]?://|www\.", text))
+                if title:
+                    ling_title["exclaim"] += title.count("!")
+                    ling_title["question"] += title.count("?")
+                    ling_title["ellipsis"] += title.count("...")
+                    ling_title["upper"] += sum(1 for c in title if c.isupper())
+                    ling_title["digit"] += sum(1 for c in title if c.isdigit())
+                    ling_title["link"] += len(re.findall(r"http[s]?://|www\.", title))
+
+            freq_desc.update(words)
+            freq_title.update(words_title)
+            total += 1
+
+    return {
+        "total": total,
+        "emoji_desc": emoji_desc.most_common(20),
+        "emoji_title": emoji_title.most_common(20),
+        "tags_desc": tags_desc.most_common(20),
+        "tags_title": tags_title.most_common(20),
+        "freq_desc": freq_desc,
+        "freq_title": freq_title,
+        "bigrams_desc": bigrams_desc.most_common(20),
+        "bigrams_title": bigrams_title.most_common(20),
+        "ling_desc": ling_desc,
+        "ling_title": ling_title,
+    }
+
+
 def extract_emojis(text):
     if not text:
         return []
@@ -200,10 +271,10 @@ def main():
     print("Comprehensive Additional Analysis")
     print("=" * 70)
 
-    texts_data = {}
+    stats = {}
     for f in files:
-        texts_data[f] = load_jsonl(f)
-        print("Loaded " + f + ": " + str(len(texts_data[f])) + " records")
+        stats[f] = stream_all(f)
+        print("Loaded " + f + ": " + str(stats[f]["total"]) + " records")
 
     print("\n" + "=" * 70)
     print("1. N-GRAM ANALYSIS (Bigrams)")
@@ -213,8 +284,7 @@ def main():
         label = "Title" if use_title else "Content"
         print("\n--- " + label + " Bigrams ---")
         for f in files:
-            ngrams = compute_ngrams(texts_data[f], n=2, use_title=use_title)
-            top20 = ngrams.most_common(20)
+            top20 = stats[f]["bigrams_title" if use_title else "bigrams_desc"]
             print("\n" + f + " Top 20 bigrams (" + label + "):")
             for ngram, count in top20:
                 print("  " + " ".join(ngram) + ": " + str(count))
@@ -224,12 +294,9 @@ def main():
     print("=" * 70)
 
     for f in files:
-        all_emojis = Counter()
-        for item in texts_data[f]:
-            text = item.get("desc", "") or item.get("note_content", "")
-            all_emojis.update(extract_emojis(text))
+        all_emojis = stats[f]["emoji_desc"]
         print("\n" + f + " Top 20 Emojis (Content):")
-        for emoji, count in all_emojis.most_common(20):
+        for emoji, count in all_emojis:
             print("  " + emoji + ": " + str(count))
 
     print("\n" + "=" * 70)
@@ -237,12 +304,9 @@ def main():
     print("=" * 70)
 
     for f in files:
-        all_emojis = Counter()
-        for item in texts_data[f]:
-            title = item.get("note_title", "")
-            all_emojis.update(extract_emojis(title))
+        all_emojis = stats[f]["emoji_title"]
         print("\n" + f + " Top 20 Emojis (Title):")
-        for emoji, count in all_emojis.most_common(20):
+        for emoji, count in all_emojis:
             print("  " + emoji + ": " + str(count))
 
     print("\n" + "=" * 70)
@@ -250,12 +314,9 @@ def main():
     print("=" * 70)
 
     for f in files:
-        all_tags = Counter()
-        for item in texts_data[f]:
-            text = item.get("desc", "") or item.get("note_content", "")
-            all_tags.update(extract_hashtags(text))
+        all_tags = stats[f]["tags_desc"]
         print("\n" + f + " Top 20 Hashtags (Content):")
-        for tag, count in all_tags.most_common(20):
+        for tag, count in all_tags:
             print("  #" + tag + ": " + str(count))
 
     print("\n" + "=" * 70)
@@ -263,25 +324,16 @@ def main():
     print("=" * 70)
 
     for f in files:
-        all_tags = Counter()
-        for item in texts_data[f]:
-            title = item.get("note_title", "")
-            all_tags.update(extract_hashtags(title))
+        all_tags = stats[f]["tags_title"]
         print("\n" + f + " Top 20 Hashtags (Title):")
-        for tag, count in all_tags.most_common(20):
+        for tag, count in all_tags:
             print("  #" + tag + ": " + str(count))
 
     print("\n" + "=" * 70)
     print("4. VOCABULARY OVERLAP ANALYSIS (Content)")
     print("=" * 70)
 
-    freqs = []
-    for f in files:
-        words = []
-        for item in texts_data[f]:
-            text = item.get("desc", "") or item.get("note_content", "")
-            words.extend(tokenize(text))
-        freqs.append(Counter(words))
+    freqs = [stats[f]["freq_desc"] for f in files]
 
     overlap_results = analyze_vocabulary_overlap(freqs, file_names)
 
@@ -293,13 +345,7 @@ def main():
     print("4b. VOCABULARY OVERLAP ANALYSIS (Title)")
     print("=" * 70)
 
-    freqs_title = []
-    for f in files:
-        words = []
-        for item in texts_data[f]:
-            title = item.get("note_title", "")
-            words.extend(tokenize(title))
-        freqs_title.append(Counter(words))
+    freqs_title = [stats[f]["freq_title"] for f in files]
 
     overlap_results_title = analyze_vocabulary_overlap(freqs_title, file_names)
 
@@ -348,58 +394,30 @@ def main():
     print("=" * 70)
 
     for f in files:
-        punct_counts = {"exclaim": 0, "question": 0, "ellipsis": 0}
-        upper_counts = 0
-        digit_counts = 0
-        link_counts = 0
-
-        sample = texts_data[f][:5000]
-        for item in sample:
-            text = item.get("desc", "") or item.get("note_content", "")
-            if text:
-                punct_counts["exclaim"] += text.count("!")
-                punct_counts["question"] += text.count("?")
-                punct_counts["ellipsis"] += text.count("...")
-                upper_counts += sum(1 for c in text if c.isupper())
-                digit_counts += sum(1 for c in text if c.isdigit())
-                link_counts += len(re.findall(r"http[s]?://|www\.", text))
+        ling = stats[f]["ling_desc"]
 
         print("\n" + f + " Linguistic Patterns (Content):")
-        print("  Exclamation marks: " + str(punct_counts["exclaim"]))
-        print("  Question marks: " + str(punct_counts["question"]))
-        print("  Ellipses: " + str(punct_counts["ellipsis"]))
-        print("  Uppercase chars: " + str(upper_counts))
-        print("  Digits: " + str(digit_counts))
-        print("  Links: " + str(link_counts))
+        print("  Exclamation marks: " + str(ling["exclaim"]))
+        print("  Question marks: " + str(ling["question"]))
+        print("  Ellipses: " + str(ling["ellipsis"]))
+        print("  Uppercase chars: " + str(ling["upper"]))
+        print("  Digits: " + str(ling["digit"]))
+        print("  Links: " + str(ling["link"]))
 
     print("\n" + "=" * 70)
     print("6b. ADDITIONAL LINGUISTIC PATTERNS (Title)")
     print("=" * 70)
 
     for f in files:
-        punct_counts = {"exclaim": 0, "question": 0, "ellipsis": 0}
-        upper_counts = 0
-        digit_counts = 0
-        link_counts = 0
-
-        sample = texts_data[f][:5000]
-        for item in sample:
-            title = item.get("note_title", "")
-            if title:
-                punct_counts["exclaim"] += title.count("!")
-                punct_counts["question"] += title.count("?")
-                punct_counts["ellipsis"] += title.count("...")
-                upper_counts += sum(1 for c in title if c.isupper())
-                digit_counts += sum(1 for c in title if c.isdigit())
-                link_counts += len(re.findall(r"http[s]?://|www\.", title))
+        ling = stats[f]["ling_title"]
 
         print("\n" + f + " Linguistic Patterns (Title):")
-        print("  Exclamation marks: " + str(punct_counts["exclaim"]))
-        print("  Question marks: " + str(punct_counts["question"]))
-        print("  Ellipses: " + str(punct_counts["ellipsis"]))
-        print("  Uppercase chars: " + str(upper_counts))
-        print("  Digits: " + str(digit_counts))
-        print("  Links: " + str(link_counts))
+        print("  Exclamation marks: " + str(ling["exclaim"]))
+        print("  Question marks: " + str(ling["question"]))
+        print("  Ellipses: " + str(ling["ellipsis"]))
+        print("  Uppercase chars: " + str(ling["upper"]))
+        print("  Digits: " + str(ling["digit"]))
+        print("  Links: " + str(ling["link"]))
 
     print("\n" + "=" * 70)
     print("Analysis Complete")

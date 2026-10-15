@@ -267,42 +267,36 @@ def analyze_domain_stats(items):
     if not items:
         return None
 
-    lengths = [len(get_text(item)) for item in items]
+    texts = [get_text(item) for item in items]
+
+    lengths = [len(t) for t in texts]
     title_lengths = [len(item.get("note_title", "") or "") for item in items]
-    emoji_counts = [count_emojis(get_text(item)) for item in items]
+    emoji_counts = [count_emojis(t) for t in texts]
     engagements = [compute_engagement(item) for item in items]
 
     pos_total, neg_total = 0, 0
-    for item in items:
-        p, n = compute_sentiment(get_text(item))
+    for t in texts:
+        p, n = compute_sentiment(t)
         pos_total += p
         neg_total += n
 
     word_freq = Counter()
-    for item in items:
-        word_freq.update(clean_tokenize(get_text(item)))
+    for t in texts:
+        word_freq.update(clean_tokenize(t))
 
-    all_chars = "".join(get_text(item) for item in items)
+    all_chars = "".join(texts)
     unique_chars = len(set(all_chars))
     total_chars = len(all_chars)
     ttr = unique_chars / total_chars if total_chars > 0 else 0
 
-    exclaim = sum(
-        get_text(item).count("!") + get_text(item).count("！") for item in items
-    )
-    question = sum(
-        get_text(item).count("?") + get_text(item).count("？") for item in items
-    )
+    exclaim = sum(t.count("!") + t.count("！") for t in texts)
+    question = sum(t.count("?") + t.count("？") for t in texts)
 
-    first_person = sum(
-        1 for item in items if "我" in get_text(item) or "我们" in get_text(item)
-    )
+    first_person = sum(1 for t in texts if "我" in t or "我们" in t)
 
-    has_numbers = sum(1 for item in items if re.search(r"\d", get_text(item)))
+    has_numbers = sum(1 for t in texts if re.search(r"\d", t))
 
-    paragraphs = sum(
-        len([p for p in get_text(item).split("\n") if p.strip()]) for item in items
-    )
+    paragraphs = sum(len([p for p in t.split("\n") if p.strip()]) for t in texts)
 
     return {
         "count": len(items),
@@ -440,23 +434,15 @@ def colors_hack(idx):
     return ["#2196F3", "#FF5722", "#4CAF50"][idx]
 
 
-def plot_domain_distribution_comparison(
-    human_data, aigc_data, exploring_data, output_dir
-):
+def plot_domain_distribution_comparison(grouped, totals, output_dir):
     domains = DOMAINS
-    h_counts = [
-        sum(1 for item in human_data if item.get("domain") == d) for d in domains
-    ]
-    a_counts = [
-        sum(1 for item in aigc_data if item.get("domain") == d) for d in domains
-    ]
-    e_counts = [
-        sum(1 for item in exploring_data if item.get("domain") == d) for d in domains
-    ]
+    h_counts = [len(grouped["Human"].get(d, [])) for d in domains]
+    a_counts = [len(grouped["AIGC"].get(d, [])) for d in domains]
+    e_counts = [len(grouped["Exploring"].get(d, [])) for d in domains]
 
-    h_pct = [c / len(human_data) * 100 for c in h_counts]
-    a_pct = [c / len(aigc_data) * 100 for c in a_counts]
-    e_pct = [c / len(exploring_data) * 100 for c in e_counts]
+    h_pct = [c / totals["Human"] * 100 for c in h_counts]
+    a_pct = [c / totals["AIGC"] * 100 for c in a_counts]
+    e_pct = [c / totals["Exploring"] * 100 for c in e_counts]
 
     fig, axes = plt.subplots(1, 2, figsize=(16, 6))
 
@@ -476,9 +462,9 @@ def plot_domain_distribution_comparison(
     a_eng_by_domain = []
     e_eng_by_domain = []
     for d in domains:
-        h_items = [item for item in human_data if item.get("domain") == d]
-        a_items = [item for item in aigc_data if item.get("domain") == d]
-        e_items = [item for item in exploring_data if item.get("domain") == d]
+        h_items = grouped["Human"].get(d, [])
+        a_items = grouped["AIGC"].get(d, [])
+        e_items = grouped["Exploring"].get(d, [])
         h_eng_by_domain.append(
             np.mean([compute_engagement(item) for item in h_items]) if h_items else 0
         )
@@ -693,9 +679,8 @@ def print_detailed_comparison(all_stats):
                 )
 
 
-def print_cross_topic_analysis(all_stats, human_data, aigc_data, exploring_data):
+def print_cross_topic_analysis(all_stats):
     datasets = ["Human", "AIGC", "Exploring"]
-    data_map = {"Human": human_data, "AIGC": aigc_data, "Exploring": exploring_data}
     common_domains = sorted(
         set.intersection(*[set(s.keys()) for s in all_stats.values()])
     )
@@ -804,9 +789,8 @@ def print_cross_topic_analysis(all_stats, human_data, aigc_data, exploring_data)
         )
 
 
-def print_statistical_tests(all_stats, human_data, aigc_data, exploring_data):
+def print_statistical_tests(all_stats, grouped):
     datasets = ["Human", "AIGC", "Exploring"]
-    data_map = {"Human": human_data, "AIGC": aigc_data, "Exploring": exploring_data}
     common_domains = sorted(
         set.intersection(*[set(s.keys()) for s in all_stats.values()])
     )
@@ -825,8 +809,8 @@ def print_statistical_tests(all_stats, human_data, aigc_data, exploring_data):
         print("-" * 75)
 
         for ds1, ds2 in pairs:
-            data1 = [item for item in data_map[ds1] if item.get("domain") == domain]
-            data2 = [item for item in data_map[ds2] if item.get("domain") == domain]
+            data1 = grouped[ds1].get(domain, [])
+            data2 = grouped[ds2].get(domain, [])
 
             if len(data1) < 5 or len(data2) < 5:
                 print(f"{ds1} vs {ds2:<17} {'N/A':>15} {'N/A':>15} {'N/A':>18}")
@@ -893,13 +877,21 @@ def main():
     print("\nAnalyzing domain statistics for each dataset...")
     all_stats = {"Human": {}, "AIGC": {}, "Exploring": {}}
 
+    grouped = {}
+    totals = {}
+    for ds_name, data in [
+        ("Human", human_data),
+        ("AIGC", aigc_data),
+        ("Exploring", exploring_data),
+    ]:
+        grouped[ds_name] = {}
+        totals[ds_name] = len(data)
+        for domain in DOMAINS:
+            grouped[ds_name][domain] = extract_domain_items(data, domain)
+
     for domain in DOMAINS:
-        for ds_name, data in [
-            ("Human", human_data),
-            ("AIGC", aigc_data),
-            ("Exploring", exploring_data),
-        ]:
-            items = extract_domain_items(data, domain)
+        for ds_name in ["Human", "AIGC", "Exploring"]:
+            items = grouped[ds_name][domain]
             if items:
                 stats = analyze_domain_stats(items)
                 if stats:
@@ -909,15 +901,13 @@ def main():
     print("\nGenerating visualizations...")
     plot_three_way_domain_comparison(all_stats, output_dir)
     plot_domain_word_similarity(all_stats, output_dir)
-    plot_domain_distribution_comparison(
-        human_data, aigc_data, exploring_data, output_dir
-    )
+    plot_domain_distribution_comparison(grouped, totals, output_dir)
     plot_domain_sentiment_comparison(all_stats, output_dir)
     plot_domain_structure_comparison(all_stats, output_dir)
 
     print_detailed_comparison(all_stats)
-    print_cross_topic_analysis(all_stats, human_data, aigc_data, exploring_data)
-    print_statistical_tests(all_stats, human_data, aigc_data, exploring_data)
+    print_cross_topic_analysis(all_stats)
+    print_statistical_tests(all_stats, grouped)
 
     print("\n" + "=" * 100)
     print("ANALYSIS COMPLETE")

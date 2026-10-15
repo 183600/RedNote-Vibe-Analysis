@@ -60,29 +60,72 @@ def setup_fonts():
     plt.rcParams["axes.unicode_minus"] = False
 
 
-def load_jsonl(filepath):
-    data = []
-    with open(filepath, "r", encoding="utf-8") as f:
-        for line in f:
-            try:
-                data.append(json.loads(line.strip()))
-            except:
-                continue
-    return data
+def load_aggregates():
+    files = [
+        ("Human", "training_set_human.jsonl"),
+        ("AIGC", "training_set_aigc.jsonl"),
+        ("Exploring", "exploring_set.jsonl"),
+    ]
+    aggs = {}
+    for ds_name, filepath in files:
+        user_counts = Counter()
+        domain_counts = Counter()
+        domain_totals = Counter()
+        eng = defaultdict(list)
+        inter = defaultdict(lambda: [0, 0, 0, 0])
+        total = 0
+        with open(filepath, "r", encoding="utf-8") as f:
+            for line in f:
+                try:
+                    item = json.loads(line.strip())
+                except Exception:
+                    continue
+                total += 1
+                user_counts[item.get("user_id", "unknown")] += 1
+                domain = item.get("domain", "unknown")
+                domain_counts[domain] += 1
+                if domain in DOMAINS:
+                    domain_totals[domain] += 1
+                    text = get_text(item)
+                    length = len(text)
+                    if length > 0:
+                        engagement = (
+                            item.get("liked_count", 0)
+                            + item.get("collected_count", 0)
+                            + item.get("comments_count", 0)
+                        )
+                        eng[domain].append(engagement / length)
+                    rec = inter[domain]
+                    rec[3] += 1
+                    if re.search(r"http[s]?://|www\.", text):
+                        rec[0] += 1
+                    if re.search(r"@[\w]+", text):
+                        rec[1] += 1
+                    rec[2] += len(re.findall(r"\[.*?\]", text))
+        aggs[ds_name] = {
+            "total": total,
+            "user_counts": user_counts,
+            "domain_counts": domain_counts,
+            "domain_totals": domain_totals,
+            "eng": eng,
+            "inter": inter,
+        }
+        print(f"  {ds_name}: {total} records")
+    return aggs
 
 
 def get_text(item):
     return item.get("note_content", "") or item.get("desc", "") or ""
 
 
-def analyze_user_behavior_detailed(data_dict):
+def analyze_user_behavior_detailed(aggs):
     print("\n" + "=" * 80)
     print("1. DETAILED USER BEHAVIOR ANALYSIS")
     print("=" * 80)
 
     results = {}
-    for ds_name, data in data_dict.items():
-        user_counts = Counter(item.get("user_id", "unknown") for item in data)
+    for ds_name, agg in aggs.items():
+        user_counts = agg["user_counts"]
         post_counts = sorted(user_counts.values(), reverse=True)
 
         single_post_users = sum(1 for c in post_counts if c == 1)
@@ -105,8 +148,8 @@ def analyze_user_behavior_detailed(data_dict):
 
         results[ds_name] = {
             "unique_users": len(user_counts),
-            "total_posts": len(data),
-            "posts_per_user": len(data) / len(user_counts) if user_counts else 0,
+            "total_posts": agg["total"],
+            "posts_per_user": agg["total"] / len(user_counts) if user_counts else 0,
             "single_post_users_pct": single_post_users / len(user_counts) * 100
             if user_counts
             else 0,
@@ -115,7 +158,7 @@ def analyze_user_behavior_detailed(data_dict):
             else 0,
             "gini_coefficient": gini_coef,
             "max_posts_by_user": max(post_counts) if post_counts else 0,
-            "top_user_post_share": post_counts[0] / len(data) * 100
+            "top_user_post_share": post_counts[0] / agg["total"] * 100
             if post_counts
             else 0,
         }
@@ -131,31 +174,21 @@ def analyze_user_behavior_detailed(data_dict):
     return results
 
 
-def analyze_engagement_efficiency(data_dict):
+def analyze_engagement_efficiency(aggs):
     print("\n" + "=" * 80)
     print("2. ENGAGEMENT EFFICIENCY ANALYSIS (Engagement per Character)")
     print("=" * 80)
 
     results = {}
-    for ds_name, data in data_dict.items():
+    for ds_name, agg in aggs.items():
         results[ds_name] = {}
 
         for domain in DOMAINS:
-            domain_items = [item for item in data if item.get("domain") == domain]
-            if not domain_items or len(domain_items) < 5:
+            domain_total = agg["domain_totals"].get(domain, 0)
+            if domain_total < 5:
                 continue
 
-            efficiencies = []
-            for item in domain_items:
-                text = get_text(item)
-                length = len(text)
-                if length > 0:
-                    engagement = (
-                        item.get("liked_count", 0)
-                        + item.get("collected_count", 0)
-                        + item.get("comments_count", 0)
-                    )
-                    efficiencies.append(engagement / length)
+            efficiencies = agg["eng"].get(domain, [])
 
             results[ds_name][domain] = {
                 "avg_efficiency": np.mean(efficiencies) if efficiencies else 0,
@@ -266,34 +299,24 @@ def plot_user_engagement_comparison(eng_results, output_dir):
     print(f"Saved: {os.path.join(output_dir, 'engagement_efficiency.png')}")
 
 
-def analyze_interactive_elements(data_dict):
+def analyze_interactive_elements(aggs):
     print("\n" + "=" * 80)
     print("4. INTERACTIVE ELEMENTS ANALYSIS (URLs, @mentions, emojis)")
     print("=" * 80)
 
     results = {}
-    for ds_name, data in data_dict.items():
+    for ds_name, agg in aggs.items():
         results[ds_name] = {}
 
         for domain in DOMAINS:
-            domain_items = [item for item in data if item.get("domain") == domain]
-            if not domain_items:
+            total = agg["domain_totals"].get(domain, 0)
+            if not total:
                 continue
 
-            url_count = 0
-            mention_count = 0
-            emoji_count = 0
+            url_count, mention_count, emoji_count = agg["inter"].get(
+                domain, [0, 0, 0, 0]
+            )[:3]
 
-            for item in domain_items:
-                text = get_text(item)
-
-                if re.search(r"http[s]?://|www\.", text):
-                    url_count += 1
-                if re.search(r"@[\w]+", text):
-                    mention_count += 1
-                emoji_count += len(re.findall(r"\[.*?\]", text))
-
-            total = len(domain_items)
             results[ds_name][domain] = {
                 "url_rate": url_count / total * 100 if total > 0 else 0,
                 "mention_rate": mention_count / total * 100 if total > 0 else 0,
@@ -361,16 +384,16 @@ def plot_interactive_elements(inter_results, output_dir):
     print(f"Saved: {os.path.join(output_dir, 'interactive_elements.png')}")
 
 
-def analyze_domain_concentration(data_dict):
+def analyze_domain_concentration(aggs):
     print("\n" + "=" * 80)
     print("5. DOMAIN CONCENTRATION ANALYSIS")
     print("=" * 80)
 
     results = {}
-    for ds_name, data in data_dict.items():
-        domain_counts = Counter(item.get("domain", "unknown") for item in data)
+    for ds_name, agg in aggs.items():
+        domain_counts = agg["domain_counts"]
 
-        total = len(data)
+        total = agg["total"]
         top1_pct = (
             domain_counts.most_common(1)[0][1] / total * 100 if domain_counts else 0
         )
@@ -433,15 +456,15 @@ def plot_domain_concentration(conc_results, output_dir):
     print(f"Saved: {os.path.join(output_dir, 'domain_concentration.png')}")
 
 
-def generate_summary_dashboard(data_dict, output_dir):
+def generate_summary_dashboard(aggs, output_dir):
     print("\n" + "=" * 80)
     print("6. COMPREHENSIVE SUMMARY DASHBOARD")
     print("=" * 80)
 
-    user_results = analyze_user_behavior_detailed(data_dict)
-    eng_results = analyze_engagement_efficiency(data_dict)
-    inter_results = analyze_interactive_elements(data_dict)
-    conc_results = analyze_domain_concentration(data_dict)
+    user_results = analyze_user_behavior_detailed(aggs)
+    eng_results = analyze_engagement_efficiency(aggs)
+    inter_results = analyze_interactive_elements(aggs)
+    conc_results = analyze_domain_concentration(aggs)
 
     fig, axes = plt.subplots(2, 3, figsize=(18, 12))
     datasets = ["Human", "AIGC", "Exploring"]
@@ -519,29 +542,21 @@ def main():
     os.makedirs(output_dir, exist_ok=True)
 
     print("Loading datasets...")
-    human_data = load_jsonl("training_set_human.jsonl")
-    aigc_data = load_jsonl("training_set_aigc.jsonl")
-    exploring_data = load_jsonl("exploring_set.jsonl")
-
-    print(f"  Human: {len(human_data)} records")
-    print(f"  AIGC: {len(aigc_data)} records")
-    print(f"  Exploring: {len(exploring_data)} records")
-
-    data_dict = {"Human": human_data, "AIGC": aigc_data, "Exploring": exploring_data}
+    aggs = load_aggregates()
 
     print("\n" + "=" * 80)
     print("UNIQUE COMPARISON ANALYSIS: New Metrics")
     print("=" * 80)
 
-    all_results = generate_summary_dashboard(data_dict, output_dir)
+    all_results = generate_summary_dashboard(aggs, output_dir)
 
-    eng_results = analyze_engagement_efficiency(data_dict)
+    eng_results = analyze_engagement_efficiency(aggs)
     plot_user_engagement_comparison(eng_results, output_dir)
 
-    inter_results = analyze_interactive_elements(data_dict)
+    inter_results = analyze_interactive_elements(aggs)
     plot_interactive_elements(inter_results, output_dir)
 
-    conc_results = analyze_domain_concentration(data_dict)
+    conc_results = analyze_domain_concentration(aggs)
     plot_domain_concentration(conc_results, output_dir)
 
     print("\n" + "=" * 80)

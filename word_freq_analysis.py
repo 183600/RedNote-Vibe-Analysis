@@ -131,27 +131,20 @@ def tokenize(text):
     return [w for w in words if len(w) > 1 and w not in STOPWORDS]
 
 
-def load_jsonl(filepath):
-    texts = []
+def stream_word_freq(filepath):
+    freq_desc = Counter()
+    freq_title = Counter()
+    total = 0
     with open(filepath, "r", encoding="utf-8") as f:
         for line in f:
             try:
-                data = json.loads(line.strip())
-                texts.append(data)
-            except:
+                item = json.loads(line.strip())
+            except Exception:
                 continue
-    return texts
-
-
-def compute_word_freq(texts, use_title=False):
-    all_words = []
-    for item in texts:
-        if use_title:
-            text = item.get("note_title", "")
-        else:
-            text = item.get("desc", "") or item.get("note_content", "")
-        all_words.extend(tokenize(text))
-    return Counter(all_words)
+            total += 1
+            freq_desc.update(tokenize(item.get("desc", "") or item.get("note_content", "")))
+            freq_title.update(tokenize(item.get("note_title", "")))
+    return freq_desc, freq_title, total
 
 
 def compute_correlation(freq1, freq2, top_n=100):
@@ -225,18 +218,24 @@ def main():
 
     results = {}
 
+    freqs_by_label = {"desc_only": {}, "title_only": {}}
+    totals = {}
+    for f in files:
+        freq_desc, freq_title, total = stream_word_freq(f)
+        freqs_by_label["desc_only"][f] = freq_desc
+        freqs_by_label["title_only"][f] = freq_title
+        totals[f] = total
+
     for use_title in [False, True]:
         label = "title_only" if use_title else "desc_only"
 
-        freqs = {}
+        freqs = freqs_by_label[label]
         for f in files:
-            data = load_jsonl(f)
-            freqs[f] = compute_word_freq(data, use_title)
             print(
                 "Loaded "
                 + f
                 + ": "
-                + str(len(data))
+                + str(totals[f])
                 + " records, "
                 + label
                 + " words: "

@@ -130,6 +130,66 @@ STOPWORDS = set(
 )
 
 
+POSITIVE_WORDS = set(
+    [
+        "好",
+        "喜欢",
+        "爱",
+        "开心",
+        "快乐",
+        "幸福",
+        "美",
+        "棒",
+        "赞",
+        "优秀",
+        "完美",
+        "可爱",
+        "漂亮",
+        "精彩",
+        "感谢",
+        "感动",
+        "满足",
+        "舒服",
+        "满意",
+    ]
+)
+NEGATIVE_WORDS = set(
+    [
+        "差",
+        "不好",
+        "讨厌",
+        "难过",
+        "痛苦",
+        "累",
+        "失望",
+        "糟糕",
+        "烦",
+        "恶心",
+        "无奈",
+        "后悔",
+        "生气",
+        "悲伤",
+        "焦虑",
+        "担心",
+        "害怕",
+        "寂寞",
+    ]
+)
+
+DOMAIN_LIST = [
+    "健康",
+    "穿搭",
+    "美食",
+    "职场",
+    "宠物",
+    "学习",
+    "运动",
+    "情感",
+    "旅行",
+    "心理",
+]
+
+
 def clean_tokenize(text):
     if not text:
         return []
@@ -141,61 +201,73 @@ def clean_tokenize(text):
     return [w for w in text.split() if len(w) > 1 and w not in STOPWORDS]
 
 
-def load_jsonl(filepath):
-    texts = []
+def load_aggregates(filepath):
+    domains = {}
+    for domain in DOMAIN_LIST:
+        domains[domain] = {
+            "count": 0,
+            "lengths": [],
+            "emoji": [],
+            "liked": [],
+            "collected": [],
+            "comments": [],
+            "words": Counter(),
+            "pos": 0,
+            "neg": 0,
+            "total_words": 0,
+        }
+    domain_counter = Counter()
+    total = 0
     with open(filepath, "r", encoding="utf-8") as f:
         for line in f:
             try:
-                data = json.loads(line.strip())
-                texts.append(data)
-            except:
+                item = json.loads(line.strip())
+            except Exception:
                 continue
-    return texts
+            total += 1
+            domain = item.get("domain")
+            domain_counter[domain] += 1
+            if domain in domains:
+                d = domains[domain]
+                d["count"] += 1
+                desc = item.get("desc", "") or item.get("note_content", "")
+                d["lengths"].append(len(desc))
+                d["emoji"].append(extract_face_emojis(desc))
+                d["liked"].append(item.get("liked_count", 0))
+                d["collected"].append(item.get("collected_count", 0))
+                d["comments"].append(item.get("comments_count", 0))
+                words = clean_tokenize(desc)
+                d["words"].update(words)
+                d["total_words"] += len(words)
+                for w in words:
+                    if w in POSITIVE_WORDS:
+                        d["pos"] += 1
+                    elif w in NEGATIVE_WORDS:
+                        d["neg"] += 1
+    return {"total": total, "domain_counter": domain_counter, "domains": domains}
 
 
-def analyze_domain_differences(texts_data, output_dir):
-    domains = [
-        "健康",
-        "穿搭",
-        "美食",
-        "职场",
-        "宠物",
-        "学习",
-        "运动",
-        "情感",
-        "旅行",
-        "心理",
-    ]
+def analyze_domain_differences(human_agg, output_dir):
+    domains = DOMAIN_LIST
 
     results = {}
     for domain in domains:
-        domain_texts = [t for t in texts_data if t.get("domain") == domain]
-        if not domain_texts:
+        d = human_agg["domains"][domain]
+        if d["count"] == 0:
             continue
 
-        lengths = []
-        word_freq = Counter()
-        emoji_counts = []
-
-        for item in domain_texts:
-            desc = item.get("desc", "") or item.get("note_content", "")
-            if desc:
-                lengths.append(len(desc))
-                words = clean_tokenize(desc)
-                word_freq.update(words)
-
-                emojis = extract_face_emojis(desc)
-                emoji_counts.append(emojis)
+        lengths = [l for l in d["lengths"] if l > 0]
+        emoji_counts = [e for e, l in zip(d["emoji"], d["lengths"]) if l > 0]
 
         results[domain] = {
-            "count": len(domain_texts),
+            "count": d["count"],
             "avg_length": np.mean(lengths) if lengths else 0,
             "median_length": np.median(lengths) if lengths else 0,
-            "top_words": word_freq.most_common(30),
+            "top_words": d["words"].most_common(30),
             "avg_emojis": np.mean(emoji_counts) if emoji_counts else 0,
-            "liked": [item.get("liked_count", 0) for item in domain_texts],
-            "collected": [item.get("collected_count", 0) for item in domain_texts],
-            "comments": [item.get("comments_count", 0) for item in domain_texts],
+            "liked": d["liked"],
+            "collected": d["collected"],
+            "comments": d["comments"],
         }
 
     print("\n=== Domain Differences Analysis ===")
@@ -250,78 +322,31 @@ def plot_domain_comparison(results, output_dir):
     print(f"Saved: {output_dir}/domain_comparison.png")
 
 
-def compare_aigc_vs_human_by_domain(human_data, aigc_data, output_dir):
-    domains = [
-        "健康",
-        "穿搭",
-        "美食",
-        "职场",
-        "宠物",
-        "学习",
-        "运动",
-        "情感",
-        "旅行",
-        "心理",
-    ]
+def compare_aigc_vs_human_by_domain(human_agg, aigc_agg, output_dir):
+    domains = DOMAIN_LIST
 
     comparison = {}
     for domain in domains:
-        human_texts = [t for t in human_data if t.get("domain") == domain]
-        aigc_texts = [t for t in aigc_data if t.get("domain") == domain]
+        h = human_agg["domains"][domain]
+        a = aigc_agg["domains"][domain]
 
-        if not human_texts or not aigc_texts:
+        if h["count"] == 0 or a["count"] == 0:
             continue
 
-        h_lengths = [
-            len(t.get("desc", "") or t.get("note_content", "")) for t in human_texts
-        ]
-        a_lengths = [
-            len(t.get("desc", "") or t.get("note_content", "")) for t in aigc_texts
-        ]
-
-        h_emoji = [
-            extract_face_emojis(t.get("desc", "") or t.get("note_content", ""))
-            for t in human_texts
-        ]
-        a_emoji = [
-            extract_face_emojis(t.get("desc", "") or t.get("note_content", ""))
-            for t in aigc_texts
-        ]
-
-        h_eng = [
-            t.get("liked_count", 0)
-            + t.get("collected_count", 0)
-            + t.get("comments_count", 0)
-            for t in human_texts
-        ]
-        a_eng = [
-            t.get("liked_count", 0)
-            + t.get("collected_count", 0)
-            + t.get("comments_count", 0)
-            for t in aigc_texts
-        ]
-
-        h_words = Counter()
-        for t in human_texts:
-            desc = t.get("desc", "") or t.get("note_content", "")
-            h_words.update(clean_tokenize(desc))
-
-        a_words = Counter()
-        for t in aigc_texts:
-            desc = t.get("desc", "") or t.get("note_content", "")
-            a_words.update(clean_tokenize(desc))
+        h_eng = [x + y + z for x, y, z in zip(h["liked"], h["collected"], h["comments"])]
+        a_eng = [x + y + z for x, y, z in zip(a["liked"], a["collected"], a["comments"])]
 
         comparison[domain] = {
-            "human_count": len(human_texts),
-            "aigc_count": len(aigc_texts),
-            "human_avg_length": np.mean(h_lengths),
-            "aigc_avg_length": np.mean(a_lengths),
-            "human_avg_emoji": np.mean(h_emoji),
-            "aigc_avg_emoji": np.mean(a_emoji),
+            "human_count": h["count"],
+            "aigc_count": a["count"],
+            "human_avg_length": np.mean(h["lengths"]),
+            "aigc_avg_length": np.mean(a["lengths"]),
+            "human_avg_emoji": np.mean(h["emoji"]),
+            "aigc_avg_emoji": np.mean(a["emoji"]),
             "human_avg_engagement": np.mean(h_eng),
             "aigc_avg_engagement": np.mean(a_eng),
-            "human_top_words": h_words.most_common(20),
-            "aigc_top_words": a_words.most_common(20),
+            "human_top_words": h["words"].most_common(20),
+            "aigc_top_words": a["words"].most_common(20),
         }
 
     print("\n=== AIGC vs Human by Domain ===")
@@ -387,39 +412,21 @@ def plot_aigc_human_comparison(comparison, output_dir):
     print(f"Saved: {output_dir}/aigc_human_domain_comparison.png")
 
 
-def analyze_domain_word_overlap(human_data, aigc_data, output_dir):
-    domains = [
-        "健康",
-        "穿搭",
-        "美食",
-        "职场",
-        "宠物",
-        "学习",
-        "运动",
-        "情感",
-        "旅行",
-        "心理",
-    ]
+def analyze_domain_word_overlap(human_agg, aigc_agg, output_dir):
+    domains = DOMAIN_LIST
 
     print("\n=== Domain Word Overlap Analysis ===")
     overlap_results = {}
 
     for domain in domains:
-        human_texts = [t for t in human_data if t.get("domain") == domain]
-        aigc_texts = [t for t in aigc_data if t.get("domain") == domain]
+        h = human_agg["domains"][domain]
+        a = aigc_agg["domains"][domain]
 
-        if not human_texts or not aigc_texts:
+        if h["count"] == 0 or a["count"] == 0:
             continue
 
-        h_words = Counter()
-        for t in human_texts:
-            desc = t.get("desc", "") or t.get("note_content", "")
-            h_words.update(clean_tokenize(desc))
-
-        a_words = Counter()
-        for t in aigc_texts:
-            desc = t.get("desc", "") or t.get("note_content", "")
-            a_words.update(clean_tokenize(desc))
+        h_words = h["words"]
+        a_words = a["words"]
 
         common_words = set(h_words.keys()) & set(a_words.keys())
 
@@ -470,86 +477,18 @@ def plot_word_overlap(overlap_results, output_dir):
     print(f"Saved: {output_dir}/domain_word_overlap.png")
 
 
-def compute_domain_sentiment(texts_data):
-    positive_words = set(
-        [
-            "好",
-            "喜欢",
-            "爱",
-            "开心",
-            "快乐",
-            "幸福",
-            "美",
-            "棒",
-            "赞",
-            "优秀",
-            "完美",
-            "可爱",
-            "漂亮",
-            "精彩",
-            "感谢",
-            "感动",
-            "满足",
-            "舒服",
-            "满意",
-        ]
-    )
-    negative_words = set(
-        [
-            "差",
-            "不好",
-            "讨厌",
-            "难过",
-            "痛苦",
-            "累",
-            "失望",
-            "糟糕",
-            "烦",
-            "恶心",
-            "无奈",
-            "后悔",
-            "生气",
-            "悲伤",
-            "焦虑",
-            "担心",
-            "害怕",
-            "寂寞",
-        ]
-    )
-
-    domains = [
-        "健康",
-        "穿搭",
-        "美食",
-        "职场",
-        "宠物",
-        "学习",
-        "运动",
-        "情感",
-        "旅行",
-        "心理",
-    ]
+def compute_domain_sentiment(agg):
+    domains = DOMAIN_LIST
     sentiment_results = {}
 
     for domain in domains:
-        domain_texts = [t for t in texts_data if t.get("domain") == domain]
-        if not domain_texts:
+        d = agg["domains"][domain]
+        if d["count"] == 0:
             continue
 
-        pos_count = 0
-        neg_count = 0
-        total_words = 0
-
-        for item in domain_texts:
-            desc = item.get("desc", "") or item.get("note_content", "")
-            words = clean_tokenize(desc)
-            total_words += len(words)
-
-            for w in words:
-                if w in positive_words:
-                    pos_count += 1
-                elif w in negative_words:
-                    neg_count += 1
+        pos_count = d["pos"]
+        neg_count = d["neg"]
+        total_words = d["total_words"]
 
         sentiment_results[domain] = {
             "positive_ratio": pos_count / total_words if total_words > 0 else 0,
@@ -568,16 +507,16 @@ def compute_domain_sentiment(texts_data):
     return sentiment_results
 
 
-def compare_domains_between_datasets(human_data, aigc_data, output_dir):
-    h_domains = Counter(t.get("domain") for t in human_data)
-    a_domains = Counter(t.get("domain") for t in aigc_data)
+def compare_domains_between_datasets(human_agg, aigc_agg, output_dir):
+    h_domains = human_agg["domain_counter"]
+    a_domains = aigc_agg["domain_counter"]
 
     all_domains = set(h_domains.keys()) | set(a_domains.keys())
 
     print("\n=== Domain Distribution Comparison ===")
     for domain in sorted(all_domains):
-        h_pct = h_domains.get(domain, 0) / len(human_data) * 100
-        a_pct = a_domains.get(domain, 0) / len(aigc_data) * 100
+        h_pct = h_domains.get(domain, 0) / human_agg["total"] * 100
+        a_pct = a_domains.get(domain, 0) / aigc_agg["total"] * 100
         diff = h_pct - a_pct
         print(f"{domain}: Human={h_pct:.1f}%, AIGC={a_pct:.1f}%, Diff={diff:+.1f}%")
 
@@ -616,18 +555,17 @@ def main():
     os.makedirs(output_dir, exist_ok=True)
 
     print("Loading data...")
-    human_data = load_jsonl("training_set_human_fixed.jsonl")
-    aigc_data = load_jsonl("exploring_set_fixed.jsonl")
+    human_agg = load_aggregates("training_set_human_fixed.jsonl")
+    print(f"Human: {human_agg['total']} records")
+    aigc_agg = load_aggregates("exploring_set_fixed.jsonl")
+    print(f"AIGC: {aigc_agg['total']} records")
 
-    print(f"Human: {len(human_data)} records")
-    print(f"AIGC: {len(aigc_data)} records")
-
-    analyze_domain_differences(human_data, output_dir)
-    compare_aigc_vs_human_by_domain(human_data, aigc_data, output_dir)
-    analyze_domain_word_overlap(human_data, aigc_data, output_dir)
-    compute_domain_sentiment(human_data)
-    compute_domain_sentiment(aigc_data)
-    compare_domains_between_datasets(human_data, aigc_data, output_dir)
+    analyze_domain_differences(human_agg, output_dir)
+    compare_aigc_vs_human_by_domain(human_agg, aigc_agg, output_dir)
+    analyze_domain_word_overlap(human_agg, aigc_agg, output_dir)
+    compute_domain_sentiment(human_agg)
+    compute_domain_sentiment(aigc_agg)
+    compare_domains_between_datasets(human_agg, aigc_agg, output_dir)
 
     print("\n=== Topic Comparison Analysis Complete ===")
     print("Generated files:")

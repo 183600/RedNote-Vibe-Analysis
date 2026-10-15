@@ -227,16 +227,16 @@ def clean_tokenize(text):
     return [w for w in text.split() if len(w) > 1 and w not in STOPWORDS]
 
 
-def analyze_engagement_patterns(data_dict):
+def analyze_engagement_patterns(grouped):
     print("\n" + "=" * 80)
     print("1. ENGAGEMENT PATTERN ANALYSIS: Like/Collect/Comment Ratios")
     print("=" * 80)
 
     results = {}
-    for ds_name, data in data_dict.items():
+    for ds_name, ds_grouped in grouped.items():
         results[ds_name] = {}
         for domain in DOMAINS:
-            domain_items = [item for item in data if item.get("domain") == domain]
+            domain_items = ds_grouped[domain]
             if not domain_items:
                 continue
 
@@ -353,16 +353,16 @@ def plot_engagement_patterns(results, output_dir):
     print("Saved: " + os.path.join(output_dir, "engagement_patterns.png"))
 
 
-def analyze_title_content_ratio(data_dict):
+def analyze_title_content_ratio(grouped):
     print("\n" + "=" * 80)
     print("2. TITLE-CONTENT RATIO ANALYSIS")
     print("=" * 80)
 
     results = {}
-    for ds_name, data in data_dict.items():
+    for ds_name, ds_grouped in grouped.items():
         results[ds_name] = {}
         for domain in DOMAINS:
-            domain_items = [item for item in data if item.get("domain") == domain]
+            domain_items = ds_grouped[domain]
             if not domain_items:
                 continue
 
@@ -440,23 +440,20 @@ def plot_title_content_ratio(results, output_dir):
     print("Saved: " + os.path.join(output_dir, "title_content_ratio.png"))
 
 
-def analyze_unique_vocabulary(data_dict):
+def analyze_unique_vocabulary(grouped, word_counters):
     print("\n" + "=" * 80)
     print("3. UNIQUE VOCABULARY ANALYSIS: Dataset-Specific Words per Domain")
     print("=" * 80)
 
     word_freqs = {}
-    for ds_name, data in data_dict.items():
+    for ds_name, ds_grouped in grouped.items():
         word_freqs[ds_name] = {}
         for domain in DOMAINS:
-            domain_items = [item for item in data if item.get("domain") == domain]
+            domain_items = ds_grouped[domain]
             if not domain_items:
                 continue
 
-            counter = Counter()
-            for item in domain_items:
-                counter.update(clean_tokenize(get_text(item)))
-            word_freqs[ds_name][domain] = counter
+            word_freqs[ds_name][domain] = word_counters[ds_name][domain]
 
     results = {}
     for domain in DOMAINS:
@@ -471,11 +468,9 @@ def analyze_unique_vocabulary(data_dict):
             other_datasets = [d for d in all_datasets if d != ds]
             other_words = set()
             for od in other_datasets:
-                other_words.update(
-                    w for w, c in word_freqs[od][domain].most_common(100)
-                )
+                other_words.update(w for w, c in word_freqs[od][domain])
 
-            ds_words = dict(word_freqs[ds][domain].most_common(50))
+            ds_words = dict(word_freqs[ds][domain][:50])
             unique_words = {w: c for w, c in ds_words.items() if w not in other_words}
 
             results[domain][ds] = {
@@ -529,7 +524,7 @@ def plot_unique_vocabulary(results, output_dir):
     print("Saved: " + os.path.join(output_dir, "unique_vocabulary.png"))
 
 
-def analyze_sentence_features(data_dict):
+def analyze_sentence_features(grouped):
     print("\n" + "=" * 80)
     print("4. SENTENCE-LEVEL FEATURE ANALYSIS")
     print("=" * 80)
@@ -539,10 +534,10 @@ def analyze_sentence_features(data_dict):
         return len([s for s in sentences if s.strip()])
 
     results = {}
-    for ds_name, data in data_dict.items():
+    for ds_name, ds_grouped in grouped.items():
         results[ds_name] = {}
         for domain in DOMAINS:
-            domain_items = [item for item in data if item.get("domain") == domain]
+            domain_items = ds_grouped[domain]
             if not domain_items:
                 continue
 
@@ -651,24 +646,20 @@ def plot_sentence_features(results, output_dir):
     print("Saved: " + os.path.join(output_dir, "sentence_features.png"))
 
 
-def analyze_keyword_cooccurrence(data_dict):
+def analyze_keyword_cooccurrence(grouped, word_counters):
     print("\n" + "=" * 80)
     print("5. KEYWORD CO-OCCURRENCE ANALYSIS")
     print("=" * 80)
 
     cooccurrence = {}
-    for ds_name, data in data_dict.items():
+    for ds_name, ds_grouped in grouped.items():
         cooccurrence[ds_name] = {}
         for domain in DOMAINS:
-            domain_items = [item for item in data if item.get("domain") == domain]
+            domain_items = ds_grouped[domain]
             if not domain_items or len(domain_items) < 10:
                 continue
 
-            word_counter = Counter()
-            for item in domain_items:
-                word_counter.update(clean_tokenize(get_text(item)))
-
-            top_words = [w for w, c in word_counter.most_common(30)]
+            top_words = [w for w, c in word_counters[ds_name][domain][:30]]
 
             co_word_counts = defaultdict(Counter)
             for item in domain_items:
@@ -706,16 +697,16 @@ def analyze_keyword_cooccurrence(data_dict):
     return cooccurrence
 
 
-def analyze_content_consistency(data_dict):
+def analyze_content_consistency(grouped):
     print("\n" + "=" * 80)
     print("6. CONTENT CONSISTENCY ANALYSIS: Within-Domain Variance")
     print("=" * 80)
 
     results = {}
-    for ds_name, data in data_dict.items():
+    for ds_name, ds_grouped in grouped.items():
         results[ds_name] = {}
         for domain in DOMAINS:
-            domain_items = [item for item in data if item.get("domain") == domain]
+            domain_items = ds_grouped[domain]
             if not domain_items or len(domain_items) < 5:
                 continue
 
@@ -785,7 +776,7 @@ def plot_content_consistency(results, output_dir):
     print("Saved: " + os.path.join(output_dir, "content_consistency.png"))
 
 
-def analyze_emotion_intensity(data_dict):
+def analyze_emotion_intensity(grouped):
     print("\n" + "=" * 80)
     print("7. EMOTION INTENSITY ANALYSIS: Positive vs Negative Word Strength")
     print("=" * 80)
@@ -842,10 +833,10 @@ def analyze_emotion_intensity(data_dict):
     }
 
     results = {}
-    for ds_name, data in data_dict.items():
+    for ds_name, ds_grouped in grouped.items():
         results[ds_name] = {}
         for domain in DOMAINS:
-            domain_items = [item for item in data if item.get("domain") == domain]
+            domain_items = ds_grouped[domain]
             if not domain_items:
                 continue
 
@@ -936,16 +927,16 @@ def plot_emotion_intensity(results, output_dir):
     print("Saved: " + os.path.join(output_dir, "emotion_intensity.png"))
 
 
-def analyze_time_distribution(data_dict):
+def analyze_time_distribution(grouped):
     print("\n" + "=" * 80)
     print("8. TEMPORAL PATTERN ANALYSIS: Posting Time Distribution")
     print("=" * 80)
 
     results = {}
-    for ds_name, data in data_dict.items():
+    for ds_name, ds_grouped in grouped.items():
         results[ds_name] = {}
         for domain in DOMAINS:
-            domain_items = [item for item in data if item.get("domain") == domain]
+            domain_items = ds_grouped[domain]
             if not domain_items:
                 continue
 
@@ -1003,7 +994,7 @@ def analyze_time_distribution(data_dict):
     return results
 
 
-def analyze_hashtag_usage(data_dict):
+def analyze_hashtag_usage(grouped):
     print("\n" + "=" * 80)
     print("9. HASHTAG USAGE ANALYSIS")
     print("=" * 80)
@@ -1015,10 +1006,10 @@ def analyze_hashtag_usage(data_dict):
         return [h for h in hashtags if "话题" not in h]
 
     results = {}
-    for ds_name, data in data_dict.items():
+    for ds_name, ds_grouped in grouped.items():
         results[ds_name] = {}
         for domain in DOMAINS:
-            domain_items = [item for item in data if item.get("domain") == domain]
+            domain_items = ds_grouped[domain]
             if not domain_items:
                 continue
 
@@ -1096,16 +1087,16 @@ def plot_hashtag_usage(results, output_dir):
     print("Saved: " + os.path.join(output_dir, "hashtag_usage.png"))
 
 
-def analyze_punctuation_diversity(data_dict):
+def analyze_punctuation_diversity(grouped):
     print("\n" + "=" * 80)
     print("10. PUNCTUATION DIVERSITY ANALYSIS")
     print("=" * 80)
 
     results = {}
-    for ds_name, data in data_dict.items():
+    for ds_name, ds_grouped in grouped.items():
         results[ds_name] = {}
         for domain in DOMAINS:
-            domain_items = [item for item in data if item.get("domain") == domain]
+            domain_items = ds_grouped[domain]
             if not domain_items:
                 continue
 
@@ -1212,38 +1203,53 @@ def main():
     print("  AIGC: " + str(len(aigc_data)) + " records")
     print("  Exploring: " + str(len(exploring_data)) + " records")
 
-    data_dict = {"Human": human_data, "AIGC": aigc_data, "Exploring": exploring_data}
+    grouped = {}
+    word_counters = {}
+    for ds_name, data in [
+        ("Human", human_data),
+        ("AIGC", aigc_data),
+        ("Exploring", exploring_data),
+    ]:
+        grouped[ds_name] = {}
+        word_counters[ds_name] = {}
+        for domain in DOMAINS:
+            domain_items = [item for item in data if item.get("domain") == domain]
+            grouped[ds_name][domain] = domain_items
+            counter = Counter()
+            for item in domain_items:
+                counter.update(clean_tokenize(get_text(item)))
+            word_counters[ds_name][domain] = counter.most_common(100)
 
     print("\n" + "=" * 80)
     print("NEW TOPIC COMPARISON ANALYSIS: Exploring vs AIGC vs Human")
     print("=" * 80)
 
-    eng_results = analyze_engagement_patterns(data_dict)
+    eng_results = analyze_engagement_patterns(grouped)
     plot_engagement_patterns(eng_results, output_dir)
 
-    title_results = analyze_title_content_ratio(data_dict)
+    title_results = analyze_title_content_ratio(grouped)
     plot_title_content_ratio(title_results, output_dir)
 
-    unique_vocab_results = analyze_unique_vocabulary(data_dict)
+    unique_vocab_results = analyze_unique_vocabulary(grouped, word_counters)
     plot_unique_vocabulary(unique_vocab_results, output_dir)
 
-    sentence_results = analyze_sentence_features(data_dict)
+    sentence_results = analyze_sentence_features(grouped)
     plot_sentence_features(sentence_results, output_dir)
 
-    analyze_keyword_cooccurrence(data_dict)
+    analyze_keyword_cooccurrence(grouped, word_counters)
 
-    consistency_results = analyze_content_consistency(data_dict)
+    consistency_results = analyze_content_consistency(grouped)
     plot_content_consistency(consistency_results, output_dir)
 
-    emotion_results = analyze_emotion_intensity(data_dict)
+    emotion_results = analyze_emotion_intensity(grouped)
     plot_emotion_intensity(emotion_results, output_dir)
 
-    time_results = analyze_time_distribution(data_dict)
+    time_results = analyze_time_distribution(grouped)
 
-    hashtag_results = analyze_hashtag_usage(data_dict)
+    hashtag_results = analyze_hashtag_usage(grouped)
     plot_hashtag_usage(hashtag_results, output_dir)
 
-    punct_results = analyze_punctuation_diversity(data_dict)
+    punct_results = analyze_punctuation_diversity(grouped)
     plot_punctuation_diversity(punct_results, output_dir)
 
     print("\n" + "=" * 80)

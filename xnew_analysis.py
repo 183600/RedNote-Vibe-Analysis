@@ -6,15 +6,20 @@ import codecs
 from collections import Counter
 
 
-def load_jsonl(filepath):
+SAMPLE_LIMIT = 5000
+
+
+def load_jsonl(filepath, limit=SAMPLE_LIMIT):
     texts = []
     with codecs.open(filepath, "r", encoding="utf-8") as f:
         for line in f:
             try:
-                data = json.loads(line.strip())
-                texts.append(data)
-            except:
+                item = json.loads(line.strip())
+            except Exception:
                 continue
+            texts.append(item)
+            if len(texts) >= limit:
+                break
     return texts
 
 
@@ -28,6 +33,8 @@ def main():
     print("TITLE PATTERN ANALYSIS")
     print("=" * 70)
 
+    all_features = {}
+
     for f in files:
         data = load_jsonl(f)
         print("\n" + "=" * 50)
@@ -37,30 +44,39 @@ def main():
         title_lengths = []
         title_words = []
         title_patterns = Counter()
+        features = {"exclaim": 0, "question": 0, "ellipsis": 0, "caps": 0, "quotes": 0}
 
-        for item in data[:5000]:
+        for item in data:
             title = item.get("note_title", "") or item.get("title", "")
-            if not title:
-                continue
-            title_lengths.append(len(title))
+            if title:
+                title_lengths.append(len(title))
 
-            words = title.split()
-            title_words.extend(words)
+                words = title.split()
+                title_words.extend(words)
 
-            if re.match(r"^\d+[\u3001.\s]", str(title)):
-                title_patterns["numbered"] += 1
-            elif re.match(r"^[\u4e00-\u9fa5]+[\u7684]", str(title)):
-                title_patterns["possessive"] += 1
-            elif re.search(r"[?!?!]$", str(title)):
-                title_patterns["question_end"] += 1
-            elif re.match(r"^\[#", str(title)):
-                title_patterns["hashtag_start"] += 1
-            elif re.match(r"^\d+$", str(title)):
-                title_patterns["number_only"] += 1
-            elif re.search(r"mbti|MBTI", str(title), re.I):
-                title_patterns["mbti"] += 1
-            else:
-                title_patterns["other"] += 1
+                if re.match(r"^\d+[\u3001.\s]", str(title)):
+                    title_patterns["numbered"] += 1
+                elif re.match(r"^[\u4e00-\u9fa5]+[\u7684]", str(title)):
+                    title_patterns["possessive"] += 1
+                elif re.search(r"[?!?!]$", str(title)):
+                    title_patterns["question_end"] += 1
+                elif re.match(r"^\[#", str(title)):
+                    title_patterns["hashtag_start"] += 1
+                elif re.match(r"^\d+$", str(title)):
+                    title_patterns["number_only"] += 1
+                elif re.search(r"mbti|MBTI", str(title), re.I):
+                    title_patterns["mbti"] += 1
+                else:
+                    title_patterns["other"] += 1
+
+            text = str(item.get("desc", "")) + " " + str(item.get("note_content", ""))
+            features["exclaim"] += text.count("!")
+            features["question"] += text.count("?")
+            features["ellipsis"] += text.count("...")
+            features["caps"] += sum(1 for c in text if c.isupper())
+            features["quotes"] += len(re.findall(r'["\u201c\u201d]', text))
+
+        all_features[f] = features
 
         avg_len = sum(title_lengths) / len(title_lengths) if title_lengths else 0
         unique_words = len(set(title_words))
@@ -82,16 +98,7 @@ def main():
     print("=" * 70)
 
     for f in files:
-        data = load_jsonl(f)
-        features = {"exclaim": 0, "question": 0, "ellipsis": 0, "caps": 0, "quotes": 0}
-
-        for item in data[:5000]:
-            text = str(item.get("desc", "")) + " " + str(item.get("note_content", ""))
-            features["exclaim"] += text.count("!")
-            features["question"] += text.count("?")
-            features["ellipsis"] += text.count("...")
-            features["caps"] += sum(1 for c in text if c.isupper())
-            features["quotes"] += len(re.findall(r'["\u201c\u201d]', text))
+        features = all_features[f]
 
         print("\n" + f + ":")
         print("   Exclamation marks: " + str(features["exclaim"]))

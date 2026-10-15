@@ -1,7 +1,7 @@
 import json
 import re
 from collections import defaultdict, Counter
-from scipy import stats
+from scipy._external.array_api_compat import numpy as npc
 import numpy as np
 
 
@@ -53,25 +53,40 @@ n_words = len(all_words)
 
 print(f"{n_users} users, {n_words} words")
 
+user_totals = {}
+for uid in user_ids:
+    total = Counter()
+    for c in active_users[uid]:
+        total.update(c)
+    user_totals[uid] = total
+
 matrix = np.zeros((n_users, n_words))
 for i, uid in enumerate(user_ids):
-    for word in word_to_idx:
-        count = sum(
-            active_users[uid][j].get(word, 0) for j in range(len(active_users[uid]))
-        )
-        matrix[i, word_to_idx[word]] = count
+    uc = user_totals[uid]
+    row = matrix[i]
+    for j, word in enumerate(all_words):
+        row[j] = uc.get(word, 0)
 
 valid = [j for j in range(n_words) if np.std(matrix[:, j]) > 0]
 print(f"Valid: {len(valid)}")
+
+cols = np.ascontiguousarray(matrix[:, valid].T)
+zs = np.empty_like(cols)
+for i in range(cols.shape[0]):
+    xm = cols[i] - cols[i].mean()
+    xmax = np.max(np.abs(xm))
+    with np.errstate(invalid="ignore", divide="ignore"):
+        norm = xmax * npc.linalg.vector_norm(xm / xmax, axis=-1, keepdims=True)
+        zs[i] = xm / norm
 
 print("Computing all...")
 all_results = []
 for j1i in range(len(valid)):
     for j2i in range(j1i + 1, len(valid)):
         j1, j2 = valid[j1i], valid[j2i]
-        r, p = stats.pearsonr(matrix[:, j1], matrix[:, j2])
+        r = np.clip(np.vecdot(zs[j1i], zs[j2i]), -1.0, 1.0)
         if not np.isnan(r):
-            all_results.append((all_words[j1], all_words[j2], r, p))
+            all_results.append((all_words[j1], all_words[j2], r, None))
 
 all_results.sort(key=lambda x: x[2])
 

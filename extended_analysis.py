@@ -143,16 +143,22 @@ NEUTRAL_WORDS = set(
 )
 
 
-def load_jsonl(filepath):
+SAMPLE_LIMIT = 5000
+
+
+def load_jsonl(filepath, limit=SAMPLE_LIMIT):
     texts = []
+    total = 0
     with open(filepath, "r", encoding="utf-8") as f:
         for line in f:
             try:
-                data = json.loads(line.strip())
-                texts.append(data)
-            except:
+                item = json.loads(line.strip())
+            except Exception:
                 continue
-    return texts
+            total += 1
+            if len(texts) < limit:
+                texts.append(item)
+    return texts, total
 
 
 def extract_emojis(text):
@@ -353,10 +359,9 @@ def main():
     print("Loading data...")
     texts_data = {}
     for f in files:
-        texts_data[f] = load_jsonl(f)
-        print(f"  {f}: {len(texts_data[f])} records")
-        if len(texts_data[f]) > 5000:
-            texts_data[f] = texts_data[f][:5000]
+        texts_data[f], total = load_jsonl(f)
+        print(f"  {f}: {total} records")
+        if total > 5000:
             print(f"  -> Using first 5000 records for efficiency")
 
     print("\n=== 1. Emoji Analysis ===")

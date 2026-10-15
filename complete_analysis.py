@@ -133,27 +133,34 @@ def clean_tokenize(text):
     ]
 
 
-def load_jsonl(filepath):
-    texts = []
+def stream_stats(filepath):
+    freq_desc = Counter()
+    freq_title = Counter()
+    lengths_desc = []
+    lengths_title = []
+    total = 0
     with open(filepath, "r", encoding="utf-8") as f:
         for line in f:
             try:
-                data = json.loads(line.strip())
-                texts.append(data)
-            except:
+                item = json.loads(line.strip())
+            except Exception:
                 continue
-    return texts
-
-
-def compute_word_freq(texts, use_title=False):
-    all_words = []
-    for item in texts:
-        if use_title:
-            text = item.get("note_title", "")
-        else:
+            total += 1
             text = item.get("desc", "") or item.get("note_content", "")
-        all_words.extend(clean_tokenize(text))
-    return Counter(all_words)
+            freq_desc.update(clean_tokenize(text))
+            if text:
+                lengths_desc.append(len(text))
+            title = item.get("note_title", "")
+            freq_title.update(clean_tokenize(title))
+            if title:
+                lengths_title.append(len(title))
+    return {
+        "total": total,
+        "freq_desc": freq_desc,
+        "freq_title": freq_title,
+        "lengths_desc": lengths_desc,
+        "lengths_title": lengths_title,
+    }
 
 
 def compute_correlation(freq1, freq2, top_n=100):
@@ -318,10 +325,10 @@ def main():
     file_names = ["training_set_human", "training_set_aigc", "exploring_set"]
 
     print("Loading data...")
-    texts_data = {}
+    stats = {}
     for f in files:
-        texts_data[f] = load_jsonl(f)
-        print(f"  {f}: {len(texts_data[f])} records")
+        stats[f] = stream_stats(f)
+        print(f"  {f}: {stats[f]['total']} records")
 
     results = {"content": {}, "title": {}}
 
@@ -329,7 +336,9 @@ def main():
         label = "title" if use_title else "content"
         print(f"\n=== {label.upper()} Analysis ===")
 
-        freqs = [compute_word_freq(texts_data[f], use_title) for f in files]
+        freqs = [
+            stats[f]["freq_title" if use_title else "freq_desc"] for f in files
+        ]
 
         print(f"\nTop 10 words ({label}):")
         for f, freq in zip(file_names, freqs):
@@ -338,14 +347,7 @@ def main():
 
         print(f"\n{label.capitalize()} length stats:")
         for f in files:
-            lengths = []
-            for item in texts_data[f]:
-                if use_title:
-                    text = item.get("note_title", "")
-                else:
-                    text = item.get("desc", "") or item.get("note_content", "")
-                if text:
-                    lengths.append(len(text))
+            lengths = stats[f]["lengths_title" if use_title else "lengths_desc"]
             print(
                 f"  {f}: mean={np.mean(lengths):.1f}, median={np.median(lengths):.1f}"
             )

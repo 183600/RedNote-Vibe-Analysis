@@ -15,43 +15,17 @@ import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib import font_manager
 from scipy.stats import spearmanr
 
-BASE = os.path.dirname(os.path.abspath(__file__)) + "/"
+from analysis_utils import BASE, setup_chinese_fonts, detector_score
+
 FIGS = BASE + "paper_figs/"
 os.makedirs(FIGS, exist_ok=True)
-
-font_dir = "/usr/share/fonts/noto-cjk"
-for f in sorted(os.listdir(font_dir)):
-    if "NotoSansCJK" in f and f.endswith(".ttc"):
-        font_manager.fontManager.addfont(os.path.join(font_dir, f))
-        prop = font_manager.FontProperties(fname=os.path.join(font_dir, f))
-        plt.rcParams["font.family"] = prop.get_name()
-        break
-plt.rcParams["axes.unicode_minus"] = False
+setup_chinese_fonts()
 
 MIN_MONTH_N = 100
 
-
-def score(df, model, robust=True):
-    """用保存的逻辑回归参数打分。robust=True 用稳健特征模型。"""
-    if robust:
-        feats = model["robust_features"]
-        mean = np.array(model["robust_scaler_mean"])
-        scale = np.array(model["robust_scaler_scale"])
-        coef = np.array(model["robust_coef"])
-        b = model["robust_intercept"]
-    else:
-        feats = model["features"]
-        mean = np.array(model["scaler_mean"])
-        scale = np.array(model["scaler_scale"])
-        coef = np.array(model["coef"])
-        b = model["intercept"]
-    X = df[feats].fillna(0).values
-    z = (X - mean) / scale
-    logit = z @ coef + b
-    return 1.0 / (1.0 + np.exp(-logit))
+score = detector_score
 
 
 def monthly_series(df, col="p_ai"):

@@ -67,7 +67,9 @@ Each entry contains the following fields:
 ### Prerequisites
 
 ```bash
-pip install torch transformers scikit-learn pandas numpy datasets
+pip install -r requirements.txt
+# optional: only needed by quick_start.py (BERT baseline demo)
+pip install torch transformers datasets
 ```
 
 ### Basic Usage
@@ -86,9 +88,28 @@ This script will:
 5. Save the trained model for future use
 
 
+## 🗂 Repository Layout
+
+| Path | Description |
+|------|-------------|
+| `training_set_human.jsonl`, `training_set_aigc.jsonl`, `exploring_set.jsonl` | Research datasets (never modify) |
+| `paper_*.py` | Paper pipeline: lexicon → features → model fingerprint → detector → drift → extra figures → engagement → robustness |
+| `analysis_utils.py` | Shared helpers: streaming JSONL reader, Chinese fonts, detector scoring, stats (bootstrap CI, Cliff's delta, Wilson CI) |
+| `paper_figs/` | Figures produced by the paper pipeline |
+| `*.py` (other) | Exploratory fork analyses: word frequency, particles, topics, sentiment, time, domains, user clustering, … |
+| `output/` | Figures from the joint exploratory analysis |
+| `tests/` | Unit tests for `analysis_utils.py` (`python3 -m unittest discover -s tests`) |
+| `ci_gate.py` | CI quality gate (syntax + research-data integrity) |
+
+All analyses are deterministic (fixed random seeds) and can be re-run independently; the paper pipeline order is documented in [paper.md](paper.md), Appendix A.
+
 ## 📄 Paper
 
 A full research paper based on the analyses in this fork is available at **[paper.md](paper.md)** (in Chinese): *Anatomy, Diffusion, and Cost of the "AI Flavor": A Stylometric Study of AI-Generated Text on Chinese Social Media*. Key findings: an interpretable 35-feature detector reaches AUC 0.940; human-likeness ranking of 17 LLMs (GLM-3 and Qwen2.5 most human-like, Gemini least); a step-change (not gradual drift) in AI-style prevalence after ChatGPT (high-confidence share 0.6–1.9% → 14.6–22.2%, sampling-stratified); and a stable "AI-flavor penalty" on engagement (median likes 785 vs 106.5 for the most-human vs most-AI deciles).
+
+Robustness checks (length matching, within-domain effect consistency, leave-one-domain-out transfer, bootstrap confidence intervals and threshold sensitivity) are in `paper_robustness.py` / `paper_robustness_results.json` and §5.6 of the paper: AUC 95% CI 0.937–0.943, cross-domain AUC 0.914–0.949, prevalence step holds at every threshold in {0.5, 0.7, 0.9, 0.95}.
+
+Run the full pipeline in order with `python3 run_paper_pipeline.py` (or `--list` to inspect the 8 steps).
 
 ## 📊 Fork 分析
 
@@ -164,19 +185,37 @@ A full research paper based on the analyses in this fork is available at **[pape
 | `content_length_distribution.png` | 内容长度分布 |
 | `title_top_words.png` | 标题高频词 |
 | `desc_top_words.png` | 正文高频词 |
-| `domain_distribution.png` | 域名分布 |
+| `domain_domain_distribution.png` | 领域分布 |
 | `scatter_*.png` | 词频相关性散点图 |
 | `particle_distribution_comparison.png` | 常见词分布对比 |
 | `particle_mean_comparison.png` | 常见词平均使用率 |
 | `particle_heatmap.png` | 常见词热力图 |
 | `particle_all_comparison.png` | 全量常见词对比 |
+| `emoji_distribution.png` / `punctuation_heatmap.png` | emoji 与标点使用 |
+| `sentiment_comparison.png` / `sentiment_box.png` | 情感对比与分布 |
+| `time_distribution.png` / `month_distribution.png` | 发布时间分布 |
+| `output/` | 领域、话题、互动等探索性图表合集 |
+| `paper_figs/` | 论文管线图表（检测器、漂移、互动、稳健性） |
 
 ### 分析脚本
 
-- `complete_analysis.py` - 完整数据集分析
-- `word_freq_analysis.py` - 词频分析
+**论文管线（顺序执行，见 [paper.md](paper.md) 附录 A）：**
+`paper_lexicon.py` → `paper_features.py` → `paper_model_fingerprint.py` → `paper_detector.py` → `paper_drift.py` → `paper_extra_figs.py` → `paper_engagement.py` → `paper_robustness.py`
+
+**探索性分析脚本：**
+
+- `complete_analysis.py` / `word_freq_analysis.py` - 数据集概览与词频分析
 - `particle_analysis.py` - 常见词（助词/虚词）分析
-- `quick_start.py` - 基线模型训练
+- `word_correlation.py` / `word_correlation_extended.py` - 词频相关性
+- `analyze_domains.py` / `analyze_per_domain.py` - 领域分布与分领域词频
+- `sentiment_analysis.py` / `stat_tests.py` - 情感与统计检验
+- `emoji_analysis.py` / `time_analysis.py` / `extended_analysis.py` - emoji、时间与扩展特征
+- `topic_comparison_analysis.py` / `advanced_topic_comparison.py` / `new_topic_comparison.py` - 话题对比
+- `unique_comparison.py` / `internal_detailed_analysis.py` / `internal_diff_analysis.py` - 独特性与内部差异
+- `user_clustering.py` - 用户风格聚类
+- `quick_start.py` - BERT 基线训练
+
+所有脚本使用 `analysis_utils.py` 中的统一数据读取、中文字体与检测器打分工具；其单元测试见 `tests/`。
 
 ---
 
@@ -192,6 +231,7 @@ Identify the source among six major AI providers:
 - Anthropic
 - DeepSeek
 - Qwen
+- GLM
 
 
 ### 3. Model Identification (17-way)

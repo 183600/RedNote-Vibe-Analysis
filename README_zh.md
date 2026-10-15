@@ -27,7 +27,9 @@
 4. **台阶式扩散**：控制采样层后，后 LLM 时代高置信 AI 风格帖占比从 0.6%–1.9% 跃升至 14.6%–22.2%，随后 31 个月平稳；并发现原数据集人类子集 2022.07 存在采样断层
 5. **AI 味惩罚**：风格越像 AI 互动越差——最像人十分位点赞中位数 785 vs 最像 AI 十分位 106.5（7.4 倍），且 2023–2025 稳定存在
 
-复现脚本：`paper_lexicon.py` → `paper_features.py` → `paper_model_fingerprint.py` → `paper_detector.py` → `paper_drift.py` → `paper_extra_figs.py` → `paper_engagement.py`（图表在 `paper_figs/`）。
+复现脚本：`paper_lexicon.py` → `paper_features.py` → `paper_model_fingerprint.py` → `paper_detector.py` → `paper_drift.py` → `paper_extra_figs.py` → `paper_engagement.py` → `paper_robustness.py`（图表在 `paper_figs/`）。亦可直接运行 `python3 run_paper_pipeline.py`（`--list` 查看步骤）。
+
+稳健性检验（论文 §5.6，脚本 `paper_robustness.py`）：长度匹配后风格差异方向不变；12 个核心特征中 10 个在全部 10 个领域内方向一致；留一领域 AUC 0.914–0.949；AUC 95% 置信区间 0.937–0.943；高置信占比的台阶形态在 0.5/0.7/0.9/0.95 四个阈值下均成立。
 
 ## 📊 Fork 分析
 
@@ -103,19 +105,37 @@
 | `content_length_distribution.png` | 内容长度分布 |
 | `title_top_words.png` | 标题高频词 |
 | `desc_top_words.png` | 正文高频词 |
-| `domain_distribution.png` | 域名分布 |
+| `domain_domain_distribution.png` | 领域分布 |
 | `scatter_*.png` | 词频相关性散点图 |
 | `particle_distribution_comparison.png` | 常见词分布对比 |
 | `particle_mean_comparison.png` | 常见词平均使用率 |
 | `particle_heatmap.png` | 常见词热力图 |
 | `particle_all_comparison.png` | 全量常见词对比 |
+| `emoji_distribution.png` / `punctuation_heatmap.png` | emoji 与标点使用 |
+| `sentiment_comparison.png` / `sentiment_box.png` | 情感对比与分布 |
+| `time_distribution.png` / `month_distribution.png` | 发布时间分布 |
+| `output/` | 领域、话题、互动等探索性图表合集 |
+| `paper_figs/` | 论文管线图表（检测器、漂移、互动、稳健性） |
 
 ### 分析脚本
 
-- `complete_analysis.py` - 完整数据集分析
-- `word_freq_analysis.py` - 词频分析
+**论文管线（顺序执行，见 [paper.md](paper.md) 附录 A）：**
+`paper_lexicon.py` → `paper_features.py` → `paper_model_fingerprint.py` → `paper_detector.py` → `paper_drift.py` → `paper_extra_figs.py` → `paper_engagement.py` → `paper_robustness.py`
+
+**探索性分析脚本：**
+
+- `complete_analysis.py` / `word_freq_analysis.py` - 数据集概览与词频分析
 - `particle_analysis.py` - 常见词（助词/虚词）分析
-- `quick_start.py` - 基线模型训练
+- `word_correlation.py` / `word_correlation_extended.py` - 词频相关性
+- `analyze_domains.py` / `analyze_per_domain.py` - 领域分布与分领域词频
+- `sentiment_analysis.py` / `stat_tests.py` - 情感与统计检验
+- `emoji_analysis.py` / `time_analysis.py` / `extended_analysis.py` - emoji、时间与扩展特征
+- `topic_comparison_analysis.py` / `advanced_topic_comparison.py` / `new_topic_comparison.py` - 话题对比
+- `unique_comparison.py` / `internal_detailed_analysis.py` / `internal_diff_analysis.py` - 独特性与内部差异
+- `user_clustering.py` - 用户风格聚类
+- `quick_start.py` - BERT 基线训练
+
+运行环境：`pip install -r requirements.txt`；公共工具位于 `analysis_utils.py`，单元测试见 `tests/`（`python3 -m unittest discover -s tests`）。
 
 ## 参考资料
 

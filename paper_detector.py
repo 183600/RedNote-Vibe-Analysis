@@ -15,7 +15,6 @@ import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib import font_manager
 from scipy.stats import mannwhitneyu
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedKFold, cross_val_predict
@@ -23,18 +22,11 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import make_pipeline
 from sklearn.metrics import roc_auc_score, f1_score, accuracy_score
 
-BASE = os.path.dirname(os.path.abspath(__file__)) + "/"
+from analysis_utils import BASE, setup_chinese_fonts, cliffs_delta_from_u
+
 FIGS = BASE + "paper_figs/"
 os.makedirs(FIGS, exist_ok=True)
-
-font_dir = "/usr/share/fonts/noto-cjk"
-for f in sorted(os.listdir(font_dir)):
-    if "NotoSansCJK" in f and f.endswith(".ttc"):
-        font_manager.fontManager.addfont(os.path.join(font_dir, f))
-        prop = font_manager.FontProperties(fname=os.path.join(font_dir, f))
-        plt.rcParams["font.family"] = prop.get_name()
-        break
-plt.rcParams["axes.unicode_minus"] = False
+setup_chinese_fonts()
 
 META = ["dataset", "domain", "month", "model_family", "model",
         "likes", "collections", "comments"]
@@ -59,10 +51,6 @@ LABELS = {
 
 FAMILY_NAME = {"gpt": "GPT", "gemini": "Gemini", "deepseek": "DeepSeek",
                "anthropic": "Claude", "glm": "GLM", "qwen": "Qwen"}
-
-
-def cliffs_delta_from_u(u, n1, n2):
-    return 2.0 * u / (n1 * n2) - 1.0
 
 
 def main():

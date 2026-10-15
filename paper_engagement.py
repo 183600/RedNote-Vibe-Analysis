@@ -14,21 +14,13 @@ import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib import font_manager
 from scipy.stats import spearmanr
 
-BASE = os.path.dirname(os.path.abspath(__file__)) + "/"
+from analysis_utils import BASE, setup_chinese_fonts
+
 FIGS = BASE + "paper_figs/"
 os.makedirs(FIGS, exist_ok=True)
-
-font_dir = "/usr/share/fonts/noto-cjk"
-for f in sorted(os.listdir(font_dir)):
-    if "NotoSansCJK" in f and f.endswith(".ttc"):
-        font_manager.fontManager.addfont(os.path.join(font_dir, f))
-        prop = font_manager.FontProperties(fname=os.path.join(font_dir, f))
-        plt.rcParams["font.family"] = prop.get_name()
-        break
-plt.rcParams["axes.unicode_minus"] = False
+setup_chinese_fonts()
 
 
 def main():

@@ -6,14 +6,13 @@
 """
 import json
 import re
-import random
 import math
-import os
 from collections import Counter
 
 import jieba
 
-BASE = os.path.dirname(os.path.abspath(__file__)) + "/"
+from analysis_utils import BASE, load_posts
+
 HUATI = re.compile(r"\[话题\]")
 HASHTAG = re.compile(r"#[^#\s]{1,30}")
 XHS_EMO = re.compile(r"\[[^\[\]]{1,8}R\]")
@@ -24,27 +23,6 @@ def clean(text):
     text = HUATI.sub("", text)
     text = HASHTAG.sub(" ", text)
     return text
-
-
-def load_texts(path, key_candidates=("note_content", "desc"), sample=None, seed=42):
-    texts = []
-    with open(path, encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            d = json.loads(line)
-            t = ""
-            for k in key_candidates:
-                if d.get(k):
-                    t = d[k]
-                    break
-            title = d.get("note_title") or ""
-            texts.append(title + "\n" + t)
-    if sample and len(texts) > sample:
-        random.seed(seed)
-        texts = random.sample(texts, sample)
-    return texts
 
 
 def count_words(texts):
@@ -90,8 +68,8 @@ def rate(cnt, n, w):
 
 def main():
     print("加载文本 ...")
-    human = load_texts(BASE + "training_set_human_fixed.jsonl", sample=20000)
-    aigc = load_texts(BASE + "training_set_aigc.jsonl")
+    human = load_posts(BASE + "training_set_human_fixed.jsonl", sample=20000)
+    aigc = load_posts(BASE + "training_set_aigc.jsonl")
     print(f"human sample={len(human)}, aigc={len(aigc)}")
 
     print("分词统计 ...")

@@ -112,7 +112,7 @@ for cluster_id, size, top_words_cluster in results:
     print("\n--- Cluster " + str(cluster_id) + " (" + str(size) + " users) ---")
     for w, v in top_words_cluster:
         if v > 0.001:
-            print("  " + w.encode('utf-8') + ": " + str(round(v, 4)))
+            print("  " + w + ": " + str(round(v, 4)))
 
 # Save to file
 with open("word_correlation_extended_results.md", "wb") as f:

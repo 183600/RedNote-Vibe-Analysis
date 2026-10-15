@@ -23,7 +23,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import make_pipeline
 from sklearn.metrics import roc_auc_score, f1_score, accuracy_score
 
-BASE = "/home/qwe12345678/RedNote-Vibe-Analysis/"
+BASE = os.path.dirname(os.path.abspath(__file__)) + "/"
 FIGS = BASE + "paper_figs/"
 os.makedirs(FIGS, exist_ok=True)
 

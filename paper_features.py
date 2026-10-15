@@ -12,8 +12,9 @@ import json
 import re
 import gzip
 import csv
+import os
 
-BASE = "/home/qwe12345678/RedNote-Vibe-Analysis/"
+BASE = os.path.dirname(os.path.abspath(__file__)) + "/"
 
 HUATI = re.compile(r"\[话题\]")
 HASHTAG = re.compile(r"#[^#\s]{1,30}")

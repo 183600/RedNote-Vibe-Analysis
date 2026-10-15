@@ -16,7 +16,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib import font_manager
 
-BASE = "/home/qwe12345678/RedNote-Vibe-Analysis/"
+BASE = os.path.dirname(os.path.abspath(__file__)) + "/"
 FIGS = BASE + "paper_figs/"
 os.makedirs(FIGS, exist_ok=True)
 

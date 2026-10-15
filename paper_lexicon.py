@@ -8,11 +8,12 @@ import json
 import re
 import random
 import math
+import os
 from collections import Counter
 
 import jieba
 
-BASE = "/home/qwe12345678/RedNote-Vibe-Analysis/"
+BASE = os.path.dirname(os.path.abspath(__file__)) + "/"
 HUATI = re.compile(r"\[话题\]")
 HASHTAG = re.compile(r"#[^#\s]{1,30}")
 XHS_EMO = re.compile(r"\[[^\[\]]{1,8}R\]")

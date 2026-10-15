@@ -11,6 +11,7 @@ from collections import Counter
 import warnings
 import os
 import pandas as pd
+from datetime import datetime, timezone
 
 font_dir = "/usr/share/fonts/noto-cjk"
 noto_files = sorted(
@@ -61,7 +62,11 @@ def parse_timestamp(ts):
             if ts > 1e10:
                 return ts
             return ts * 1000
-        return float(ts)
+        ts_str = str(ts).strip()
+        if len(ts_str) == 10 and ts_str.isdigit() and ts_str[:2] in ("19", "20"):
+            dt = datetime.strptime(ts_str, "%Y%m%d%H").replace(tzinfo=timezone.utc)
+            return dt.timestamp()
+        return float(ts_str)
     except:
         return None
 

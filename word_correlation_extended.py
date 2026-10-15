@@ -86,7 +86,7 @@ neg = [(w1, w2, r) for w1, w2, r in all_results if r < -0.05]
 
 print("Pos: " + str(len(pos)) + ", Neg: " + str(len(neg)))
 
-with open("word_correlation_extended_results.md", "wb") as f:
+with open("word_correlation_word_pairs.md", "wb") as f:
     f.write((u"# 跨话题文风词词频相关性分析\n\n").encode('utf-8'))
     f.write((u"分析对象：在多个话题（domain）中都出现的词\n").encode('utf-8'))
     f.write((u"用户词频归一化为该词在用户总词频中的比例\n\n").encode('utf-8'))

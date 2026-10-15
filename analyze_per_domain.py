@@ -53,7 +53,7 @@ for d in major_domains:
     print("\n" + domain_names[d] + ":")
     for w, c in domain_word_freq[d].most_common(10):
         pct = c * 100.0 / domain_total[d]
-        print("  " + w.encode('utf-8') + ": " + str(c) + " (" + str(round(pct, 2)) + "%)")
+        print("  " + w + ": " + str(c) + " (" + str(round(pct, 2)) + "%)")
 
 # 计算每个词在每个话题的相对频率
 print("\n=== 各话题词频占比矩阵 ===")
@@ -74,7 +74,7 @@ results.sort(key=lambda x: x[2], reverse=True)
 print("\n词频占比(%) | 情感 | 穿搭 | 心理 | 健康 | 职场 | 旅行 | 平均")
 print("-" * 70)
 for w, row, avg, min_pct in results[:25]:
-    print(w.encode('utf-8').ljust(8) + " | " + " | ".join([str(round(r, 2)).rjust(5) for r in row]) + " | " + str(round(avg, 2)))
+    print(w.ljust(8) + " | " + " | ".join([str(round(r, 2)).rjust(5) for r in row]) + " | " + str(round(avg, 2)))
 
 # 找出在所有话题词频都较高的词
 print("\n=== 在所有话题都大量存在的词 ===")
@@ -86,10 +86,10 @@ for w, row, avg, min_pct in results:
 high_freq_words.sort(key=lambda x: x[2], reverse=True)
 print("词频都超过0.05%的词: " + str(len(high_freq_words)))
 for w, row, min_pct in high_freq_words:
-    print("  " + w.encode('utf-8') + ": min=" + str(round(min_pct, 2)) + "%")
+    print("  " + w + ": min=" + str(round(min_pct, 2)) + "%")
 
 # 保存结果
-with open("word_correlation_extended_results.md", "wb") as f:
+with open("per_domain_word_freq_results.md", "wb") as f:
     f.write((u"# 各话题中的跨话题文风词分析\n\n").encode('utf-8'))
     f.write((u"## 36个跨话题词在6个主要话题的词频分布\n\n").encode('utf-8'))
     f.write((u"词频占比(%)\n\n").encode('utf-8'))

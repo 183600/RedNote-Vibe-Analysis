@@ -26,7 +26,8 @@ def analyze_content(texts, sample_size=3000):
         sample_size = len(texts)
     else:
         sample_size = min(sample_size, len(texts))
-    indices = random.sample(range(len(texts)), sample_size)
+    rng = random.Random(42)
+    indices = rng.sample(range(len(texts)), sample_size)
     sample = [texts[i] for i in indices]
 
     lengths = []

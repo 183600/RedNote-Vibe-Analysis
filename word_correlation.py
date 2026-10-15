@@ -1,7 +1,6 @@
 import json
 import re
 from collections import defaultdict, Counter
-from scipy._external.array_api_compat import numpy as npc
 import numpy as np
 
 
@@ -21,7 +20,7 @@ word_doc_freq = Counter()
 
 print("Loading...")
 with open(
-    "/home/qwe12345678/RedNote-Vibe-Analysis/exploring_set_fixed.jsonl",
+    "exploring_set_fixed.jsonl",
     "r",
     encoding="utf-8",
 ) as f:
@@ -76,7 +75,7 @@ for i in range(cols.shape[0]):
     xm = cols[i] - cols[i].mean()
     xmax = np.max(np.abs(xm))
     with np.errstate(invalid="ignore", divide="ignore"):
-        norm = xmax * npc.linalg.vector_norm(xm / xmax, axis=-1, keepdims=True)
+        norm = xmax * np.linalg.vector_norm(xm / xmax, axis=-1, keepdims=True)
         zs[i] = xm / norm
 
 print("Computing all...")
@@ -107,7 +106,7 @@ for w1, w2, r in neg[:20]:
     print(f"{w1} - {w2}: {r:.3f}")
 
 with open(
-    "/home/qwe12345678/RedNote-Vibe-Analysis/word_correlation_results.md", "w"
+    "word_correlation_results.md", "w"
 ) as f:
     f.write("# Word Correlation by User\n\n")
     f.write("## Positive (r > 0.2)\n\n")

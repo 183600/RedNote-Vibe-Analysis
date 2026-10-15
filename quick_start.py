@@ -31,9 +31,13 @@ def load_data():
                         continue
         return data
     
-    # Get data paths
+    # Get data paths (data may live in ./datasets/ or at the repo root)
     human_file = os.path.join('datasets', 'training_set_human.jsonl')
     ai_file = os.path.join('datasets', 'training_set_aigc.jsonl')
+    if not os.path.exists(human_file):
+        human_file = 'training_set_human.jsonl'
+    if not os.path.exists(ai_file):
+        ai_file = 'training_set_aigc.jsonl'
     
     human_data = load_jsonl(human_file)
     ai_data = load_jsonl(ai_file)
@@ -52,14 +56,14 @@ def prepare_dataset(human_data, ai_data, max_samples=1000):
     
     # Sample human data
     for i, item in enumerate(human_data[:max_samples]):
-        content = item.get('note_content', '').strip()
+        content = (item.get('note_content') or item.get('desc', '')).strip()
         if content and len(content) > 10:
             texts.append(content[:300])  # Truncate to 300 characters
             labels.append(0)  # Human
     
     # Sample AI data
     for i, item in enumerate(ai_data[:max_samples]):
-        content = item.get('note_content', '').strip()
+        content = (item.get('note_content') or item.get('desc', '')).strip()
         if content and len(content) > 10:
             texts.append(content[:300])
             labels.append(1)  # AI

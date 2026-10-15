@@ -551,7 +551,7 @@ def plot_domain_distribution(h_domains, a_domains, output_dir):
 
 
 def main():
-    output_dir = "/home/qwe12345678/RedNote-Vibe-Analysis/output"
+    output_dir = "output"
     os.makedirs(output_dir, exist_ok=True)
 
     print("Loading data...")

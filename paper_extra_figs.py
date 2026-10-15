@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 from matplotlib import font_manager
 from scipy.stats import spearmanr
 
-BASE = "/home/qwe12345678/RedNote-Vibe-Analysis/"
+BASE = os.path.dirname(os.path.abspath(__file__)) + "/"
 FIGS = BASE + "paper_figs/"
 
 font_dir = "/usr/share/fonts/noto-cjk"

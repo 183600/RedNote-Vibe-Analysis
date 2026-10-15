@@ -218,11 +218,16 @@ def get_time_features(item):
     return None
 
 
-def compute_chi_square(counts1, counts2, total1, total2):
+def compute_chi_square(counter1, counter2, top_n=10):
+    """Chi-square test of homogeneity over the most frequent emoji types."""
     try:
-        observed = np.array([counts1, counts2])
-        expected = np.array([total1 * 0.5, total2 * 0.5])
-        chi2, p_value = stats.chisquare(observed, expected)
+        top = [e for e, _ in (counter1 + counter2).most_common(top_n)]
+        if not top:
+            return 0, 1
+        observed = np.array(
+            [[counter1.get(e, 0) for e in top], [counter2.get(e, 0) for e in top]]
+        )
+        chi2, p_value = stats.chi2_contingency(observed)[:2]
         return chi2, p_value
     except:
         return 0, 1
@@ -338,7 +343,7 @@ def plot_sentiment_box(sentiments, files, output_dir):
     for idx, (f, sent_data) in enumerate(zip(files, sentiments)):
         net_scores = [s[2] for s in sent_data]
 
-        axes[idx].boxplot([net_scores], labels=[f.replace(".jsonl", "")])
+        axes[idx].boxplot([net_scores], tick_labels=[f.replace(".jsonl", "")])
         axes[idx].set_title("Net Sentiment Score Distribution")
         axes[idx].set_ylabel("Score (Positive - Negative)")
 
@@ -474,11 +479,7 @@ def main():
     print("\nChi-Square Tests (Emoji Usage):")
     for i in range(3):
         for j in range(i + 1, 3):
-            c1 = len(emoji_counts[i])
-            c2 = len(emoji_counts[j])
-            total1 = len(texts_data[files[i]])
-            total2 = len(texts_data[files[j]])
-            chi2, p_value = compute_chi_square(c1, c2, total1, total2)
+            chi2, p_value = compute_chi_square(emoji_counts[i], emoji_counts[j])
             print(
                 f"  {file_names[i]} vs {file_names[j]}: chi2={chi2:.2f}, p={p_value:.4f}"
             )

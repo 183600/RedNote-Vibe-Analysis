@@ -51,7 +51,7 @@ dist = Counter()
 for w, n, ds, c in results:
     dist[n] += 1
 
-with open("word_correlation_extended_results.md", "wb") as f:
+with open("domain_coverage_results.md", "wb") as f:
     f.write((u"# 100个跨话题常用词的话题分布分析\n\n").encode('utf-8'))
     
     f.write((u"## 实际话题分布（按笔记数排序）\n\n").encode('utf-8'))

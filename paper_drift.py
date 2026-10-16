@@ -58,6 +58,7 @@ def main():
 
     human = pd.read_csv(BASE + "paper_features_human.csv.gz")
     expl = pd.read_csv(BASE + "paper_features_exploring.csv.gz")
+    aigc_feats = pd.read_csv(BASE + "paper_features_aigc.csv.gz")
     human["month"] = human["month"].astype(str)
     expl["month"] = expl["month"].astype(str)
 
@@ -101,8 +102,9 @@ def main():
     ax = axes[1]
     x_e = range(len(ms_e))
     ax.plot(x_e, ms_e["mean"], "o-", color="#C44E52", ms=3, lw=1.2, label="原始月度均值")
-    adj_x = [list(ms_e.index).index(m) for m in adj.index if m in set(ms_e.index)]
-    ax.plot(adj_x, [adj[m] for m in adj.index if m in set(ms_e.index)],
+    month_pos = {m: i for i, m in enumerate(ms_e.index)}
+    adj_x = [month_pos[m] for m in adj.index if m in month_pos]
+    ax.plot(adj_x, [adj[m] for m in adj.index if m in month_pos],
             "s--", color="#55A868", ms=3, lw=1.2, label="领域调整后")
     ax.axhline(ms_h["mean"].mean(), color="gray", ls="--", lw=0.8, label="人类集基线")
     ax.set_xticks(list(x_e)[::3])
@@ -143,7 +145,7 @@ def main():
         qm = expl_q.groupby("quarter")[f].mean().reindex(quarters)
         ax.plot(range(len(quarters)), qm.values, "o-", color="#C44E52", lw=1.4)
         h_base = human[f].mean()
-        a_base = pd.read_csv(BASE + "paper_features_aigc.csv.gz")[f].mean()
+        a_base = aigc_feats[f].mean()
         ax.axhline(h_base, color="#4C72B0", ls="--", lw=1.1, label="人类基线")
         ax.axhline(a_base, color="#937860", ls=":", lw=1.3, label="AIGC基线")
         ax.set_xticks(range(len(quarters)))

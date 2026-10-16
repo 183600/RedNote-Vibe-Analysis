@@ -12,6 +12,8 @@ from collections import Counter, defaultdict
 import warnings
 import os
 
+from analysis_utils import load_records_with_total
+
 # Configure font for Chinese character support
 noto_fonts = sorted([f for f in font_manager.findSystemFonts() if "NotoSansCJK" in f])
 if noto_fonts:
@@ -37,22 +39,7 @@ SAMPLE_LIMIT = 5000
 
 
 def load_jsonl(filepath, limit=SAMPLE_LIMIT, seed=42):
-    texts = []
-    total = 0
-    with open(filepath, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                item = json.loads(line)
-            except Exception:
-                continue
-            total += 1
-            texts.append(item)
-    if limit is not None and len(texts) > limit:
-        texts = random.Random(seed).sample(texts, limit)
-    return texts, total
+    return load_records_with_total(filepath, sample=limit, seed=seed)
 
 
 EMOJI_PATTERN = re.compile(

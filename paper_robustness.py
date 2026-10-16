@@ -161,18 +161,21 @@ def part_cross_domain(human: pd.DataFrame, aigc: pd.DataFrame,
     feats = [c for c in human.columns if c not in FEATURE_META]
     df = pd.concat([human, aigc], ignore_index=True)
     y = (df["dataset"] == "aigc").astype(int).values
+    X = df[feats].fillna(0).values
     pipe = make_pipeline(StandardScaler(),
                          LogisticRegression(max_iter=2000, class_weight="balanced"))
     domains = sorted(set(human["domain"]) & set(aigc["domain"]))
     rows = {}
     for d in domains:
-        tr = df["domain"] != d
-        te = df["domain"] == d
-        pipe.fit(df.loc[tr, feats].fillna(0).values, y[tr.values])
-        proba = pipe.predict_proba(df.loc[te, feats].fillna(0).values)[:, 1]
-        rows[d] = {"auc": round(float(roc_auc_score(y[te.values], proba)), 4),
-                   "n_human": int((te & (df["dataset"] == "human")).sum()),
-                   "n_aigc": int((te & (df["dataset"] == "aigc")).sum())}
+        tr = (df["domain"] != d).values
+        te = (df["domain"] == d).values
+        is_human = (df["dataset"] == "human").values
+        is_aigc = (df["dataset"] == "aigc").values
+        pipe.fit(X[tr], y[tr])
+        proba = pipe.predict_proba(X[te])[:, 1]
+        rows[d] = {"auc": round(float(roc_auc_score(y[te], proba)), 4),
+                   "n_human": int((te & is_human).sum()),
+                   "n_aigc": int((te & is_aigc).sum())}
 
     aucs = np.array([r["auc"] for r in rows.values()])
     weights = np.array([r["n_human"] + r["n_aigc"] for r in rows.values()], dtype=float)
@@ -245,10 +248,9 @@ def part_detector_ci(human: pd.DataFrame, aigc: pd.DataFrame) -> dict:
             "pr_at_threshold_0.9": at09, "positive_rate": round(baseline, 4)}
 
 
-def part_threshold_sensitivity() -> dict:
+def part_threshold_sensitivity(human: pd.DataFrame,
+                               expl: pd.DataFrame) -> dict:
     model = load_detector_model()
-    human = load_features("human")
-    expl = load_features("exploring")
     human["p_ai"] = detector_score(human, model, robust=True)
     expl["p_ai"] = detector_score(expl, model, robust=True)
 
@@ -310,6 +312,7 @@ def part_threshold_sensitivity() -> dict:
 def main() -> None:
     human = load_features("human")
     aigc = load_features("aigc")
+    expl = load_features("exploring")
 
     print("=== 1. 长度匹配 ===")
     length_matched = part_length_matched(human, aigc)
@@ -336,7 +339,7 @@ def main() -> None:
     print("AP:", det["average_precision"], "P≥0.9工作点:", det["pr_at_threshold_0.9"])
 
     print("=== 5. 阈值敏感性 ===")
-    sens = part_threshold_sensitivity()
+    sens = part_threshold_sensitivity(human, expl)
     for name, r in sens["post_pre_ratio"].items():
         print(f"{name}: 相对干净基线的放大倍数 {r}")
 

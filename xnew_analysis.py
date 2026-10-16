@@ -6,22 +6,15 @@ import re
 import codecs
 from collections import Counter
 
+from analysis_utils import iter_jsonl_codecs, load_records_with_total
+
 
 SAMPLE_LIMIT = 5000
 
 
 def load_jsonl(filepath, limit=SAMPLE_LIMIT, seed=42):
-    texts = []
-    with codecs.open(filepath, "r", encoding="utf-8") as f:
-        for line in f:
-            try:
-                item = json.loads(line.strip())
-            except Exception:
-                continue
-            texts.append(item)
-    if limit is not None and len(texts) > limit:
-        texts = random.Random(seed).sample(texts, limit)
-    return texts
+    return load_records_with_total(filepath, sample=limit, seed=seed,
+                                   iterator=iter_jsonl_codecs)[0]
 
 
 def main():

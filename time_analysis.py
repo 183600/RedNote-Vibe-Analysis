@@ -14,6 +14,8 @@ import os
 import pandas as pd
 from datetime import datetime, timezone
 
+from analysis_utils import load_records_with_total
+
 font_dir = "/usr/share/fonts/noto-cjk"
 noto_files = sorted(
     [f for f in os.listdir(font_dir) if "NotoSansCJK" in f and f.endswith(".ttc")]
@@ -41,22 +43,7 @@ SAMPLE_LIMIT = 5000
 
 
 def load_jsonl(filepath, limit=SAMPLE_LIMIT, seed=42):
-    texts = []
-    total = 0
-    with open(filepath, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                item = json.loads(line)
-            except Exception:
-                continue
-            total += 1
-            texts.append(item)
-    if limit is not None and len(texts) > limit:
-        texts = random.Random(seed).sample(texts, limit)
-    return texts, total
+    return load_records_with_total(filepath, sample=limit, seed=seed)
 
 
 def parse_timestamp(ts):

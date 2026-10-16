@@ -98,6 +98,60 @@ def iter_jsonl(path: str) -> Iterator[dict]:
             yield json.loads(line)
 
 
+def iter_jsonl_relaxed(path: str) -> Iterator[dict]:
+    """流式读取 JSONL，跳过空行与无法解析的行（历史探索脚本的容错口径）。"""
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            if not line.strip():
+                continue
+            try:
+                yield json.loads(line)
+            except json.JSONDecodeError:
+                continue
+
+
+def iter_jsonl_codecs(path: str) -> Iterator[dict]:
+    """流式读取 JSONL，保持 `codecs.open` 的按行切分语义（历史脚本口径）。
+
+    codecs.StreamReader.readline 会在 \\u2028/\\u2029/\\x0b 等 Unicode 行边界
+    切分，行为与内置 open 的通用换行不同；为保持既有统计结果，这里沿用
+    codecs 读取并丢弃无法解析的片段。
+    """
+    import codecs
+
+    with codecs.open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            try:
+                yield json.loads(line.strip())
+            except Exception:
+                continue
+
+
+def _stream_sample(factory, sample: int | None, seed: int):
+    """两遍流式抽样，结果与 `random.Random(seed).sample(list(items), sample)` 完全一致。
+
+    第一遍只计数（O(1) 内存），第二遍仅解析被抽中的记录。索引抽样使用
+    `sample(range(n), k)`，与对等长列表抽样走完全相同的随机数路径。
+    """
+    n = 0
+    if sample is None:
+        items = list(factory())
+        return items, len(items)
+    for _ in factory():
+        n += 1
+    if n <= sample:
+        return list(factory()), n
+    idx = random.Random(seed).sample(range(n), sample)
+    wanted = set(idx)
+    picked: dict[int, dict] = {}
+    for i, item in enumerate(factory()):
+        if i in wanted:
+            picked[i] = item
+            if len(picked) == len(wanted):
+                break
+    return [picked[i] for i in idx], n
+
+
 def post_text(rec: dict, with_title: bool = True,
               content_keys: tuple[str, ...] = CONTENT_KEYS) -> str:
     """从一条记录中取正文（可选拼接标题），兼容 note_content / desc 两种字段名。"""
@@ -114,20 +168,27 @@ def post_text(rec: dict, with_title: bool = True,
 
 def load_posts(path: str, with_title: bool = True, sample: int | None = None,
                seed: int = 42) -> list[str]:
-    """读取一个 JSONL 数据集为文本列表；可复现地随机抽样。"""
-    texts = [post_text(rec, with_title) for rec in iter_jsonl(path)]
-    if sample is not None and len(texts) > sample:
-        texts = random.Random(seed).sample(texts, sample)
-    return texts
+    """读取一个 JSONL 数据集为文本列表；可复现地随机抽样（流式，仅解析抽中记录）。"""
+    recs, _ = _stream_sample(lambda: iter_jsonl(path), sample, seed)
+    return [post_text(rec, with_title) for rec in recs]
 
 
 def load_records(path: str, sample: int | None = None,
                  seed: int = 42) -> list[dict]:
     """读取一个 JSONL 数据集为记录列表；可复现地随机抽样（同 load_posts 的抽样口径）。"""
-    recs = list(iter_jsonl(path))
-    if sample is not None and len(recs) > sample:
-        recs = random.Random(seed).sample(recs, sample)
-    return recs
+    return _stream_sample(lambda: iter_jsonl(path), sample, seed)[0]
+
+
+def load_records_with_total(path: str, sample: int | None = None,
+                            seed: int = 42, iterator=iter_jsonl_relaxed
+                            ) -> tuple[list[dict], int]:
+    """流式读取 JSONL 并返回 (记录列表, 总记录数)。
+
+    容错口径与历史探索脚本一致：跳过空行与无法解析的行。抽样结果与
+    `random.Random(seed).sample(完整记录列表, sample)` 完全一致，但内存占用
+    与 sample 成正比而非与文件大小成正比。
+    """
+    return _stream_sample(lambda: iterator(path), sample, seed)
 
 
 def to_int(v, default: int = 0) -> int:

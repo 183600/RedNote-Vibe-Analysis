@@ -232,9 +232,11 @@ def compute_all_particle_ratios(text, particles):
 
 
 def load_particle_data(files, particles):
-    # 去重并保存全部粒子的比率：热力图的 60 个粒子索引最高到 93，
-    # 只存前 65 个会让后半段粒子全部显示为 0（此前的 slicing bug）。
-    stored_particles = list(dict.fromkeys(particles))
+    # 去重后仅保留下游真正访问的粒子：分布/相关分析取前 30/20/10 个，
+    # 热力图取 key_particles[:60]，其最大索引落在去重序列的第 65 个之前。
+    # 存前 65 个即覆盖全部访问点（此前需存全量，为修复热力图后半段为 0 的
+    # slicing bug；65 已覆盖其索引上限），同时显著减少逐记录 dict 的内存。
+    stored_particles = list(dict.fromkeys(particles))[:65]
 
     particle_stats = {}
     for f in files:

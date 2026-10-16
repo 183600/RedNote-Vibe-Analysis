@@ -1,123 +1,107 @@
 # -*- coding: utf-8 -*-
 from __future__ import print_function
-import sys
 import json
 import re
-import codecs
-from collections import Counter
 import random
 import statistics
-import io
+from collections import Counter
+
+PATTERN_KEYS = ("!", "?", "...", "#", "@", "numbers", "links",
+                "first_person", "list")
+
+RE_HASHTAG = re.compile(r"#\S+")
+RE_MENTION = re.compile(r"@\S+")
+RE_NUMBERS = re.compile(r"\d+")
+RE_LINKS = re.compile(r"http|www")
+RE_LIST = re.compile(r"\n\d+")
 
 
-def load_jsonl(filepath):
-    texts = []
+def iter_records(filepath):
+    """流式读取 JSONL，跳过无法解析的行（与原 load_jsonl 的容错口径一致）。"""
     with open(filepath, "r", encoding="utf-8") as f:
         for line in f:
             try:
-                data = json.loads(line.strip())
-                texts.append(data)
-            except:
+                yield json.loads(line.strip())
+            except Exception:
                 continue
-    return texts
 
 
-def analyze_content(texts, sample_size=3000):
-    if len(texts) < sample_size:
-        sample_size = len(texts)
-    else:
-        sample_size = min(sample_size, len(texts))
-    rng = random.Random(42)
-    indices = rng.sample(range(len(texts)), sample_size)
-    sample = [texts[i] for i in indices]
-
-    lengths = []
-    patterns = {
-        "!": 0,
-        "?": 0,
-        "...": 0,
-        "#": 0,
-        "@": 0,
-        "numbers": 0,
-        "links": 0,
-        "first_person": 0,
-        "list": 0,
+def pattern_counts(text):
+    return {
+        "!": text.count("!"),
+        "?": text.count("?"),
+        "...": text.count("..."),
+        "#": len(RE_HASHTAG.findall(text)),
+        "@": len(RE_MENTION.findall(text)),
+        "numbers": len(RE_NUMBERS.findall(text)),
+        "links": len(RE_LINKS.findall(text)),
+        "first_person": 1 if ("我" in text or "我们" in text) else 0,
+        "list": 1 if RE_LIST.search(text) else 0,
     }
 
-    for item in sample:
-        text = item.get("desc", "") or item.get("note_content", "")
+
+def content_of(item):
+    return item.get("desc", "") or item.get("note_content", "")
+
+
+def sample_indices(total, sample_size, seed=42):
+    return random.Random(seed).sample(range(total), min(sample_size, total))
+
+
+def collect(filepath, sample_size=3000):
+    """单遍流式统计（标题/领域）+ 按索引抽样统计正文，避免全量载入记录。"""
+    n = 0
+    title_lengths = []
+    title_patterns = {k: 0 for k in PATTERN_KEYS}
+    domains = Counter()
+
+    for item in iter_records(filepath):
+        n += 1
+        title = item.get("note_title", "")
+        if title:
+            title = str(title)
+            title_lengths.append(len(title))
+            for k, v in pattern_counts(title).items():
+                title_patterns[k] += v
+        if "domain" in item:
+            domains[item.get("domain", "")] += 1
+
+    wanted = set(sample_indices(n, sample_size))
+    lengths = []
+    content_patterns = {k: 0 for k in PATTERN_KEYS}
+    for i, item in enumerate(iter_records(filepath)):
+        if i not in wanted:
+            continue
+        text = content_of(item)
         if not text:
             continue
         text = str(text)
         lengths.append(len(text))
-        patterns["!"] += text.count("!")
-        patterns["?"] += text.count("?")
-        patterns["..."] += text.count("...")
-        patterns["#"] += len(re.findall(r"#\S+", text))
-        patterns["@"] += len(re.findall(r"@\S+", text))
-        patterns["numbers"] += len(re.findall(r"\d+", text))
-        patterns["links"] += len(re.findall(r"http|www", text))
-        if "我" in text or "我们" in text:
-            patterns["first_person"] += 1
-        if re.search(r"\n\d+", text):
-            patterns["list"] += 1
+        for k, v in pattern_counts(text).items():
+            content_patterns[k] += v
+        if len(lengths) == len(wanted):
+            break
 
-    return {
+    sample_n = min(sample_size, n)
+    content = {
         "length": {
             "mean": round(sum(lengths) / len(lengths), 1) if lengths else 0,
             "median": statistics.median(lengths) if lengths else 0,
         },
-        "patterns": {k: round(v / len(sample), 2) for k, v in patterns.items()},
+        "patterns": {k: round(v / sample_n, 2)
+                     for k, v in content_patterns.items()},
     }
-
-
-def analyze_title(texts):
-    lengths = []
-    patterns = {
-        "!": 0,
-        "?": 0,
-        "...": 0,
-        "#": 0,
-        "@": 0,
-        "numbers": 0,
-        "links": 0,
-        "first_person": 0,
-        "list": 0,
-    }
-
-    for item in texts:
-        title = item.get("note_title", "")
-        if not title:
-            continue
-        title = str(title)
-        lengths.append(len(title))
-        patterns["!"] += title.count("!")
-        patterns["?"] += title.count("?")
-        patterns["..."] += title.count("...")
-        patterns["#"] += len(re.findall(r"#\S+", title))
-        patterns["@"] += len(re.findall(r"@\S+", title))
-        patterns["numbers"] += len(re.findall(r"\d+", title))
-        patterns["links"] += len(re.findall(r"http|www", title))
-        if "我" in title or "我们" in title:
-            patterns["first_person"] += 1
-        if re.search(r"\n\d+", title):
-            patterns["list"] += 1
-
-    return {
+    title = {
         "length": {
-            "mean": round(sum(lengths) / len(lengths), 1) if lengths else 0,
-            "median": statistics.median(lengths) if lengths else 0,
+            "mean": round(sum(title_lengths) / len(title_lengths), 1)
+            if title_lengths else 0,
+            "median": statistics.median(title_lengths) if title_lengths else 0,
         },
-        "patterns": {k: round(v / len(texts), 2) for k, v in patterns.items()},
+        "patterns": {k: round(v / n, 2) for k, v in title_patterns.items()},
     }
-
-
-def analyze_domain(texts):
-    domains = [item.get("domain", "") for item in texts if "domain" in item]
-    if not domains:
-        return {}
-    freq = Counter(domains)
-    return {"unique": len(freq), "top3": dict(freq.most_common(3))}
+    domain = {"unique": len(domains), "top3": dict(domains.most_common(3))} \
+        if domains else {}
+    return content, title, domain, n
 
 
 def main():
@@ -129,8 +113,9 @@ def main():
 
     datasets = {}
     for filepath, name in files:
-        datasets[name] = load_jsonl(filepath)
-        print("Loaded " + name + ": " + str(len(datasets[name])) + " records")
+        stats = collect(filepath)
+        datasets[name] = stats
+        print("Loaded " + name + ": " + str(stats[3]) + " records")
 
     print("\n" + "=" * 70)
     print("INTERNAL DIFFERENCES ANALYSIS - WITHIN EACH CATEGORY")
@@ -139,8 +124,8 @@ def main():
     print("\n" + "-" * 50)
     print("1. CONTENT LENGTH COMPARISON")
     print("-" * 50)
-    for name, texts in datasets.items():
-        r = analyze_content(texts)
+    for name, (content, _, _, _) in datasets.items():
+        r = content
         print(
             name
             + ": mean="
@@ -152,8 +137,8 @@ def main():
     print("\n" + "-" * 50)
     print("2. TITLE LENGTH & PATTERNS COMPARISON")
     print("-" * 50)
-    for name, texts in datasets.items():
-        r = analyze_title(texts)
+    for name, (_, title, _, _) in datasets.items():
+        r = title
         print(
             "\n"
             + name
@@ -176,8 +161,8 @@ def main():
     print("\n" + "-" * 50)
     print("3. FORMATTING PATTERNS (avg per post)")
     print("-" * 50)
-    for name, texts in datasets.items():
-        r = analyze_content(texts)
+    for name, (content, _, _, _) in datasets.items():
+        r = content
         p = r["patterns"]
         print("\n" + name + ":")
         print("  Exclamation marks: " + str(p["!"]))
@@ -193,8 +178,8 @@ def main():
     print("\n" + "-" * 50)
     print("4. DOMAIN DISTRIBUTION")
     print("-" * 50)
-    for name, texts in datasets.items():
-        d = analyze_domain(texts)
+    for name, (_, _, domain, _) in datasets.items():
+        d = domain
         print("\n" + name + ":")
         print("  Unique domains: " + str(d.get("unique", "N/A")))
         print("  Top 3: " + str(d.get("top3", {})))

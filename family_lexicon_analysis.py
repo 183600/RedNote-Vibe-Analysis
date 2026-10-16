@@ -28,7 +28,7 @@ import matplotlib.pyplot as plt
 
 from analysis_utils import (BASE, INSIGHTS, init_plot_style, save_fig, save_json,
                             load_records, post_text)
-from paper_lexicon import clean, count_words, log_odds
+from paper_lexicon import clean, count_clean_words, log_odds
 from paper_features import AI_WORDS
 
 FAMILY_NAME = {"gpt": "GPT", "gemini": "Gemini", "deepseek": "DeepSeek",
@@ -50,40 +50,16 @@ def rate_per10k(cnt: Counter, n: int, w: str) -> float:
     return round(cnt[w] / n * 1e4, 2) if n else 0.0
 
 
-def text_by_group(records: list[dict], key: str) -> dict[str, list[str]]:
-    groups: dict[str, list[str]] = {}
-    for rec in records:
-        g = rec.get(key) or ""
-        if g:
-            groups.setdefault(g, []).append(post_text(rec))
-    return groups
-
-
-def domain_weighted_counts(records: list[dict], key: str) -> tuple[
-        dict[str, Counter], dict[str, Counter]]:
-    """按组统计词频，并额外给出「领域构成重加权」后的计数。
+def _finalize_weighting(cell: dict[tuple[str, str], Counter],
+                        cell_n: Counter, group_n: Counter,
+                        dom_n: Counter) -> tuple[dict[str, Counter],
+                                                 dict[str, Counter]]:
+    """把 (组 × 领域) 单元计数合并为原始计数与领域重加权计数。
 
     家族/模型的用词差异可能被话题构成（如某家族多写美食）混杂；这里用
     后分层权重 w = 全语料领域占比 / 组内领域占比 对每个 (组, 领域) 的计数
     加权后再合并，使各组在同一领域分布下比较（与 paper_drift 的领域调整同思路）。
-    返回 (原始计数, 重加权计数)。
     """
-    cell: dict[tuple[str, str], Counter] = {}
-    cell_n: Counter = Counter()
-    group_n: Counter = Counter()
-    dom_n: Counter = Counter()
-    for rec in records:
-        g = rec.get(key) or ""
-        if not g:
-            continue
-        d = rec.get("domain") or "未知"
-        k = (g, d)
-        if k not in cell:
-            cell[k] = Counter()
-        cell[k].update(count_words([post_text(rec)]))
-        cell_n[k] += 1
-        group_n[g] += 1
-        dom_n[d] += 1
     total = float(sum(dom_n.values()))
     raw: dict[str, Counter] = {}
     weighted: dict[str, Counter] = {}
@@ -96,6 +72,53 @@ def domain_weighted_counts(records: list[dict], key: str) -> tuple[
         for word, c in cnt.items():
             wc[word] += c * w
     return raw, weighted
+
+
+def collect_group_stats(records: list[dict], keys: tuple[str, ...] = (
+        "model_family", "model")) -> tuple[
+        dict[str, dict[str, Counter]], dict[str, dict[str, Counter]],
+        Counter, Counter]:
+    """单次遍历记录：一次清洗 + 一次分词，同时聚合多个分组维度的词频。
+
+    返回 (raw, weighted, ai_hits, ai_chars)：raw/weighted 按分组键索引到
+    {组: Counter}（口径与原先逐维度独立扫描完全一致）；ai_hits/ai_chars
+    按 `model_family` 累计共享 AI 味词表命中数与清洗后字符数。
+    """
+    cell: dict[str, dict[tuple[str, str], Counter]] = {key: {} for key in keys}
+    cell_n: dict[str, Counter] = {key: Counter() for key in keys}
+    group_n: dict[str, Counter] = {key: Counter() for key in keys}
+    dom_n: dict[str, Counter] = {key: Counter() for key in keys}
+    ai_hits: Counter = Counter()
+    ai_chars: Counter = Counter()
+
+    for rec in records:
+        by_key = {key: (rec.get(key) or "") for key in keys}
+        if not any(by_key.values()):
+            continue
+        cleaned = clean(post_text(rec))
+        fam = by_key.get("model_family") or ""
+        if fam:
+            ai_chars[fam] += len(cleaned)
+            ai_hits[fam] += sum(cleaned.count(w) for w in AI_WORDS)
+        tokens = count_clean_words(cleaned)
+        d = rec.get("domain") or "未知"
+        for key in keys:
+            g = by_key[key]
+            if not g:
+                continue
+            k = (g, d)
+            if k not in cell[key]:
+                cell[key][k] = Counter()
+            cell[key][k].update(tokens)
+            cell_n[key][k] += 1
+            group_n[key][g] += 1
+            dom_n[key][d] += 1
+
+    raw, weighted = {}, {}
+    for key in keys:
+        raw[key], weighted[key] = _finalize_weighting(
+            cell[key], cell_n[key], group_n[key], dom_n[key])
+    return raw, weighted, ai_hits, ai_chars
 
 
 def one_vs_rest(counts: dict[str, Counter], target: str,
@@ -168,9 +191,9 @@ def main() -> None:
     records = load_records(BASE + "training_set_aigc.jsonl")
     print(f"AIGC 记录数: {len(records)}")
 
-    fam_texts = text_by_group(records, "model_family")
-    fam_cnt, fam_wcnt = domain_weighted_counts(records, "model_family")
-    model_cnt, model_wcnt = domain_weighted_counts(records, "model")
+    raw, weighted, ai_hits, ai_chars = collect_group_stats(records)
+    fam_cnt, fam_wcnt = raw["model_family"], weighted["model_family"]
+    model_cnt, model_wcnt = raw["model"], weighted["model"]
     fam_total = {g: sum(c.values()) for g, c in fam_cnt.items()}
     print("家族词元数:", {FAMILY_NAME.get(g, g): v for g, v in fam_total.items()})
 
@@ -193,11 +216,9 @@ def main() -> None:
 
     # ---- 共享 AI 味词的家族密度（清洗后正文子串计数，口径同 paper_features）----
     ai_density = {}
-    for g, texts in fam_texts.items():
-        cleaned = [clean(t) for t in texts]
-        chars = sum(len(t) for t in cleaned)
-        hits = sum(t.count(w) for t in cleaned for w in AI_WORDS)
-        ai_density[FAMILY_NAME.get(g, g)] = round(hits / chars * 1e4, 3)
+    for g in fam_cnt:
+        ai_density[FAMILY_NAME.get(g, g)] = round(
+            ai_hits[g] / ai_chars[g] * 1e4, 3)
 
     import pandas as pd
     # paper_features 的 ai_lex100 是"每百字"，这里统一换算成"每万字符"

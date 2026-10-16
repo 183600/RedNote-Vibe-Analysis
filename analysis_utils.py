@@ -301,16 +301,24 @@ def prefix_ngram_stats(texts, n: int = 4, k: int = 20) -> dict:
     }
 
 
+_CLEAN_BODY_RES = None
+
+
 def clean_body(content: str | None) -> str:
     """与 paper_features.py 相同的正文清洗口径。
 
     删除 `[话题]` 字面标记（导出残留）、把 `#话题` 标签替换为空格并去掉首尾空白。
     复用 `paper_features` 中的同一组正则，保证所有分析跨脚本口径一致。
     """
-    from paper_features import HASHTAG, HUATI
+    global _CLEAN_BODY_RES
 
-    body = HUATI.sub("", content or "")
-    return HASHTAG.sub(" ", body).strip()
+    if _CLEAN_BODY_RES is None:
+        from paper_features import HASHTAG, HUATI
+
+        _CLEAN_BODY_RES = (HUATI, HASHTAG)
+    huati, hashtag = _CLEAN_BODY_RES
+    body = huati.sub("", content or "")
+    return hashtag.sub(" ", body).strip()
 
 
 def _positive_counts(counts) -> np.ndarray:

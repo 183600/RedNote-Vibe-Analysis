@@ -355,10 +355,19 @@ def main():
     print("\n=== 1. Emoji Analysis ===")
     emoji_counts = []
     emoji_face_counts = []
+    punc_counts = []
+    sentiments = []
+    timestamps = []
 
     for f in files:
         all_emojis = []
         face_counts = []
+        all_punct = defaultdict(int)
+        pos_scores = []
+        neg_scores = []
+        net_scores = []
+        ts_list = []
+
         for item in texts_data[f]:
             text = item.get("desc", "") or item.get("note_content", "")
             all_emojis.extend(extract_emojis(text))
@@ -367,31 +376,38 @@ def main():
             if face:
                 face_counts.append(count)
 
+            for p, c in extract_punctuation(text).items():
+                all_punct[p] += c
+
+            pos, neg, net = sentiment_analysis(text)
+            pos_scores.append(pos)
+            neg_scores.append(neg)
+            net_scores.append(net)
+
+            ts = get_time_features(item)
+            if ts:
+                ts_list.append(ts)
+
         emoji_counts.append(Counter(all_emojis))
         emoji_face_counts.append(face_counts)
+        punc_counts.append(dict(all_punct))
+        sentiments.append(list(zip(pos_scores, neg_scores, net_scores)))
+        timestamps.append(ts_list)
 
+    for idx, f in enumerate(files):
+        counts = emoji_counts[idx]
         print(f"\n{f} Emoji Stats:")
-        print(f"  Total emojis: {len(all_emojis)}")
-        print(f"  Unique emojis: {len(emoji_counts[-1])}")
-        if emoji_counts[-1]:
-            top5 = emoji_counts[-1].most_common(5)
+        print(f"  Total emojis: {sum(counts.values())}")
+        print(f"  Unique emojis: {len(counts)}")
+        if counts:
+            top5 = counts.most_common(5)
             print(f"  Top 5: {top5}")
 
     plot_emoji_distribution(emoji_counts, files, output_dir)
     print("\nGenerated: emoji_distribution.png")
 
     print("\n=== 2. Punctuation Analysis ===")
-    punc_counts = []
-
-    for f in files:
-        all_punct = defaultdict(int)
-        for item in texts_data[f]:
-            text = item.get("desc", "") or item.get("note_content", "")
-            punct_dict = extract_punctuation(text)
-            for p, c in punct_dict.items():
-                all_punct[p] += c
-
-        punc_counts.append(dict(all_punct))
+    for f, all_punct in zip(files, punc_counts):
         total = sum(all_punct.values())
         print(f"\n{f} Punctuation Stats:")
         print(f"  Total punctuation marks: {total}")
@@ -402,26 +418,12 @@ def main():
     print("\nGenerated: punctuation_heatmap.png")
 
     print("\n=== 3. Sentiment Analysis ===")
-    sentiments = []
-
-    for f in files:
-        pos_scores = []
-        neg_scores = []
-        net_scores = []
-
-        for item in texts_data[f]:
-            text = item.get("desc", "") or item.get("note_content", "")
-            pos, neg, net = sentiment_analysis(text)
-            pos_scores.append(pos)
-            neg_scores.append(neg)
-            net_scores.append(net)
-
-        sentiments.append(list(zip(pos_scores, neg_scores, net_scores)))
-
+    for f, sent_data in zip(files, sentiments):
+        pos_scores = [s[0] for s in sent_data]
         print(f"\n{f} Sentiment Stats:")
         print(f"  Mean positive: {np.mean(pos_scores):.2f}")
-        print(f"  Mean negative: {np.mean(neg_scores):.2f}")
-        print(f"  Mean net: {np.mean(net_scores):.2f}")
+        print(f"  Mean negative: {np.mean([s[1] for s in sent_data]):.2f}")
+        print(f"  Mean net: {np.mean([s[2] for s in sent_data]):.2f}")
         print(
             f"  Positive ratio: {sum(1 for x in pos_scores if x > 0) / len(pos_scores):.2%}"
         )
@@ -431,26 +433,15 @@ def main():
     print("\nGenerated: sentiment_comparison.png, sentiment_box.png")
 
     print("\n=== 4. Time Series Analysis ===")
-    timestamps = []
-
-    for f in files:
-        ts_list = []
-        for item in texts_data[f]:
-            ts = get_time_features(item)
-            if ts:
-                ts_list.append(ts)
-        timestamps.append(ts_list)
-
+    for f, ts_list in zip(files, timestamps):
         if ts_list:
-            valid_ts = [t for t in ts_list if t]
-            if valid_ts:
-                ts_arr = np.array(valid_ts)
-                if ts_arr.max() > 1e10:
-                    ts_arr = ts_arr / 1000
-                print(f"\n{f} Time Stats:")
-                print(f"  Samples with timestamp: {len(valid_ts)}")
-                print(f"  Earliest: {pd.Timestamp(ts_arr.min(), unit='s')}")
-                print(f"  Latest: {pd.Timestamp(ts_arr.max(), unit='s')}")
+            ts_arr = np.array(ts_list)
+            if ts_arr.max() > 1e10:
+                ts_arr = ts_arr / 1000
+            print(f"\n{f} Time Stats:")
+            print(f"  Samples with timestamp: {len(ts_list)}")
+            print(f"  Earliest: {pd.Timestamp(ts_arr.min(), unit='s')}")
+            print(f"  Latest: {pd.Timestamp(ts_arr.max(), unit='s')}")
 
     try:
         plot_time_distribution(timestamps, files, output_dir)

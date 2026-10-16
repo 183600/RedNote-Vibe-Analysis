@@ -338,21 +338,19 @@ def plot_uncertainty(ecdf: dict, bands: pd.DataFrame, trends: dict) -> None:
     save_fig(fig, INSIGHTS + "detector_uncertainty.png")
 
 
-def ecdf_curves(scores: pd.DataFrame, model: dict) -> dict:
-    """人类集 / AIGC 集 / 探索集两端半年的稳健得分 ECDF。"""
-    human = pd.read_csv(BASE + "paper_features_human.csv.gz")
-    aigc = pd.read_csv(BASE + "paper_features_aigc.csv.gz")
-    human["p_ai"] = detector_score(human, model, robust=True)
-    aigc["p_ai"] = detector_score(aigc, model, robust=True)
-
+def ecdf_curves(df: pd.DataFrame, scores: pd.DataFrame, model: dict) -> dict:
+    """人类集 / AIGC 集 / 探索集两端半年的稳健得分 ECDF（复用已加载的标注数据）。"""
     def curve(values):
         xs = np.sort(np.asarray(values, dtype=float))
         ys = np.arange(1, len(xs) + 1) / len(xs)
         return [0.0] + xs.tolist(), [0.0] + ys.tolist()
 
+    is_human = (df["dataset"] == "human").values
     out = {}
-    out["人类（前LLM）"] = (*curve(human["p_ai"]), COLORS["human"], "-")
-    out["AIGC"] = (*curve(aigc["p_ai"]), COLORS["aigc"], "-")
+    out["人类（前LLM）"] = (*curve(detector_score(df[is_human], model, robust=True)),
+                        COLORS["human"], "-")
+    out["AIGC"] = (*curve(detector_score(df[~is_human], model, robust=True)),
+                   COLORS["aigc"], "-")
     e23 = scores[scores["month"] <= "202306"]["p_ai"]
     e25 = scores[scores["month"] >= "202501"]["p_ai"]
     out["探索集 2023H1"] = (*curve(e23), COLORS["exploring"], "--")
@@ -401,7 +399,7 @@ def main() -> None:
     print("探索集月度置信分层趋势:",
           {k: (v["rho"], round(v["p"], 3)) for k, v in trends.items()})
 
-    ecdf = ecdf_curves(scores, model)
+    ecdf = ecdf_curves(df, scores, model)
 
     plot_calibration(raw_bins, corr_bins, y, proba_corr, thresholds)
     plot_errors(deciles, domains, profiles)

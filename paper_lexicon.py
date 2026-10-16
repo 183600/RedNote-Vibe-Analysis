@@ -27,34 +27,41 @@ def clean(text):
     return text
 
 
+def count_clean_words(cleaned):
+    """对已经 `clean` 过的文本分词计数（与 count_words 相同的过滤口径）。
+
+    供已经自行清洗过文本的调用方复用，避免同一段文本被清洗/分词两遍。
+    """
+    cnt = Counter()
+    for w in jieba.cut(cleaned):
+        w = w.strip()
+        if not w:
+            continue
+        # 只保留含中文的词或常见拼音化网络词（预编译正则，避免逐词查找缓存）
+        if HAN_WORD.search(w) or PINYIN_WORD.fullmatch(w):
+            cnt[w] += 1
+    return cnt
+
+
 def count_words(texts):
     cnt = Counter()
     for t in texts:
-        for w in jieba.cut(clean(t)):
-            w = w.strip()
-            if not w:
-                continue
-            # 只保留含中文的词或常见拼音化网络词（预编译正则，避免逐词查找缓存）
-            if HAN_WORD.search(w) or PINYIN_WORD.fullmatch(w):
-                cnt[w] += 1
+        cnt.update(count_clean_words(clean(t)))
     return cnt
 
 
 def log_odds(cnt_a, cnt_b, min_count=30):
     """Monroe et al. (2008) informative Dirichlet prior log-odds, z-score."""
-    vocab = set(cnt_a) | set(cnt_b)
     n_a = sum(cnt_a.values())
     n_b = sum(cnt_b.values())
-    prior = Counter()
-    for w in vocab:
-        prior[w] = cnt_a[w] + cnt_b[w]
-    n_p = sum(prior.values())
+    n_p = n_a + n_b
     alpha0 = 500.0  # 先验强度
     results = {}
-    for w in vocab:
-        if cnt_a[w] + cnt_b[w] < min_count:
+    for w in set(cnt_a) | set(cnt_b):
+        c = cnt_a[w] + cnt_b[w]
+        if c < min_count:
             continue
-        pw = prior[w] / n_p
+        pw = c / n_p
         aw = alpha0 * pw
         la = math.log((cnt_a[w] + aw) / (n_a + alpha0 - cnt_a[w] - aw))
         lb = math.log((cnt_b[w] + aw) / (n_b + alpha0 - cnt_b[w] - aw))

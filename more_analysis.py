@@ -184,24 +184,24 @@ def stream_all(filepath, sample_size=5000, seed=42):
         words = tokenize(text)
         words_title = tokenize(title)
         if len(words) >= 2:
-            for i in range(len(words) - 1):
-                bigrams_desc[tuple(words[i : i + 2])] += 1
+            for bigram in zip(words, words[1:]):
+                bigrams_desc[bigram] += 1
         if len(words_title) >= 2:
-            for i in range(len(words_title) - 1):
-                bigrams_title[tuple(words_title[i : i + 2])] += 1
+            for bigram in zip(words_title, words_title[1:]):
+                bigrams_title[bigram] += 1
         if text:
             ling_desc["exclaim"] += text.count("!")
             ling_desc["question"] += text.count("?")
             ling_desc["ellipsis"] += text.count("...")
-            ling_desc["upper"] += sum(1 for c in text if c.isupper())
-            ling_desc["digit"] += sum(1 for c in text if c.isdigit())
+            ling_desc["upper"] += sum(map(str.isupper, text))
+            ling_desc["digit"] += sum(map(str.isdigit, text))
             ling_desc["link"] += len(re.findall(r"http[s]?://|www\.", text))
         if title:
             ling_title["exclaim"] += title.count("!")
             ling_title["question"] += title.count("?")
             ling_title["ellipsis"] += title.count("...")
-            ling_title["upper"] += sum(1 for c in title if c.isupper())
-            ling_title["digit"] += sum(1 for c in title if c.isdigit())
+            ling_title["upper"] += sum(map(str.isupper, title))
+            ling_title["digit"] += sum(map(str.isdigit, title))
             ling_title["link"] += len(re.findall(r"http[s]?://|www\.", title))
 
     return {

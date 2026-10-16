@@ -91,13 +91,13 @@ def extract(title, content):
     feats["list_line_ratio"] = round(
         sum(1 for l in lines if LIST_LINE.match(l)) / n_lines, 4)
 
-    def per100(cnt):
-        return round(cnt / n_safe * 100, 4)
+    def per100(cnt, _round=round, _n=n_safe):
+        return _round(cnt / _n * 100, 4)
 
-    feats["excl100"] = per100(body.count("！") + body.count("!"))
-    feats["ques100"] = per100(body.count("？") + body.count("?"))
-    feats["ellip100"] = per100(body.count("…") + body.count("。。。") + body.count("..."))
-    feats["tilde100"] = per100(body.count("~") + body.count("～"))
+    feats["excl100"] = per100(sum(map(body.count, "！!")))
+    feats["ques100"] = per100(sum(map(body.count, "？?")))
+    feats["ellip100"] = per100(sum(map(body.count, ("…", "。。。", "..."))))
+    feats["tilde100"] = per100(sum(map(body.count, "~～")))
     feats["comma100"] = per100(body.count("，"))
     feats["pause100"] = per100(body.count("、"))
     feats["period100"] = per100(body.count("。"))
@@ -107,11 +107,11 @@ def extract(title, content):
     feats["emoji_distinct"] = len(set(emojis))
     feats["xhsemo100"] = per100(len(XHS_EMO.findall(body)))
 
-    for c in PARTICLES:
-        feats[f"p_{c}"] = per100(body.count(c))
+    for c, cnt in zip(PARTICLES, map(body.count, PARTICLES)):
+        feats[f"p_{c}"] = per100(cnt)
 
-    feats["ai_lex100"] = per100(sum(body.count(w) for w in AI_WORDS))
-    feats["hum_lex100"] = per100(sum(body.count(w) for w in HUMAN_WORDS))
+    feats["ai_lex100"] = per100(sum(map(body.count, AI_WORDS)))
+    feats["hum_lex100"] = per100(sum(map(body.count, HUMAN_WORDS)))
 
     feats["uniq_char_ratio"] = round(len(set(body)) / n_safe, 4)
     n_bigrams = max(n - 1, 0)
@@ -132,8 +132,7 @@ def process(path, dataset, out_writer):
     n = 0
     with open(path, encoding="utf-8") as f:
         for line in f:
-            line = line.strip()
-            if not line:
+            if not line or line.isspace():
                 continue
             d = json.loads(line)
             content = d.get("note_content") or d.get("desc") or ""
@@ -150,7 +149,7 @@ def process(path, dataset, out_writer):
                 "collections": to_int(d.get("collected_count") or d.get("collections")),
                 "comments": to_int(d.get("comments_count") or d.get("comments")),
             })
-            out_writer.writerow([row.get(k, "") for k in FIELDS])
+            out_writer.writerow([row[k] for k in FIELDS])
             n += 1
     return n
 

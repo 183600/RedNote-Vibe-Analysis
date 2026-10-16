@@ -55,12 +55,11 @@ MIN_MONTH_CHARS = 5000
 
 def body_stats(body: str) -> tuple[int, int, int, float | None, int]:
     """返回（正文长度, AI词次数, 人类连接词次数, 平均句长, 句数）。"""
-    sents = [s for s in (p.strip() for p in SENT_SPLIT.split(body)) if s]
-    ai = sum(body.count(w) for w in AI_WORDS)
-    hum = sum(body.count(w) for w in HUMAN_WORDS)
+    sents = [s for p in SENT_SPLIT.split(body) if (s := p.strip())]
+    ai = sum(map(body.count, AI_WORDS))
+    hum = sum(map(body.count, HUMAN_WORDS))
     if sents:
-        lengths = [len(s) for s in sents]
-        return len(body), ai, hum, sum(lengths) / len(lengths), len(sents)
+        return len(body), ai, hum, sum(map(len, sents)) / len(sents), len(sents)
     return len(body), ai, hum, None, 0
 
 

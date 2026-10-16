@@ -29,6 +29,8 @@ from __future__ import annotations
 
 import re
 
+import jieba
+
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
@@ -71,10 +73,11 @@ def doc_metrics(body: str) -> dict:
     }
 
 
+jieba.setLogLevel(60)
+
+
 def tokenize(text: str) -> list[str]:
     """jieba 分词并过滤纯标点/空白 token；拉丁词统一小写。"""
-    import jieba
-    jieba.setLogLevel(60)
     out = []
     for tok in jieba.lcut(text or ""):
         tok = tok.strip().lower()

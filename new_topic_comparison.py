@@ -10,6 +10,7 @@ import os
 import warnings
 import numpy as np
 from collections import Counter, defaultdict
+from datetime import datetime, timezone
 from scipy import stats
 
 import matplotlib
@@ -931,6 +932,21 @@ def plot_emotion_intensity(results, output_dir):
     print("Saved: " + os.path.join(output_dir, "emotion_intensity.png"))
 
 
+def extract_hour(item):
+    time_str = str(item.get("local_time", "") or "").strip()
+    if len(time_str) == 10 and time_str.isdigit() and time_str[:2] in ("19", "20"):
+        return int(time_str[8:10])
+    match = re.search(r"(\d{2}):(\d{2})", time_str)
+    if match:
+        return int(match.group(1))
+    ts = item.get("time")
+    if isinstance(ts, (int, float)) and ts > 0:
+        if ts > 1e12:
+            ts = ts / 1000.0
+        return datetime.fromtimestamp(ts, tz=timezone.utc).hour
+    return None
+
+
 def analyze_time_distribution(grouped):
     print("\n" + "=" * 80)
     print("8. TEMPORAL PATTERN ANALYSIS: Posting Time Distribution")
@@ -946,11 +962,9 @@ def analyze_time_distribution(grouped):
 
             hours = []
             for item in domain_items:
-                time_str = item.get("local_time", "") or item.get("time", "")
-                if time_str:
-                    match = re.search(r"(\d{2}):(\d{2})", str(time_str))
-                    if match:
-                        hours.append(int(match.group(1)))
+                hour = extract_hour(item)
+                if hour is not None:
+                    hours.append(hour)
 
             if not hours:
                 continue

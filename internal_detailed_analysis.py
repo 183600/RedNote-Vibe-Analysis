@@ -26,7 +26,12 @@ def load_jsonl(path):
     data = []
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
-            item = json.loads(line)
+            if not line.strip():
+                continue
+            try:
+                item = json.loads(line)
+            except json.JSONDecodeError:
+                continue
             rec = {}
             if "note_content" in item:
                 rec["note_content"] = item["note_content"]

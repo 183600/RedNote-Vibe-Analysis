@@ -563,7 +563,7 @@ def main():
     print("Loading data...")
     human_agg = load_aggregates("training_set_human_fixed.jsonl")
     print(f"Human: {human_agg['total']} records")
-    aigc_agg = load_aggregates("exploring_set_fixed.jsonl")
+    aigc_agg = load_aggregates("training_set_aigc.jsonl")
     print(f"AIGC: {aigc_agg['total']} records")
 
     analyze_domain_differences(human_agg, output_dir)

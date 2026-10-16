@@ -7,6 +7,7 @@ A simplified BERT binary classification example for quick start and testing.
 """
 
 import json
+import random
 import pandas as pd
 import numpy as np
 import torch
@@ -53,16 +54,17 @@ def prepare_dataset(human_data, ai_data, max_samples=1000):
     
     texts = []
     labels = []
-    
+    rng = random.Random(42)
+
     # Sample human data
-    for i, item in enumerate(human_data[:max_samples]):
+    for i, item in enumerate(rng.sample(human_data, min(max_samples, len(human_data)))):
         content = (item.get('note_content') or item.get('desc', '')).strip()
         if content and len(content) > 10:
             texts.append(content[:300])  # Truncate to 300 characters
             labels.append(0)  # Human
     
     # Sample AI data
-    for i, item in enumerate(ai_data[:max_samples]):
+    for i, item in enumerate(rng.sample(ai_data, min(max_samples, len(ai_data)))):
         content = (item.get('note_content') or item.get('desc', '')).strip()
         if content and len(content) > 10:
             texts.append(content[:300])

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
+import random
 import re
 import numpy as np
 import matplotlib
@@ -37,15 +38,11 @@ warnings.filterwarnings("ignore")
 SAMPLE_LIMIT = 5000
 
 
-def load_jsonl(filepath, limit=SAMPLE_LIMIT):
+def load_jsonl(filepath, limit=SAMPLE_LIMIT, seed=42):
     texts = []
     total = 0
     with open(filepath, "r", encoding="utf-8") as f:
         for line in f:
-            if len(texts) >= limit:
-                if line.strip():
-                    total += 1
-                continue
             line = line.strip()
             if not line:
                 continue
@@ -55,6 +52,8 @@ def load_jsonl(filepath, limit=SAMPLE_LIMIT):
                 continue
             total += 1
             texts.append(item)
+    if limit is not None and len(texts) > limit:
+        texts = random.Random(seed).sample(texts, limit)
     return texts, total
 
 

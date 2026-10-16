@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import json
+import random
 import re
 import codecs
 from collections import Counter
@@ -9,7 +10,7 @@ from collections import Counter
 SAMPLE_LIMIT = 5000
 
 
-def load_jsonl(filepath, limit=SAMPLE_LIMIT):
+def load_jsonl(filepath, limit=SAMPLE_LIMIT, seed=42):
     texts = []
     with codecs.open(filepath, "r", encoding="utf-8") as f:
         for line in f:
@@ -18,8 +19,8 @@ def load_jsonl(filepath, limit=SAMPLE_LIMIT):
             except Exception:
                 continue
             texts.append(item)
-            if len(texts) >= limit:
-                break
+    if limit is not None and len(texts) > limit:
+        texts = random.Random(seed).sample(texts, limit)
     return texts
 
 
@@ -58,7 +59,7 @@ def main():
                     title_patterns["numbered"] += 1
                 elif re.match(r"^[\u4e00-\u9fa5]+[\u7684]", str(title)):
                     title_patterns["possessive"] += 1
-                elif re.search(r"[?!?!]$", str(title)):
+                elif re.search(r"[?!？！]$", str(title)):
                     title_patterns["question_end"] += 1
                 elif re.match(r"^\[#", str(title)):
                     title_patterns["hashtag_start"] += 1

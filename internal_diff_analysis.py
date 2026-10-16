@@ -6,6 +6,7 @@ import re
 import codecs
 from collections import Counter
 import random
+import statistics
 import io
 
 
@@ -64,7 +65,7 @@ def analyze_content(texts, sample_size=3000):
     return {
         "length": {
             "mean": round(sum(lengths) / len(lengths), 1) if lengths else 0,
-            "median": sorted(lengths)[len(lengths) // 2] if lengths else 0,
+            "median": statistics.median(lengths) if lengths else 0,
         },
         "patterns": {k: round(v / len(sample), 2) for k, v in patterns.items()},
     }
@@ -105,7 +106,7 @@ def analyze_title(texts):
     return {
         "length": {
             "mean": round(sum(lengths) / len(lengths), 1) if lengths else 0,
-            "median": sorted(lengths)[len(lengths) // 2] if lengths else 0,
+            "median": statistics.median(lengths) if lengths else 0,
         },
         "patterns": {k: round(v / len(texts), 2) for k, v in patterns.items()},
     }

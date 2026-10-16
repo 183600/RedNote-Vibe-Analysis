@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
+import random
 import re
 import numpy as np
 import matplotlib
@@ -39,15 +40,11 @@ warnings.filterwarnings("ignore")
 SAMPLE_LIMIT = 5000
 
 
-def load_jsonl(filepath, limit=SAMPLE_LIMIT):
+def load_jsonl(filepath, limit=SAMPLE_LIMIT, seed=42):
     texts = []
     total = 0
     with open(filepath, "r", encoding="utf-8") as f:
         for line in f:
-            if len(texts) >= limit:
-                if line.strip():
-                    total += 1
-                continue
             line = line.strip()
             if not line:
                 continue
@@ -57,6 +54,8 @@ def load_jsonl(filepath, limit=SAMPLE_LIMIT):
                 continue
             total += 1
             texts.append(item)
+    if limit is not None and len(texts) > limit:
+        texts = random.Random(seed).sample(texts, limit)
     return texts, total
 
 
@@ -65,14 +64,13 @@ def parse_timestamp(ts):
         return None
     try:
         if isinstance(ts, (int, float)):
-            if ts > 1e10:
-                return ts
-            return ts * 1000
+            return float(ts) / 1000.0 if ts > 1e10 else float(ts)
         ts_str = str(ts).strip()
         if len(ts_str) == 10 and ts_str.isdigit() and ts_str[:2] in ("19", "20"):
             dt = datetime.strptime(ts_str, "%Y%m%d%H").replace(tzinfo=timezone.utc)
             return dt.timestamp()
-        return float(ts_str)
+        value = float(ts_str)
+        return value / 1000.0 if value > 1e10 else value
     except:
         return None
 

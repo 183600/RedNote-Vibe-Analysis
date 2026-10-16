@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
+import random
 import re
 import math
 from collections import defaultdict, Counter
@@ -41,7 +42,9 @@ top_words = [w for w, c in word_doc_freq.most_common(100) if c >= MIN_USERS]
 print("Words: " + str(len(top_words)))
 
 word_to_idx = {w: i for i, w in enumerate(top_words)}
-user_ids = list(active_users.keys())[:3000]
+user_ids = random.Random(42).sample(
+    sorted(active_users), min(3000, len(active_users))
+)
 n_users = len(user_ids)
 n_words = len(top_words)
 

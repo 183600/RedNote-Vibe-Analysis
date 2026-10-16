@@ -189,7 +189,7 @@ def compute_correlation(freq1, freq2, top_n=100):
     vec1 = vec1 / norm1
     vec2 = vec2 / norm2
 
-    corr = np.dot(vec1, vec2)
+    corr = float(np.corrcoef(vec1, vec2)[0, 1])
     return corr, all_words, vec1, vec2
 
 
@@ -211,12 +211,12 @@ def plot_scatter(vec1, vec2, corr_val, f1_name, f2_name, label, output_dir):
     except:
         pass
 
-    if use_title:
+    if label == "title":
         plt.xlabel("Word Frequency (Title File 1)")
         plt.ylabel("Word Frequency (Title File 2)")
     else:
         plt.xlabel("Word Frequency (Content File 1)")
-        plt.ylabel("Word Frequency (File 2)")
+        plt.ylabel("Word Frequency (Content File 2)")
 
     title_str = (
         label + ": " + f1_save + " vs " + f2_save + ", corr=" + str(round(corr_val, 4))

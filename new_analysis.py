@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 import json
+import random
 import re
 import codecs
 from collections import Counter
@@ -9,7 +10,7 @@ from collections import Counter
 SAMPLE_LIMIT = 5000
 
 
-def load_jsonl(filepath, limit=SAMPLE_LIMIT):
+def load_jsonl(filepath, limit=SAMPLE_LIMIT, seed=42):
     texts = []
     total = 0
     with codecs.open(filepath, "r", encoding="utf-8") as f:
@@ -19,8 +20,9 @@ def load_jsonl(filepath, limit=SAMPLE_LIMIT):
             except Exception:
                 continue
             total += 1
-            if len(texts) < limit:
-                texts.append(item)
+            texts.append(item)
+    if limit is not None and len(texts) > limit:
+        texts = random.Random(seed).sample(texts, limit)
     return texts, total
 
 

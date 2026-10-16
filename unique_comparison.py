@@ -69,6 +69,7 @@ def load_aggregates():
     aggs = {}
     for ds_name, filepath in files:
         user_counts = Counter()
+        has_user_id = False
         domain_counts = Counter()
         domain_totals = Counter()
         eng = defaultdict(list)
@@ -81,7 +82,9 @@ def load_aggregates():
                 except Exception:
                     continue
                 total += 1
-                user_counts[item.get("user_id", "unknown")] += 1
+                if "user_id" in item:
+                    has_user_id = True
+                    user_counts[item["user_id"]] += 1
                 domain = item.get("domain", "unknown")
                 domain_counts[domain] += 1
                 if domain in DOMAINS:
@@ -104,6 +107,7 @@ def load_aggregates():
                     rec[2] += len(re.findall(r"\[.*?\]", text))
         aggs[ds_name] = {
             "total": total,
+            "has_user_id": has_user_id,
             "user_counts": user_counts,
             "domain_counts": domain_counts,
             "domain_totals": domain_totals,
@@ -125,6 +129,10 @@ def analyze_user_behavior_detailed(aggs):
 
     results = {}
     for ds_name, agg in aggs.items():
+        if not agg["has_user_id"]:
+            print(f"\n{ds_name}: no user_id field - user-level metrics N/A")
+            results[ds_name] = None
+            continue
         user_counts = agg["user_counts"]
         post_counts = sorted(user_counts.values(), reverse=True)
 
@@ -471,8 +479,16 @@ def generate_summary_dashboard(aggs, output_dir):
     colors = ["#2196F3", "#FF5722", "#4CAF50"]
     x = np.arange(len(datasets))
 
+    def user_vals(key):
+        return [
+            user_results[ds][key] if user_results[ds] is not None else np.nan
+            for ds in datasets
+        ]
+
+    missing_users = [ds for ds in datasets if user_results[ds] is None]
+
     axes[0, 0].bar(
-        x, [user_results[ds]["posts_per_user"] for ds in datasets], color=colors
+        x, user_vals("posts_per_user"), color=colors
     )
     axes[0, 0].set_xticks(x)
     axes[0, 0].set_xticklabels(datasets)
@@ -480,7 +496,7 @@ def generate_summary_dashboard(aggs, output_dir):
     axes[0, 0].set_ylabel("Count")
 
     axes[0, 1].bar(
-        x, [user_results[ds]["gini_coefficient"] for ds in datasets], color=colors
+        x, user_vals("gini_coefficient"), color=colors
     )
     axes[0, 1].set_xticks(x)
     axes[0, 1].set_xticklabels(datasets)
@@ -488,12 +504,21 @@ def generate_summary_dashboard(aggs, output_dir):
     axes[0, 1].set_ylabel("Gini Coefficient")
 
     axes[0, 2].bar(
-        x, [user_results[ds]["single_post_users_pct"] for ds in datasets], color=colors
+        x, user_vals("single_post_users_pct"), color=colors
     )
     axes[0, 2].set_xticks(x)
     axes[0, 2].set_xticklabels(datasets)
     axes[0, 2].set_title("Single-Post Users")
     axes[0, 2].set_ylabel("Percentage (%)")
+
+    if missing_users:
+        fig.text(
+            0.5,
+            0.005,
+            "no user_id field (metrics N/A): " + ", ".join(missing_users),
+            ha="center",
+            fontsize=11,
+        )
 
     axes[1, 0].bar(
         x, [conc_results[ds]["top1_concentration"] for ds in datasets], color=colors

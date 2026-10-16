@@ -77,9 +77,13 @@ with open("domain_coverage_results.md", "wb") as f:
         f.write((u"- " + w + u": " + str(n) + u"个话题, " + str(c) + u"用户\n").encode('utf-8'))
     
     f.write((u"\n## 结论\n\n").encode('utf-8'))
-    f.write((u"1. 100个词中只有 **36个词** 真正在6个主要话题（情感、穿搭、心理、健康、职场、旅行）都出现\n").encode('utf-8'))
-    f.write((u"2. 大部分词（29个）覆盖7个话题（包括\"未知\"分类）\n").encode('utf-8'))
-    f.write((u"3. 有17个词只出现在5个以下话题，不能算真正的跨话题词\n").encode('utf-8'))
+    n_all6 = len(in_all_6)
+    n_7 = dist.get(7, 0)
+    n_5 = dist.get(5, 0)
+    n_few = sum(c for n, c in dist.items() if n <= 4)
+    f.write((u"1. 100个词中有 " + str(n_all6) + u" 个词真正在6个主要话题（情感、穿搭、心理、健康、职场、旅行）都出现\n").encode('utf-8'))
+    f.write((u"2. 大部分词（" + str(n_7) + u"个）覆盖7个话题（包括\"未知\"分类）\n").encode('utf-8'))
+    f.write((u"3. 有 " + str(n_5) + u" 个词只出现在5个话题，" + str(n_few) + u"个词出现在4个及以下话题，不能算真正的跨话题词\n").encode('utf-8'))
     f.write((u"4. \"未知\"分类包含大量笔记，是分类系统未命名的内容\n").encode('utf-8'))
 
 print("Done!")

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
+import random
 import numpy as np
 import matplotlib
 
@@ -37,15 +38,11 @@ warnings.filterwarnings("ignore")
 SAMPLE_LIMIT = 3000
 
 
-def load_jsonl(filepath, limit=SAMPLE_LIMIT):
+def load_jsonl(filepath, limit=SAMPLE_LIMIT, seed=42):
     texts = []
     total = 0
     with open(filepath, "r", encoding="utf-8") as f:
         for line in f:
-            if len(texts) >= limit:
-                if line.strip():
-                    total += 1
-                continue
             line = line.strip()
             if not line:
                 continue
@@ -55,6 +52,8 @@ def load_jsonl(filepath, limit=SAMPLE_LIMIT):
                 continue
             total += 1
             texts.append(item)
+    if limit is not None and len(texts) > limit:
+        texts = random.Random(seed).sample(texts, limit)
     return texts, total
 
 
@@ -239,12 +238,18 @@ print("\n4. Chi-Square Tests (Sentiment Distribution):")
 for i in range(3):
     for j in range(i + 1, 3):
         f1, f2 = files[i], files[j]
-        pos1 = sum(1 for x in sentiments[f1]["pos"] if x > 0)
-        pos2 = sum(1 for x in sentiments[f2]["pos"] if x > 0)
-        neg1 = sum(1 for x in sentiments[f1]["neg"] if x > 0)
-        neg2 = sum(1 for x in sentiments[f2]["neg"] if x > 0)
 
-        observed = [[pos1, neg1], [pos2, neg2]]
+        def sentiment_categories(f):
+            counts = [0, 0, 0, 0]
+            for p, n in zip(sentiments[f]["pos"], sentiments[f]["neg"]):
+                cat = (1 if p > 0 else 0) + (2 if n > 0 else 0)
+                counts[cat] += 1
+            return counts
+
+        c1 = sentiment_categories(f1)
+        c2 = sentiment_categories(f2)
+        keep = [k for k in range(4) if c1[k] + c2[k] > 0]
+        observed = [[c1[k] for k in keep], [c2[k] for k in keep]]
         chi2, p_value = stats.chi2_contingency(observed)[:2]
         sig = (
             "***"

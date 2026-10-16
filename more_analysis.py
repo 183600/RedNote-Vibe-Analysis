@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import heapq
 import json
+import random
 import re
 import codecs
 from collections import Counter
@@ -136,7 +137,7 @@ def compute_ngrams(texts, n=2, use_title=False, sample_size=5000):
     return all_ngrams
 
 
-def stream_all(filepath, sample_size=5000):
+def stream_all(filepath, sample_size=5000, seed=42):
     emoji_desc = Counter()
     emoji_title = Counter()
     tags_desc = Counter()
@@ -148,6 +149,8 @@ def stream_all(filepath, sample_size=5000):
     ling_desc = {"exclaim": 0, "question": 0, "ellipsis": 0, "upper": 0, "digit": 0, "link": 0}
     ling_title = {"exclaim": 0, "question": 0, "ellipsis": 0, "upper": 0, "digit": 0, "link": 0}
     total = 0
+    rng = random.Random(seed)
+    sample = []
     with codecs.open(filepath, "r", encoding="utf-8") as f:
         for line in f:
             try:
@@ -166,31 +169,40 @@ def stream_all(filepath, sample_size=5000):
             words = tokenize(text)
             words_title = tokenize(title)
 
-            if total < sample_size:
-                if len(words) >= 2:
-                    for i in range(len(words) - 1):
-                        bigrams_desc[tuple(words[i : i + 2])] += 1
-                if len(words_title) >= 2:
-                    for i in range(len(words_title) - 1):
-                        bigrams_title[tuple(words_title[i : i + 2])] += 1
-                if text:
-                    ling_desc["exclaim"] += text.count("!")
-                    ling_desc["question"] += text.count("?")
-                    ling_desc["ellipsis"] += text.count("...")
-                    ling_desc["upper"] += sum(1 for c in text if c.isupper())
-                    ling_desc["digit"] += sum(1 for c in text if c.isdigit())
-                    ling_desc["link"] += len(re.findall(r"http[s]?://|www\.", text))
-                if title:
-                    ling_title["exclaim"] += title.count("!")
-                    ling_title["question"] += title.count("?")
-                    ling_title["ellipsis"] += title.count("...")
-                    ling_title["upper"] += sum(1 for c in title if c.isupper())
-                    ling_title["digit"] += sum(1 for c in title if c.isdigit())
-                    ling_title["link"] += len(re.findall(r"http[s]?://|www\.", title))
+            if len(sample) < sample_size:
+                sample.append((text, title))
+            else:
+                j = rng.randint(0, total)
+                if j < sample_size:
+                    sample[j] = (text, title)
 
             freq_desc.update(words)
             freq_title.update(words_title)
             total += 1
+
+    for text, title in sample:
+        words = tokenize(text)
+        words_title = tokenize(title)
+        if len(words) >= 2:
+            for i in range(len(words) - 1):
+                bigrams_desc[tuple(words[i : i + 2])] += 1
+        if len(words_title) >= 2:
+            for i in range(len(words_title) - 1):
+                bigrams_title[tuple(words_title[i : i + 2])] += 1
+        if text:
+            ling_desc["exclaim"] += text.count("!")
+            ling_desc["question"] += text.count("?")
+            ling_desc["ellipsis"] += text.count("...")
+            ling_desc["upper"] += sum(1 for c in text if c.isupper())
+            ling_desc["digit"] += sum(1 for c in text if c.isdigit())
+            ling_desc["link"] += len(re.findall(r"http[s]?://|www\.", text))
+        if title:
+            ling_title["exclaim"] += title.count("!")
+            ling_title["question"] += title.count("?")
+            ling_title["ellipsis"] += title.count("...")
+            ling_title["upper"] += sum(1 for c in title if c.isupper())
+            ling_title["digit"] += sum(1 for c in title if c.isdigit())
+            ling_title["link"] += len(re.findall(r"http[s]?://|www\.", title))
 
     return {
         "total": total,

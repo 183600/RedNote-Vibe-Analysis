@@ -67,6 +67,13 @@ class TestTemplates(unittest.TestCase):
                              min_count=10, k=10)
         self.assertEqual([t["word"] for t in tops], ["a", "b"])
 
+    def test_specific_templates_tie_order_is_canonical(self):
+        counts = {"甲": 5, "乙": 5, "丙": 5}
+        got = [t["word"] for t in specific_templates(counts, 1000, counts, 1000,
+                                                     reverse=False, min_count=5,
+                                                     k=10)]
+        self.assertEqual(got, sorted(counts))
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -456,13 +456,13 @@
     "human_per1k": 1.05
    },
    {
-    "word": "[飞吻R",
+    "word": "[种草R",
     "rate_diff_ppt": 0.026,
     "aigc_per1k": 0.42,
     "human_per1k": 0.68
    },
    {
-    "word": "[种草R",
+    "word": "[飞吻R",
     "rate_diff_ppt": 0.026,
     "aigc_per1k": 0.42,
     "human_per1k": 0.68
@@ -772,13 +772,13 @@
     "human_per1k": 1.3
    },
    {
-    "word": "餐长这样",
+    "word": "微笑R]",
     "rate_diff_ppt": 0.125,
     "aigc_per1k": 0.14,
     "human_per1k": 1.39
    },
    {
-    "word": "微笑R]",
+    "word": "餐长这样",
     "rate_diff_ppt": 0.125,
     "aigc_per1k": 0.14,
     "human_per1k": 1.39

@@ -134,6 +134,7 @@ def analyze_user_behavior_detailed(aggs):
             results[ds_name] = None
             continue
         user_counts = agg["user_counts"]
+        attributed_posts = sum(user_counts.values())
         post_counts = sorted(user_counts.values(), reverse=True)
 
         single_post_users = sum(1 for c in post_counts if c == 1)
@@ -157,7 +158,9 @@ def analyze_user_behavior_detailed(aggs):
         results[ds_name] = {
             "unique_users": len(user_counts),
             "total_posts": agg["total"],
-            "posts_per_user": agg["total"] / len(user_counts) if user_counts else 0,
+            "posts_per_user": attributed_posts / len(user_counts)
+            if user_counts
+            else 0,
             "single_post_users_pct": single_post_users / len(user_counts) * 100
             if user_counts
             else 0,
@@ -166,8 +169,8 @@ def analyze_user_behavior_detailed(aggs):
             else 0,
             "gini_coefficient": gini_coef,
             "max_posts_by_user": max(post_counts) if post_counts else 0,
-            "top_user_post_share": post_counts[0] / agg["total"] * 100
-            if post_counts
+            "top_user_post_share": post_counts[0] / attributed_posts * 100
+            if post_counts and attributed_posts
             else 0,
         }
 

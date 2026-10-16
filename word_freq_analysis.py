@@ -153,12 +153,12 @@ def compute_correlation(freq1, freq2, top_n=100):
     common = words1 & words2
 
     if len(common) < 10:
-        all_words = list(words1 | words2)[:top_n]
+        combined = dict(
+            (w, freq1.get(w, 0) + freq2.get(w, 0)) for w in (words1 | words2)
+        )
     else:
         combined = dict((w, freq1.get(w, 0) + freq2.get(w, 0)) for w in common)
-        all_words = sorted(combined.keys(), key=lambda w: combined[w], reverse=True)[
-            :top_n
-        ]
+    all_words = sorted(combined.keys(), key=lambda w: (-combined[w], w))[:top_n]
 
     vec1 = np.array([freq1.get(w, 0) for w in all_words], dtype=float)
     vec2 = np.array([freq2.get(w, 0) for w in all_words], dtype=float)

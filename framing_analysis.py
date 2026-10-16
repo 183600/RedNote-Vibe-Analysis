@@ -210,7 +210,7 @@ def specific_templates(counts_a: dict, n_a: int, counts_h: dict, n_h: int,
             continue
         diff = (ch / n_h - ca / n_a) if reverse else (ca / n_a - ch / n_h)
         rows.append((w, diff, ca, ch))
-    rows.sort(key=lambda r: -r[1])
+    rows.sort(key=lambda r: (-r[1], r[0]))
     return [{"word": w, "rate_diff_ppt": round(d * 100, 3),
              "aigc_per1k": round(ca / n_a * 1000, 2),
              "human_per1k": round(ch / n_h * 1000, 2)}

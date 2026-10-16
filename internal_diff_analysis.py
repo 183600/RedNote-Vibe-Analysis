@@ -12,7 +12,7 @@ PATTERN_KEYS = ("!", "?", "...", "#", "@", "numbers", "links",
 RE_HASHTAG = re.compile(r"#\S+")
 RE_MENTION = re.compile(r"@\S+")
 RE_NUMBERS = re.compile(r"\d+")
-RE_LINKS = re.compile(r"http|www")
+RE_LINKS = re.compile(r"https?://|www\.")
 RE_LIST = re.compile(r"\n\d+")
 
 
@@ -155,8 +155,8 @@ def main():
         print("  @mentions: " + str(p["@"]))
         print("  Numbers: " + str(p["numbers"]))
         print("  Links: " + str(p["links"]))
-        print("  First person (I/we): " + str(p["first_person"]) + "%")
-        print("  List format: " + str(p["list"]) + "%")
+        print("  First person (I/we): " + str(round(p["first_person"] * 100, 2)) + "%")
+        print("  List format: " + str(round(p["list"] * 100, 2)) + "%")
 
     print("\n" + "-" * 50)
     print("3. FORMATTING PATTERNS (avg per post)")
@@ -172,8 +172,8 @@ def main():
         print("  @mentions: " + str(p["@"]))
         print("  Numbers: " + str(p["numbers"]))
         print("  Links: " + str(p["links"]))
-        print("  First person (I/we): " + str(p["first_person"]) + "%")
-        print("  List format: " + str(p["list"]) + "%")
+        print("  First person (I/we): " + str(round(p["first_person"] * 100, 2)) + "%")
+        print("  List format: " + str(round(p["list"] * 100, 2)) + "%")
 
     print("\n" + "-" * 50)
     print("4. DOMAIN DISTRIBUTION")

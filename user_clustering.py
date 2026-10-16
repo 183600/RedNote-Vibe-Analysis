@@ -4,7 +4,7 @@
 输出：`user_clustering_results.md`（此前误写到 word_correlation_extended_results.md，
 与词频相关性脚本的输出语义不符，已改为独立文件名，避免互相覆盖）。
 """
-import re
+import random
 from collections import defaultdict, Counter
 
 from analysis_utils import BASE, iter_jsonl, post_text
@@ -26,10 +26,10 @@ def main():
         if not user_id:
             continue
         text = post_text(item)
-        words = re.findall(r"[\u4e00-\u9fff]+", text)
-        for w in words:
-            if w in cross_topic_words:
-                note_by_user[user_id][w] += 1
+        for w in cross_topic_words:
+            c = text.count(w)
+            if c:
+                note_by_user[user_id][w] += c
 
     print("Total users: " + str(len(note_by_user)))
 
@@ -37,7 +37,9 @@ def main():
     active_users = {u: c for u, c in note_by_user.items() if sum(c.values()) >= MIN_COUNT}
     print("Active users (>= " + str(MIN_COUNT) + " words): " + str(len(active_users)))
 
-    user_ids = list(active_users.keys())[:3000]
+    # 固定种子随机抽样，避免按首现顺序截断造成话题层面的选择偏差
+    user_ids = random.Random(42).sample(
+        sorted(active_users), min(3000, len(active_users)))
     n_users = len(user_ids)
     n_words = len(cross_topic_words)
 

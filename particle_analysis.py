@@ -373,6 +373,35 @@ def analyze_particle_by_time(particle_stats, files, top_particles):
                     print("  {} - {}: {}".format(month, p, mean_val))
 
 
+def _domain_mean_ratios(stats_data, particle):
+    """按 domain 聚合该粒子的平均 ratio（用于跨语料的可比统计）。"""
+    ratios = _ratios_for(stats_data, particle)
+    out = {}
+    for dom, idxs in _group_indices(stats_data["domain"]).items():
+        if dom:
+            out[dom] = float(np.mean(ratios[idxs]))
+    return out
+
+
+def _domain_correlation(stats1, stats2, particle):
+    """在共同 domain 上比较两语料的粒子平均 ratio；返回 (corr, p, n) 或 None。
+
+    两语料的记录顺序互不相关，逐条配对没有意义；按 domain 聚合后比较，
+    衡量的是「不同话题下粒子用法是否在两个语料中同向」。
+    """
+    m1 = _domain_mean_ratios(stats1, particle)
+    m2 = _domain_mean_ratios(stats2, particle)
+    common = sorted(set(m1) & set(m2))
+    if len(common) < 3:
+        return None
+    v1 = np.asarray([m1[d] for d in common], dtype=float)
+    v2 = np.asarray([m2[d] for d in common], dtype=float)
+    if np.std(v1) <= 0 or np.std(v2) <= 0:
+        return None
+    corr, pval = stats.pearsonr(v1, v2)
+    return corr, pval, len(common)
+
+
 def analyze_particle_correlation(particle_stats, files, top_particles):
     print("\n" + "=" * 80)
     print("Particle Correlation Analysis between Datasets")
@@ -384,17 +413,16 @@ def analyze_particle_correlation(particle_stats, files, top_particles):
             for j in range(i + 1, len(files)):
                 f1 = files[i]
                 f2 = files[j]
-                ratios1 = _ratios_for(particle_stats[f1], p)
-                ratios2 = _ratios_for(particle_stats[f2], p)
-
-                min_len = min(len(ratios1), len(ratios2))
-                if min_len > 10:
-                    corr, _ = stats.pearsonr(ratios1[:min_len], ratios2[:min_len])
-                    correlations.append((f1, f2, corr))
+                res = _domain_correlation(particle_stats[f1],
+                                          particle_stats[f2], p)
+                if res is not None:
+                    corr, _, n_dom = res
+                    correlations.append((f1, f2, corr, n_dom))
 
         print("\nParticle '{}':".format(p))
-        for f1, f2, corr in correlations:
-            print("  {} vs {}: {}".format(f1, f2, corr))
+        for f1, f2, corr, n_dom in correlations:
+            print("  {} vs {}: {} ({} common domains)".format(
+                f1, f2, corr, n_dom))
 
 
 def plot_particle_comparison(particle_stats, files, top_particles):
@@ -522,13 +550,11 @@ def compute_detailed_correlation(particle_stats, files, top_particles):
             print("\n{} vs {}:".format(f1, f2))
 
             for p in particles_to_use:
-                ratios1 = _ratios_for(stats1, p)
-                ratios2 = _ratios_for(stats2, p)
-
-                min_len = min(len(ratios1), len(ratios2))
-                if min_len > 10:
-                    corr, pval = stats.pearsonr(ratios1[:min_len], ratios2[:min_len])
-                    print("  {}: corr={}, p-value={}".format(p, corr, pval))
+                res = _domain_correlation(stats1, stats2, p)
+                if res is not None:
+                    corr, pval, n_dom = res
+                    print("  {}: corr={}, p-value={} ({} common domains)".format(
+                        p, corr, pval, n_dom))
 
 
 def _mean_ratios(stats_data, key_particles, chunk_size=20000):

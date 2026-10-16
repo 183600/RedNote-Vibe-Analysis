@@ -320,8 +320,9 @@ def sentiment(result, name, use_title=False):
     pos_c, neg_c, pos_t, neg_t = result["sent"]
     pos, neg = (pos_t, neg_t) if use_title else (pos_c, neg_c)
     label = "Title" if use_title else "Content"
+    ratio = pos / neg if neg > 0 else float("inf")
     print(
-        f"\n{name} ({label}): Positive={pos}, Negative={neg}, Ratio={pos / neg if neg > 0 else pos:.2f}"
+        f"\n{name} ({label}): Positive={pos}, Negative={neg}, Ratio={ratio:.2f}"
     )
 
 
@@ -387,7 +388,7 @@ def metadata(result, name):
 def domain_style(result, name):
     print(f"\n{name}:")
     for d, (p, n) in list(result["domain_sent"].items())[:5]:
-        ratio = p / n if n > 0 else p
+        ratio = p / n if n > 0 else float("inf")
         print(f"  {d}: pos={p}, neg={n}, ratio={ratio:.2f}")
 
 

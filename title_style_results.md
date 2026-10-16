@@ -99,6 +99,6 @@
 
 对照：正文开篇（framing_analysis）AIGC 首 4 字 Top-20 覆盖率 14.8%、熵 11.86 bit，远高于标题端（3.8% / 12.46 bit）——AI 生成的模板化主要集中在正文框架，标题反而相对多样。
 
-标题长度中位数：人类 18 字、AIGC 18 字、探索集 15 字（AIGC vs 人类 Cliff's δ=-0.028，p=1.2e-04）。
+标题长度中位数：人类 18 字、AIGC 18 字、探索集 15 字（AIGC vs 人类 Cliff's δ=+0.028，p=1.2e-04）。
 
 图表见 `insights/`：`title_detector.png`、`title_dynamics.png`、`title_formulaicity.png`。

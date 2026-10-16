@@ -299,6 +299,11 @@ def analyze_domain_stats(items):
 
     paragraphs = sum(len([p for p in t.split("\n") if p.strip()]) for t in texts)
 
+    if neg_total > 0:
+        sentiment_ratio = pos_total / neg_total
+    else:
+        sentiment_ratio = float("inf") if pos_total > 0 else 0.0
+
     return {
         "count": len(items),
         "avg_length": np.mean(lengths),
@@ -311,7 +316,7 @@ def analyze_domain_stats(items):
         "median_engagement": np.median(engagements),
         "pos_count": pos_total,
         "neg_count": neg_total,
-        "sentiment_ratio": pos_total / neg_total if neg_total > 0 else pos_total,
+        "sentiment_ratio": sentiment_ratio,
         "top_words": word_freq.most_common(20),
         "ttr": ttr,
         "exclaim_per_post": exclaim / len(items),

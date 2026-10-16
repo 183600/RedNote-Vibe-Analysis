@@ -85,10 +85,11 @@ def analyze_repetition(text):
         return {"repeat_ratio": 0}
     repeat_count = sum(
         1
-        for i in range(len(words) - 2)
-        if words[i] == words[i + 1] or words[i] == words[i + 2]
+        for i in range(len(words) - 1)
+        if words[i] == words[i + 1]
+        or (i + 2 < len(words) and words[i] == words[i + 2])
     )
-    repeat_ratio = repeat_count / (len(words) - 2)
+    repeat_ratio = repeat_count / (len(words) - 1)
     return {"repeat_ratio": round(repeat_ratio, 4)}
 
 

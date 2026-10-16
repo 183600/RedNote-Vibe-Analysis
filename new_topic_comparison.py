@@ -10,7 +10,7 @@ import os
 import warnings
 import numpy as np
 from collections import Counter, defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from scipy import stats
 
 from analysis_utils import init_plot_style
@@ -937,7 +937,9 @@ def extract_hour(item):
     if isinstance(ts, (int, float)) and ts > 0:
         if ts > 1e12:
             ts = ts / 1000.0
-        return datetime.fromtimestamp(ts, tz=timezone.utc).hour
+        # local_time 为北京时间；无 local_time 时按 UTC+8 转换保持口径一致
+        return datetime.fromtimestamp(
+            ts, tz=timezone(timedelta(hours=8))).hour
     return None
 
 

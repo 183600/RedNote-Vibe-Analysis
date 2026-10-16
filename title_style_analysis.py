@@ -392,7 +392,7 @@ def main() -> None:
     for name, dfx in (("human", human), ("aigc", aigc), ("exploring", exploring)):
         title_len_boot[name] = bootstrap_median_ci(dfx["title_len"], n_boot=BOOT,
                                                    seed=BOOT_SEED)
-    dl, dp = cliffs_delta(human["title_len"].values, aigc["title_len"].values)
+    dl, dp = cliffs_delta(aigc["title_len"].values, human["title_len"].values)
 
     # ---- 6. 保存结果 ----
     out = {

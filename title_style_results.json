@@ -732,6 +732,6 @@
    "n": 91517
   }
  },
- "title_len_cliffs_delta_aigc_vs_human": -0.0277,
+ "title_len_cliffs_delta_aigc_vs_human": 0.0277,
  "title_len_mannwhitney_p": 0.00012411997872792166
 }

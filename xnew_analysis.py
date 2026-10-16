@@ -54,7 +54,7 @@ def main():
                     title_patterns["possessive"] += 1
                 elif re.search(r"[?!？！]$", str(title)):
                     title_patterns["question_end"] += 1
-                elif re.match(r"^\[#", str(title)):
+                elif re.match(r"^#", str(title)):
                     title_patterns["hashtag_start"] += 1
                 elif re.match(r"^\d+$", str(title)):
                     title_patterns["number_only"] += 1

@@ -1,0 +1,726 @@
+{
+ "within": {
+  "human": {
+   "n_docs": 51669,
+   "twin_share_pct": {
+    "0.5": 1.198,
+    "0.7": 0.898,
+    "0.9": 0.627,
+    "1.0": 0.3
+   },
+   "max_j_quantiles": {
+    "0.5": 0.0,
+    "0.9": 0.0,
+    "0.99": 0.625
+   }
+  },
+  "aigc": {
+   "n_docs": 7175,
+   "twin_share_pct": {
+    "0.5": 0.0,
+    "0.7": 0.0,
+    "0.9": 0.0,
+    "1.0": 0.0
+   },
+   "max_j_quantiles": {
+    "0.5": 0.0,
+    "0.9": 0.0,
+    "0.99": 0.0
+   }
+  },
+  "exploring": {
+   "n_docs": 44849,
+   "twin_share_pct": {
+    "0.5": 3.492,
+    "0.7": 2.602,
+    "0.9": 1.469,
+    "1.0": 0.671
+   },
+   "max_j_quantiles": {
+    "0.5": 0.0,
+    "0.9": 0.0,
+    "0.99": 0.9601
+   }
+  }
+ },
+ "cross": {
+  "pairs": {
+   "0.5": {
+    "human-human": 730,
+    "aigc-human": 33,
+    "aigc-aigc": 0,
+    "aigc-exploring": 5,
+    "exploring-human": 1,
+    "exploring-exploring": 2383
+   },
+   "0.7": {
+    "human-human": 475,
+    "aigc-human": 9,
+    "aigc-aigc": 0,
+    "aigc-exploring": 1,
+    "exploring-human": 0,
+    "exploring-exploring": 1496
+   },
+   "0.9": {
+    "human-human": 324,
+    "aigc-human": 2,
+    "aigc-aigc": 0,
+    "aigc-exploring": 0,
+    "exploring-human": 0,
+    "exploring-exploring": 613
+   }
+  },
+  "combos": {
+   "human-human": {
+    "pairs_0.5": 730,
+    "pairs_0.7": 475,
+    "doc_share_0.5_pct": 1.198
+   },
+   "aigc-human": {
+    "pairs_0.5": 33,
+    "pairs_0.7": 9,
+    "doc_share_0.5_pct": 0.105
+   },
+   "aigc-aigc": {
+    "pairs_0.5": 0,
+    "pairs_0.7": 0,
+    "doc_share_0.5_pct": 0.0
+   },
+   "aigc-exploring": {
+    "pairs_0.5": 5,
+    "pairs_0.7": 1,
+    "doc_share_0.5_pct": 0.085
+   },
+   "exploring-human": {
+    "pairs_0.5": 1,
+    "pairs_0.7": 0,
+    "doc_share_0.5_pct": 0.031
+   },
+   "exploring-exploring": {
+    "pairs_0.5": 2383,
+    "pairs_0.7": 1496,
+    "doc_share_0.5_pct": 3.492
+   }
+  }
+ },
+ "exploring_gradient": [
+  {
+   "decile": 0,
+   "n": 4485,
+   "hits": 93,
+   "share_pct": 2.074,
+   "ci_low_pct": 1.696,
+   "ci_high_pct": 2.533,
+   "v_lo": 2.20072341787936e-08,
+   "v_hi": 0.1009504828528214
+  },
+  {
+   "decile": 1,
+   "n": 4485,
+   "hits": 131,
+   "share_pct": 2.921,
+   "ci_low_pct": 2.467,
+   "ci_high_pct": 3.455,
+   "v_lo": 0.1009524227495764,
+   "v_hi": 0.2050642922109172
+  },
+  {
+   "decile": 2,
+   "n": 4485,
+   "hits": 114,
+   "share_pct": 2.542,
+   "ci_low_pct": 2.12,
+   "ci_high_pct": 3.045,
+   "v_lo": 0.2051077052118063,
+   "v_hi": 0.3155269490151575
+  },
+  {
+   "decile": 3,
+   "n": 4485,
+   "hits": 119,
+   "share_pct": 2.653,
+   "ci_low_pct": 2.222,
+   "ci_high_pct": 3.166,
+   "v_lo": 0.3155764945525847,
+   "v_hi": 0.4321572218673542
+  },
+  {
+   "decile": 4,
+   "n": 4485,
+   "hits": 140,
+   "share_pct": 3.122,
+   "ci_low_pct": 2.651,
+   "ci_high_pct": 3.672,
+   "v_lo": 0.4321850255445809,
+   "v_hi": 0.5534752566818338
+  },
+  {
+   "decile": 5,
+   "n": 4484,
+   "hits": 136,
+   "share_pct": 3.033,
+   "ci_low_pct": 2.57,
+   "ci_high_pct": 3.577,
+   "v_lo": 0.5534799099523362,
+   "v_hi": 0.6755192895931769
+  },
+  {
+   "decile": 6,
+   "n": 4485,
+   "hits": 108,
+   "share_pct": 2.408,
+   "ci_low_pct": 1.998,
+   "ci_high_pct": 2.899,
+   "v_lo": 0.675542082578743,
+   "v_hi": 0.7960171718829496
+  },
+  {
+   "decile": 7,
+   "n": 4485,
+   "hits": 90,
+   "share_pct": 2.007,
+   "ci_low_pct": 1.635,
+   "ci_high_pct": 2.46,
+   "v_lo": 0.7960416208275071,
+   "v_hi": 0.8969090598136692
+  },
+  {
+   "decile": 8,
+   "n": 4489,
+   "hits": 97,
+   "share_pct": 2.161,
+   "ci_low_pct": 1.775,
+   "ci_high_pct": 2.629,
+   "v_lo": 0.8969122388555213,
+   "v_hi": 0.968993255391054
+  },
+  {
+   "decile": 9,
+   "n": 4481,
+   "hits": 139,
+   "share_pct": 3.102,
+   "ci_low_pct": 2.633,
+   "ci_high_pct": 3.651,
+   "v_lo": 0.9690255276067002,
+   "v_hi": 0.999999999841579
+  }
+ ],
+ "exploring_gradient_spearman": {
+  "rho": 0.042,
+  "p": 0.9073638178128159
+ },
+ "aigc_family": {
+  "anthropic": {
+   "n": 727,
+   "twin_share_pct": 0.0,
+   "cross_human_share_pct": 0.0
+  },
+  "deepseek": {
+   "n": 1559,
+   "twin_share_pct": 0.0,
+   "cross_human_share_pct": 0.064
+  },
+  "gemini": {
+   "n": 1152,
+   "twin_share_pct": 0.0,
+   "cross_human_share_pct": 0.0
+  },
+  "glm": {
+   "n": 781,
+   "twin_share_pct": 0.0,
+   "cross_human_share_pct": 2.817
+  },
+  "gpt": {
+   "n": 1707,
+   "twin_share_pct": 0.0,
+   "cross_human_share_pct": 0.0
+  },
+  "qwen": {
+   "n": 1249,
+   "twin_share_pct": 0.0,
+   "cross_human_share_pct": 0.0
+  }
+ },
+ "quarterly": [
+  {
+   "quarter": "2023Q1",
+   "n": 312,
+   "share_0.5_pct": 6.09,
+   "share_0.7_pct": 5.128
+  },
+  {
+   "quarter": "2023Q2",
+   "n": 374,
+   "share_0.5_pct": 3.743,
+   "share_0.7_pct": 2.941
+  },
+  {
+   "quarter": "2023Q3",
+   "n": 629,
+   "share_0.5_pct": 3.18,
+   "share_0.7_pct": 2.385
+  },
+  {
+   "quarter": "2023Q4",
+   "n": 654,
+   "share_0.5_pct": 3.517,
+   "share_0.7_pct": 3.058
+  },
+  {
+   "quarter": "2024Q1",
+   "n": 3210,
+   "share_0.5_pct": 3.364,
+   "share_0.7_pct": 2.679
+  },
+  {
+   "quarter": "2024Q2",
+   "n": 3843,
+   "share_0.5_pct": 2.42,
+   "share_0.7_pct": 1.848
+  },
+  {
+   "quarter": "2024Q3",
+   "n": 5196,
+   "share_0.5_pct": 1.79,
+   "share_0.7_pct": 1.347
+  },
+  {
+   "quarter": "2024Q4",
+   "n": 5344,
+   "share_0.5_pct": 2.545,
+   "share_0.7_pct": 1.815
+  },
+  {
+   "quarter": "2025Q1",
+   "n": 8161,
+   "share_0.5_pct": 3.602,
+   "share_0.7_pct": 2.733
+  },
+  {
+   "quarter": "2025Q2",
+   "n": 17095,
+   "share_0.5_pct": 4.475,
+   "share_0.7_pct": 3.264
+  }
+ ],
+ "quarterly_spearman": {
+  "0.7": {
+   "rho": -0.297,
+   "p": 0.40470167127015705
+  }
+ },
+ "clusters": {
+  "n_components": 657,
+  "size_hist": {
+   "2": 522,
+   "3": 71,
+   "4": 26,
+   "5–6": 20,
+   "7–10": 13,
+   "11–20": 4,
+   "21+": 1
+  },
+  "largest": [
+   {
+    "size": 26,
+    "datasets": {
+     "exploring": 26
+    },
+    "months": {
+     "202401": 11,
+     "202402": 12,
+     "202403": 3
+    },
+    "sample": "&三元锂电池安全性极差，易起火，没有逃生时间\n1、燃点：三元锂电池燃点最低，易爆燃：\n（1）常识：温度达到“燃点”就会起"
+   },
+   {
+    "size": 17,
+    "datasets": {
+     "exploring": 17
+    },
+    "months": {
+     "202503": 17
+    },
+    "sample": "再一次，挑战行业极限\n #\n轻薄小直屏，趁手又称心\n4 月 10 日，全球首发\n #  #\n #"
+   },
+   {
+    "size": 13,
+    "datasets": {
+     "exploring": 13
+    },
+    "months": {
+     "202501": 1,
+     "202502": 1,
+     "202503": 1,
+     "202504": 4,
+     "202505": 2,
+     "202506": 4
+    },
+    "sample": "本人女，特别特别粘人！想找一个嘎嘎深情，有占有欲的，爱吃醋的，会撒娇的，黏人的，消息秒回（不一定～_ 看到了就会回），圈"
+   },
+   {
+    "size": 12,
+    "datasets": {
+     "human": 12
+    },
+    "months": {
+     "202205": 2,
+     "202206": 1,
+     "202207": 8,
+     "202208": 1
+    },
+    "sample": "系统学SPSS，这一本就够了：《SPSS统计分析入门与应用精解（视频教学版）》（注意是“精解”不是精通） 杨维忠、张甜编"
+   },
+   {
+    "size": 12,
+    "datasets": {
+     "exploring": 12
+    },
+    "months": {
+     "202405": 11,
+     "202407": 1
+    },
+    "sample": "太先说优点：\n操控性好。在城市路和高速路体验完海豹之后の我感觉海豹是比亚迪历史上操控性能最好的车型。两个技术提升了它的操"
+   },
+   {
+    "size": 10,
+    "datasets": {
+     "exploring": 10
+    },
+    "months": {
+     "202506": 10
+    },
+    "sample": "本人02，女，谈过一次恋爱  思想成熟 #  性格粘人专一 圈子小  不颜控（好的三观胜过长相）没有不良嗜好  简单干净"
+   },
+   {
+    "size": 10,
+    "datasets": {
+     "human": 10
+    },
+    "months": {
+     "202211": 10
+    },
+    "sample": "全新升级的墨藻面霜，面霜中的佼佼者，奢感白乳霜，历经25面潜心研发，将深海远古藻融入黑能珍萃，为肌肤注入源源不断的养分，"
+   },
+   {
+    "size": 9,
+    "datasets": {
+     "exploring": 9
+    },
+    "months": {
+     "202503": 9
+    },
+    "sample": "#  轻薄小直屏\n别看我小，强到爆表\n4 月 10 日，全球首发"
+   }
+  ]
+ },
+ "examples": {
+  "top_pairs": [
+   {
+    "jaccard": 1.0,
+    "a": {
+     "dataset": "exploring",
+     "n_shingles": 890,
+     "snippet": "狗狗好多技能天生是不会的，这个时候需要主人耐心教导，狗子才能可爱又听话，带出去倍有面子。\n-\n定点上厕所\n①把握排便时间"
+    },
+    "b": {
+     "dataset": "exploring",
+     "n_shingles": 890,
+     "snippet": "狗狗好多技能天生是不会的，这个时候需要主人耐心教导，狗子才能可爱又听话，带出去倍有面子。\n-\n定点上厕所\n①把握排便时间"
+    }
+   },
+   {
+    "jaccard": 1.0,
+    "a": {
+     "dataset": "exploring",
+     "n_shingles": 890,
+     "snippet": "狗狗好多技能天生是不会的，这个时候需要主人耐心教导，狗子才能可爱又听话，带出去倍有面子。\n-\n定点上厕所\n①把握排便时间"
+    },
+    "b": {
+     "dataset": "exploring",
+     "n_shingles": 890,
+     "snippet": "狗狗好多技能天生是不会的，这个时候需要主人耐心教导，狗子才能可爱又听话，带出去倍有面子。\n-\n定点上厕所\n①把握排便时间"
+    }
+   },
+   {
+    "jaccard": 1.0,
+    "a": {
+     "dataset": "exploring",
+     "n_shingles": 890,
+     "snippet": "狗狗好多技能天生是不会的，这个时候需要主人耐心教导，狗子才能可爱又听话，带出去倍有面子。\n-\n定点上厕所\n①把握排便时间"
+    },
+    "b": {
+     "dataset": "exploring",
+     "n_shingles": 890,
+     "snippet": "狗狗好多技能天生是不会的，这个时候需要主人耐心教导，狗子才能可爱又听话，带出去倍有面子。\n-\n定点上厕所\n①把握排便时间"
+    }
+   },
+   {
+    "jaccard": 1.0,
+    "a": {
+     "dataset": "exploring",
+     "n_shingles": 39,
+     "snippet": "[kissR]        ﻿   [色色R]        ﻿           ﻿   [红色心形R]     "
+    },
+    "b": {
+     "dataset": "exploring",
+     "n_shingles": 39,
+     "snippet": "[kissR]         ﻿   [色色R]         ﻿            ﻿   [红色心形R]  "
+    }
+   },
+   {
+    "jaccard": 1.0,
+    "a": {
+     "dataset": "exploring",
+     "n_shingles": 108,
+     "snippet": "这个的空间设计，健身人的狂喜！\n现代感十足.\n-\nROJECT NAMPE：工业风健身室\nROJECT PRICE：8W"
+    },
+    "b": {
+     "dataset": "exploring",
+     "n_shingles": 108,
+     "snippet": "这个的空间设计，健身人的狂喜！\n现代感十足.\n-\nROJECT NAMPE：工业风健身室\nROJECT PRICE：8W"
+    }
+   },
+   {
+    "jaccard": 1.0,
+    "a": {
+     "dataset": "exploring",
+     "n_shingles": 23,
+     "snippet": "自我肯定、觉察成长，用积极力量疗愈内心﻿   ﻿   ﻿   ﻿   ﻿   ﻿   ﻿   ﻿   ﻿   ﻿"
+    },
+    "b": {
+     "dataset": "exploring",
+     "n_shingles": 23,
+     "snippet": "自我肯定、觉察成长，用积极力量疗愈内心﻿   ﻿   ﻿   ﻿   ﻿   ﻿   ﻿   ﻿   ﻿   ﻿"
+    }
+   },
+   {
+    "jaccard": 1.0,
+    "a": {
+     "dataset": "exploring",
+     "n_shingles": 852,
+     "snippet": "雅思口语虽然恶心 但3h背完 保底7.0\n各位雅思宝们是不是遇到口语就没话说？😰😰😰\n给大家整理了一些《雅思口语万能理由"
+    },
+    "b": {
+     "dataset": "exploring",
+     "n_shingles": 852,
+     "snippet": "雅思口语虽然恶心 但3h背完 保底7.0\n各位雅思宝们是不是遇到口语就没话说？😰😰😰\n给大家整理了一些《雅思口语万能理由"
+    }
+   },
+   {
+    "jaccard": 1.0,
+    "a": {
+     "dataset": "exploring",
+     "n_shingles": 27,
+     "snippet": "戒烟的进来，正能量交流分享互相鼓励打卡群，没有广告，一起加油！"
+    },
+    "b": {
+     "dataset": "exploring",
+     "n_shingles": 27,
+     "snippet": "戒烟的进来，正能量交流分享互相鼓励打卡群，没有广告，一起加油！"
+    }
+   },
+   {
+    "jaccard": 1.0,
+    "a": {
+     "dataset": "exploring",
+     "n_shingles": 21,
+     "snippet": "不同食材果蔬黄金搭配，健康美味又养生 #  #  #  #"
+    },
+    "b": {
+     "dataset": "exploring",
+     "n_shingles": 21,
+     "snippet": "不同食材果蔬黄金搭配，健康美味又养生 #  #  #  #  #  #"
+    }
+   },
+   {
+    "jaccard": 1.0,
+    "a": {
+     "dataset": "exploring",
+     "n_shingles": 216,
+     "snippet": "#\n欢乐燃脂效果好就是我Jo姐了！\n我一周跟练3～4次，夏天太热不想出门\n又想瘦腿瘦腹的宝子们就和我一起练这几个动作\n想"
+    },
+    "b": {
+     "dataset": "exploring",
+     "n_shingles": 216,
+     "snippet": "#\n欢乐燃脂效果好就是我Jo姐了！\n我一周跟练3～4次，夏天太热不想出门\n又想瘦腿瘦腹的宝子们就和我一起练这几个动作\n想"
+    }
+   }
+  ],
+  "cross_pairs": [
+   {
+    "jaccard": 0.9333,
+    "a": {
+     "dataset": "human",
+     "n_shingles": 218,
+     "snippet": "后续来啦 早上我在车上问了她昨晚拍的照片，她支支吾吾说了一句没拍 我也没好让她把手机打开我看 然后我说你昨晚把我吓惨了 "
+    },
+    "b": {
+     "dataset": "aigc",
+     "n_shingles": 217,
+     "snippet": "后续来啦 早上我在酒店问她昨晚拍的照片，她支支吾吾说了一句没拍 我也没好让她把手机打开我看 然后我说你昨晚把我吓惨了 她"
+    }
+   },
+   {
+    "jaccard": 0.9159,
+    "a": {
+     "dataset": "human",
+     "n_shingles": 217,
+     "snippet": "前滩太古里居然开了CONTACT，在日本超火的咖啡店！！爱了！  整体空间感都很舒适，木制的明亮空间和满满的书架，整体风"
+    },
+    "b": {
+     "dataset": "aigc",
+     "n_shingles": 216,
+     "snippet": "前滩太古里居然开了CONTACT，在日本超火的咖啡店！！爱了！  整体空间感都很舒适，木制的明亮空间和满满的书架，整体风"
+    }
+   },
+   {
+    "jaccard": 0.84,
+    "a": {
+     "dataset": "human",
+     "n_shingles": 942,
+     "snippet": "在北京密云有一处世外桃源\n这里没有城市的喧嚣，远离人群的浮躁\n在帐篷里享受大自然的气息\n夜晚在露天平台仰漫天星河\n这里就"
+    },
+    "b": {
+     "dataset": "aigc",
+     "n_shingles": 933,
+     "snippet": "在北京密云有一处世外桃源，这里没有城市的喧嚣，远离人群的浮躁。在帐篷里享受大自然的气息，夜晚在露天平台仰望漫天星河。这里"
+    }
+   },
+   {
+    "jaccard": 0.8354,
+    "a": {
+     "dataset": "human",
+     "n_shingles": 531,
+     "snippet": "不知是老太太的话起了作用还是林噙霜的爪牙被拔了个干净，剩下的日子里她倒是安安分分的绣嫁衣，学习管家之术。  十月的泉州稻"
+    },
+    "b": {
+     "dataset": "aigc",
+     "n_shingles": 506,
+     "snippet": "不知是老太太的话起了作用还是林噙霜的性子被磨平了，剩下的日子里她倒是安安分分的绣嫁衣，学习管家之术。十月的泉州稻谷飘香，"
+    }
+   },
+   {
+    "jaccard": 0.8286,
+    "a": {
+     "dataset": "human",
+     "n_shingles": 323,
+     "snippet": "接上集：我说是给你你吗？  茶茶尴尬的又自己打了一份  ：我来了（他熟练的把饭放到你面前）  你：马嘉祺你不知道吗?我最"
+    },
+    "b": {
+     "dataset": "aigc",
+     "n_shingles": 317,
+     "snippet": "接上集：我说是给你你吗？ 茶茶尴尬的又自己打了一份  ：我来了（他熟练的把饭放到你面前）  你：马嘉祺你不知道吗?我最近"
+    }
+   },
+   {
+    "jaccard": 0.8195,
+    "a": {
+     "dataset": "human",
+     "n_shingles": 633,
+     "snippet": "跟着吴磊小哥哥入了新狗粮！耶！  .  吴磊小哥哥家的小北同款哦---红狗新1代营养配方狗粮  我可不是无脑追星~作为资"
+    },
+    "b": {
+     "dataset": "aigc",
+     "n_shingles": 637,
+     "snippet": "跟着吴磊小哥哥入了新狗粮！嘿嘿！  .  吴磊小哥哥家的小北同款哦---红狗新1代营养配方狗粮  我可不是盲目追星哦~作"
+    }
+   },
+   {
+    "jaccard": 0.8188,
+    "a": {
+     "dataset": "human",
+     "n_shingles": 534,
+     "snippet": "免烤箱❗️超可爱的卡通大眼仔抹茶奶冻布丁  抹茶控快来集合！一口惊艳  用巧克力装饰成了怪兽大学里大眼仔的造型  是不是"
+    },
+    "b": {
+     "dataset": "aigc",
+     "n_shingles": 510,
+     "snippet": "巧克力控快来集合！一口惊艳  用巧克力装饰成了小黄人的造型  是不是超可爱呀！[喝奶茶R] 免烤箱❗️  食材步骤都很简"
+    }
+   },
+   {
+    "jaccard": 0.7543,
+    "a": {
+     "dataset": "human",
+     "n_shingles": 949,
+     "snippet": "㊙️来自小桔子的灵魂拷问  你上一次看见雪山是什么时候？  上一次沉浸式仰望星空✨是什么时候？  你，有没有听过川西? "
+    },
+    "b": {
+     "dataset": "aigc",
+     "n_shingles": 907,
+     "snippet": "你上一次看见雪山是什么时候？上一次沉浸式仰望星空✨是什么时候？你，有没有听过川西? . 川西在哪里❓ 川西主要指的是阿坝"
+    }
+   },
+   {
+    "jaccard": 0.7349,
+    "a": {
+     "dataset": "aigc",
+     "n_shingles": 71,
+     "snippet": "我承认我飘了，因为我们在一起了。明天早上是最后一科考试，然后他今天晚上跟我表白了。嗯正式的表白要从花开始，其实还没有算答"
+    },
+    "b": {
+     "dataset": "exploring",
+     "n_shingles": 73,
+     "snippet": "我承认我标题党了，因为我们在一起了。明天早上是最后一科考试，然后他今天晚上跟我表白了。\n嗯正式的表白要从花开始，其实还没"
+    }
+   },
+   {
+    "jaccard": 0.7099,
+    "a": {
+     "dataset": "human",
+     "n_shingles": 348,
+     "snippet": "贝果空又又又又来咯[派对R][派对R][派对R][派对R]\n巧克力控一整个爱住  ❗❗贝果体韧内软、越嚼越香，乳酪+巧克"
+    },
+    "b": {
+     "dataset": "aigc",
+     "n_shingles": 324,
+     "snippet": "抹茶控一整个爱住  ❗❗贝果体韧内软、越嚼越香，抹茶+奶油奶酪内馅儿香味浓郁，入囗丝滑，嗷嗷好吃到飞起😋😋\n👉材料（4个"
+    }
+   }
+  ]
+ },
+ "meta": {
+  "shingle_chars": 5,
+  "sketch_k": 128,
+  "df_cap": 50,
+  "min_shingles": 20,
+  "thresholds": [
+   0.5,
+   0.7,
+   0.9
+  ],
+  "n_docs": 103693,
+  "n_docs_excluded_short": 15394,
+  "excluded_short_by_dataset": {
+   "human": 3,
+   "aigc": 79,
+   "exploring": 15312
+  },
+  "n_candidate_pairs": 7034112,
+  "n_verified_pairs": 1291530,
+  "n_pairs_min_j": 3152,
+  "datasets": {
+   "human": {
+    "n_raw": 51878,
+    "n_docs": 51672
+   },
+   "aigc": {
+    "n_raw": 7254,
+    "n_docs": 7254
+   },
+   "exploring": {
+    "n_raw": 91517,
+    "n_docs": 60161
+   }
+  },
+  "exploring_content_len_mismatch": 0,
+  "recall": {
+   "n_sample": 1000,
+   "min_j": 0.5,
+   "true_pairs": 73,
+   "found_pairs": 73,
+   "recall_pct": 100.0
+  }
+ }
+}

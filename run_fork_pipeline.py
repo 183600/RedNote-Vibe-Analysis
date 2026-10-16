@@ -6,7 +6,7 @@
 或全量扫描原始 JSONL，互不写坏对方输出，可以任意单独重跑。
 
 用法：
-  python3 run_fork_pipeline.py                     # 运行全部 9 步
+  python3 run_fork_pipeline.py                     # 运行全部 10 步
   python3 run_fork_pipeline.py --list              # 只打印步骤
   python3 run_fork_pipeline.py --from 3            # 从第 3 步开始
   python3 run_fork_pipeline.py --only detector_diagnostics.py family_lexicon_analysis.py
@@ -37,6 +37,8 @@ STEPS = [
      "探索集用户风格聚类 -> user_clustering_results.md"),
     ("symbol_analysis.py",
      "标签/表情生态（普及率、AI 专属符号、梯度、互动）-> symbol_results.{json,md} + 3 图"),
+    ("near_duplicate_analysis.py",
+     "字符 5-gram Jaccard 近重复/模板复用（bottom-k 候选+精确校验）-> near_duplicate_results.{json,md} + 1 图"),
 ]
 
 

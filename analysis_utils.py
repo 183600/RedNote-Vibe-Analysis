@@ -823,7 +823,9 @@ def cliffs_delta(a, b) -> tuple[float, float]:
 
 def gini_coefficient(values) -> float:
     """基尼系数（0=完全均等，1=完全集中）；负值按 0 处理，空/全零返回 0。"""
-    arr = np.asarray(list(values), dtype=float)
+    if not isinstance(values, np.ndarray):
+        values = list(values)
+    arr = np.asarray(values, dtype=float)
     arr = np.clip(arr[~np.isnan(arr)], 0.0, None)
     total = float(arr.sum())
     if arr.size == 0 or total <= 0:
@@ -999,30 +1001,40 @@ def save_json(obj, path: str) -> None:
         json.dump(obj, f, ensure_ascii=False, indent=1)
 
 
+def _stream_bytes_equal(stream, data: bytes, chunk: int = 65536) -> bool:
+    """把二进制流与 bytes 分块比较，避免把整个解压内容读进内存。"""
+    pos = 0
+    n = len(data)
+    while pos < n:
+        block = stream.read(min(chunk, n - pos))
+        if not block or block != data[pos:pos + len(block)]:
+            return False
+        pos += len(block)
+    return not stream.read(1)
+
+
 def write_csv_gz_if_changed(df: pd.DataFrame, path: str) -> bool:
     """把 DataFrame 写为 gzip CSV；内容与现有文件一致时一个字节都不动。
 
     研究数据文件（*.csv.gz）由 CI 逐字节校验保护：重跑分析脚本时若派生内容
     没有变化，就不应该产生无意义的字节churn。这里先把新内容序列化到内存
-    （gzip mtime 固定为 0，输出确定性），解压现有文件逐字节比较；只有内容
-    真正变化时才经临时文件原子替换。返回是否实际写入了文件。
+    （gzip mtime 固定为 0，输出确定性），再分块流式解压现有文件逐字节比较
+    （不整体读入内存）；只有内容真正变化时才经临时文件原子替换。返回是否
+    实际写入了文件。
     """
     import gzip
-    import io
 
     csv_bytes = df.to_csv(index=False).encode("utf-8")
     if os.path.exists(path):
         try:
             with gzip.open(path, "rb") as f:
-                if f.read() == csv_bytes:
+                if _stream_bytes_equal(f, csv_bytes):
                     return False
         except OSError:
             pass
-    buf = io.BytesIO()
-    with gzip.GzipFile(fileobj=buf, mode="wb", mtime=0) as gz:
-        gz.write(csv_bytes)
     tmp = f"{path}.tmp"
     with open(tmp, "wb") as f:
-        f.write(buf.getvalue())
+        with gzip.GzipFile(fileobj=f, mode="wb", mtime=0) as gz:
+            gz.write(csv_bytes)
     os.replace(tmp, path)
     return True

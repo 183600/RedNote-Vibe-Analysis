@@ -239,8 +239,10 @@ def load_particle_data(files, particles):
     for f in files:
         ratios_flat = array.array("d")
         text_lens = array.array("q")
+        domain_cache = {}
+        month_cache = {}
         domains = []
-        local_times = []
+        months = []
         liked_vals = []
         total = 0
         with open(f, "r", encoding="utf-8") as fh:
@@ -263,8 +265,11 @@ def load_particle_data(files, particles):
                     )
 
                 text_lens.append(text_len)
-                domains.append(item.get("domain", ""))
-                local_times.append(item.get("local_time", ""))
+                dom = item.get("domain", "")
+                domains.append(domain_cache.setdefault(dom, dom))
+                local_time = item.get("local_time", "")
+                month = local_time[:6] if len(local_time) >= 6 else "unknown"
+                months.append(month_cache.setdefault(month, month))
                 liked_vals.append(engagement_of(item)[0])
         ratios = np.frombuffer(ratios_flat, dtype=np.float64).reshape(total, k)
         particle_stats[f] = {
@@ -276,7 +281,7 @@ def load_particle_data(files, particles):
             "text_len": np.frombuffer(text_lens, dtype=np.int64),
             "domain": domains,
             "domain_index": _group_indices(domains),
-            "local_time": local_times,
+            "month_index": _group_indices(months),
             "liked": np.asarray(liked_vals, dtype=np.int64),
         }
         print("Loaded {}: {} records".format(f, total))
@@ -351,13 +356,7 @@ def analyze_particle_by_time(particle_stats, files, top_particles):
 
     for f in files:
         stats_data = particle_stats[f]
-        months = []
-        for local_time in stats_data["local_time"]:
-            if len(local_time) >= 6:
-                months.append(local_time[:6])
-            else:
-                months.append("unknown")
-        month_index = _group_indices(months)
+        month_index = stats_data["month_index"]
         print("\n{}:".format(f))
         for month in sorted(month_index.keys())[:12]:
             idxs = month_index[month]

@@ -86,26 +86,36 @@ def decile_table(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def within_cell_rho(df: pd.DataFrame) -> dict:
-    """月份×领域单元内 Spearman(p_ai, 指标)，按样本量加权汇总三个指标。"""
+    """月份×领域单元内 Spearman(p_ai, 指标)，按样本量加权汇总三个指标。
+
+    三个指标共用同一次 groupby 分组（分组与指标无关），避免对同一份数据
+    重复分组三遍。
+    """
     out = {}
     df = df.copy()
+    log_cols = {}
     for m, _ in METRICS:
-        df["_log"] = np.log10(1 + df[m])
-        rhos, ns = [], []
-        for _, g in df.groupby(["month", "domain"], sort=True):
-            if len(g) < MIN_CELL_N:
-                continue
-            r, _ = spearmanr(g["p_ai"], g["_log"])
+        log_cols[m] = f"_log_{m}"
+        df[log_cols[m]] = np.log10(1 + df[m])
+    rhos = {m: [] for m, _ in METRICS}
+    ns = {m: [] for m, _ in METRICS}
+    for _, g in df.groupby(["month", "domain"], sort=True):
+        n = len(g)
+        if n < MIN_CELL_N:
+            continue
+        for m, _ in METRICS:
+            r, _ = spearmanr(g["p_ai"], g[log_cols[m]])
             if not np.isnan(r):
-                rhos.append(r)
-                ns.append(len(g))
-        rhos_arr = np.asarray(rhos)
+                rhos[m].append(r)
+                ns[m].append(n)
+    for m, _ in METRICS:
+        rhos_arr = np.asarray(rhos[m])
         if rhos_arr.size == 0:
             out[m] = {"weighted_rho": float("nan"),
                       "neg_cell_share": float("nan"), "n_cells": 0}
             continue
         out[m] = {
-            "weighted_rho": float(np.average(rhos_arr, weights=ns)),
+            "weighted_rho": float(np.average(rhos_arr, weights=ns[m])),
             "neg_cell_share": float((rhos_arr < 0).mean()),
             "n_cells": int(len(rhos_arr)),
         }

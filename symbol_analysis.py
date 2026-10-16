@@ -50,7 +50,7 @@ import matplotlib.pyplot as plt
 from scipy.stats import spearmanr
 
 from analysis_utils import (BASE, INSIGHTS, PALETTE, init_plot_style, save_fig,
-                            cliffs_delta, clean_body, content_of, dedup_indices,
+                            cliffs_delta, clean_body, content_of,
                             engagement_of, extract_hashtags, iter_jsonl,
                             parse_local_time, quarter_of, rate_diff_ranking,
                             rate_top, save_json, shannon_entropy, topk_coverage,
@@ -94,43 +94,52 @@ def clean_emojis(chars: list[str]) -> list[str]:
 
 
 def scan(path: str, content_len_ref: np.ndarray | None = None) -> dict:
-    """单次流式扫描：逐记录收集标签、表情、note_id、元数据完整度、时间与互动。"""
-    tags: list[list[str]] = []
-    emojis: list[list[str]] = []
-    xhs: list[list[str]] = []
-    ids, months = [], []
-    meta, content_lens = [], []
-    likes, colls, comms = [], [], []
+    """单次流式扫描：逐记录收集标签、表情、时间与互动，并即时按 note_id 去重。
+
+    去重规则与 `dedup_indices` 完全一致（同名笔记保留 meta 分数最高的一条、
+    并列取最早一条；无 note_id 的记录全部保留；最终按原始行序输出），只是把
+    去重提前到扫描过程中：被更完整记录覆盖的标签/表情列表即时释放，不再为
+    全部原始记录驻留内存。返回值中的逐帖列表/数组均按去重后的顺序给出。
+    """
+    best: dict = {}
+    rows: list = []
     n_raw = mismatch = 0
     for rec in iter_jsonl(path):
         content = content_of(rec)
         body = clean_body(content)
         if content_len_ref is not None and len(body) != int(content_len_ref[n_raw]):
             mismatch += 1
-        tags.append(extract_hashtags(content))
-        emojis.append(clean_emojis(EMOJI.findall(body)))
-        xhs.append(XHS_EMO.findall(body))
-        ids.append(rec.get("note_id"))
         lk, cl, cm = engagement_of(rec)
-        likes.append(lk)
-        colls.append(cl)
-        comms.append(cm)
         dt = parse_local_time(rec.get("local_time"))
         has_meta = (bool(rec.get("user_id"))
                     and rec.get("domain") not in (None, "", "未知"))
-        meta.append(int(has_meta) + int(bool(lk)) + int(bool(cl)) + int(bool(cm))
-                    + int(dt is not None) + int(bool(WS.sub("", content))))
-        months.append(dt.strftime("%Y%m") if dt is not None else "")
-        content_lens.append(len(body))
+        meta = (int(has_meta) + int(bool(lk)) + int(bool(cl)) + int(bool(cm))
+                + int(dt is not None) + int(bool(WS.sub("", content))))
+        row = (n_raw, extract_hashtags(content),
+               clean_emojis(EMOJI.findall(body)), XHS_EMO.findall(body),
+               dt.strftime("%Y%m") if dt is not None else "",
+               meta, len(body), lk, cl, cm)
+        nid = rec.get("note_id")
+        if nid is None:
+            rows.append(row)
+        else:
+            cur = best.get(nid)
+            if cur is None or meta > cur[5]:
+                best[nid] = row
         n_raw += 1
+    rows.extend(best.values())
+    rows.sort(key=lambda r: r[0])
     return {
         "path": path, "n_raw": n_raw, "mismatch": mismatch,
-        "tags": tags, "emojis": emojis, "xhs": xhs, "ids": ids,
-        "months": months, "meta": np.asarray(meta, dtype=np.int64),
-        "content_lens": np.asarray(content_lens, dtype=np.int64),
-        "likes": np.asarray(likes, dtype=np.int64),
-        "colls": np.asarray(colls, dtype=np.int64),
-        "comms": np.asarray(comms, dtype=np.int64),
+        "kept_indices": np.asarray([r[0] for r in rows], dtype=np.int64),
+        "tags": [r[1] for r in rows],
+        "emojis": [r[2] for r in rows],
+        "xhs": [r[3] for r in rows],
+        "months": [r[4] for r in rows],
+        "content_lens": np.asarray([r[6] for r in rows], dtype=np.int64),
+        "likes": np.asarray([r[7] for r in rows], dtype=np.int64),
+        "colls": np.asarray([r[8] for r in rows], dtype=np.int64),
+        "comms": np.asarray([r[9] for r in rows], dtype=np.int64),
     }
 
 
@@ -731,12 +740,11 @@ def main() -> None:
     if scans["exploring"]["n_raw"] != len(scores):
         raise SystemExit("探索集记录数与 paper_exploring_scores 行数不一致，终止")
 
-    kept = {k: np.asarray(dedup_indices(s["ids"], s["meta"]))
-            for k, s in scans.items()}
-    note_tags = {k: [scans[k]["tags"][i] for i in kept[k]] for k in scans}
-    note_emojis = {k: [scans[k]["emojis"][i] for i in kept[k]] for k in scans}
-    note_xhs = {k: [scans[k]["xhs"][i] for i in kept[k]] for k in scans}
-    note_months = {k: [scans[k]["months"][i] for i in kept[k]] for k in scans}
+    kept = {k: s["kept_indices"] for k, s in scans.items()}
+    note_tags = {k: s["tags"] for k, s in scans.items()}
+    note_emojis = {k: s["emojis"] for k, s in scans.items()}
+    note_xhs = {k: s["xhs"] for k, s in scans.items()}
+    note_months = {k: s["months"] for k, s in scans.items()}
     for k in scans:
         print(f"[dedup] {k}: {scans[k]['n_raw']} 记录 -> "
               f"{len(kept[k])} 篇笔记")
@@ -781,7 +789,7 @@ def main() -> None:
           f"最像 AI: " + "、".join("#" + t["tag"] for t in ai_ness["top_aigc"][:3]))
 
     # ---- 维度 3：梯度与扩散 ----
-    body_lens_e = scans["exploring"]["content_lens"][sel_e]
+    body_lens_e = scans["exploring"]["content_lens"]
     grad = decile_gradient(p_e, note_tags["exploring"], ai_tag_set, h_tag_set,
                            top_tag_set, body_lens_e)
     hit_a = np.asarray([bool(set(t) & ai_tag_set) for t in note_tags["exploring"]])
@@ -872,8 +880,8 @@ def main() -> None:
     # ---- 维度 5：标签×互动 ----
     eng = tag_engagement(
         np.asarray([len(t) for t in note_tags["exploring"]], dtype=np.int64),
-        scans["exploring"]["likes"][sel_e],
-        scans["exploring"]["colls"][sel_e],
+        scans["exploring"]["likes"],
+        scans["exploring"]["colls"],
         m_e, d_e)
     print(f"[engagement] 单元内 ρ(标签数, log点赞)="
           f"{eng['within_cell']['weighted_rho']:+.3f} "

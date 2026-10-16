@@ -827,6 +827,22 @@ def cliffs_delta(a, b) -> tuple[float, float]:
     return cliffs_delta_from_u(u, len(a), len(b)), float(p)
 
 
+def cliff_share_test(indicator, values) -> dict:
+    """一组「命中」指示变量在连续值上的 Cliff's δ 与 Mann–Whitney p。
+
+    用于检验某个二值属性（如「含分点行」「含 AI 专属标签」）的帖子在连续
+    指标（如 P(AI) 得分）上是否系统性偏高；命中/未命中任一侧为空时返回
+    中性结果 (δ=0, p=1)。原实现位于 symbol_analysis.py，此处上移供各分析复用。
+    """
+    indicator = np.asarray(indicator, dtype=bool)
+    values = np.asarray(values)
+    if indicator.any() and (~indicator).any():
+        delta, p = cliffs_delta(values[indicator], values[~indicator])
+    else:
+        delta, p = 0.0, 1.0
+    return {"delta": round(float(delta), 3), "p": float(p)}
+
+
 def gini_coefficient(values) -> float:
     """基尼系数（0=完全均等，1=完全集中）；负值按 0 处理，空/全零返回 0。"""
     if not isinstance(values, np.ndarray):
@@ -887,6 +903,39 @@ def bootstrap_auc(y, proba, n_boot: int = 1000, seed: int = 42) -> dict:
         "ci_low": float(np.percentile(aucs, 2.5)),
         "ci_high": float(np.percentile(aucs, 97.5)),
         "n_boot": int(len(aucs)),
+    }
+
+
+def cv_auc(df: pd.DataFrame, feats: list[str], cv=None,
+           label_col: str = "dataset", positive: str = "aigc",
+           seed: int = 42) -> dict:
+    """特征子集在 human vs AIGC 上的 5 折分层交叉验证（逻辑回归）。
+
+    与 `paper_detector.py` 完全同口径：StandardScaler + 平衡类权重
+    LogisticRegression(max_iter=2000)，同一 `StratifiedKFold(shuffle=True,
+    random_state=42)`（cv=None 时内部构造）。原实现在 title_style_analysis.py
+    与本函数逐行一致，检测器消融类分析统一复用这里。
+    """
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.model_selection import StratifiedKFold, cross_val_predict
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import make_pipeline
+    from sklearn.metrics import roc_auc_score, f1_score, accuracy_score
+
+    if cv is None:
+        cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=seed)
+    X = df[list(feats)].fillna(0).values
+    y = (df[label_col] == positive).astype(int).values
+    pipe = make_pipeline(StandardScaler(),
+                         LogisticRegression(max_iter=2000,
+                                            class_weight="balanced"))
+    proba = cross_val_predict(pipe, X, y, cv=cv, method="predict_proba")[:, 1]
+    pred = (proba >= 0.5).astype(int)
+    return {
+        "auc": float(roc_auc_score(y, proba)),
+        "f1": float(f1_score(y, pred)),
+        "acc": float(accuracy_score(y, pred)),
+        "n_features": len(feats),
     }
 
 

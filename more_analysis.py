@@ -6,8 +6,9 @@ import re
 import codecs
 from collections import Counter
 
-RE_PUNCT = re.compile(r"[^\w\s]")
 RE_DIGITS = re.compile(r"\d+")
+# 连续的非 \w 字符（标点/空白）作为分隔符直接切词，等价于原先「标点→空格再 split」。
+RE_NONWORD = re.compile(r"[^\w]+")
 
 EMOJI_PATTERN = re.compile(
     "["
@@ -101,9 +102,8 @@ def tokenize(text):
     if not text:
         return []
     text = str(text)
-    text = RE_PUNCT.sub(" ", text)
     text = RE_DIGITS.sub("", text)
-    words = text.lower().split()
+    words = RE_NONWORD.split(text.lower())
     return [w for w in words if len(w) > 1 and w not in STOPWORDS]
 
 
@@ -154,7 +154,7 @@ def stream_all(filepath, sample_size=5000, seed=42):
     with codecs.open(filepath, "r", encoding="utf-8") as f:
         for line in f:
             try:
-                item = json.loads(line.strip())
+                item = json.loads(line)
             except Exception:
                 continue
 

@@ -12,6 +12,7 @@ import re
 from collections import Counter
 from collections.abc import Iterator
 from datetime import datetime
+from functools import lru_cache
 
 import numpy as np
 import pandas as pd
@@ -461,9 +462,11 @@ def split_sentences(text: str | None) -> list[str]:
     """把正文切成句子（按中英文句末标点/换行/分号），去除空片段与首尾空白。
 
     正则与 `deep_dive_analysis.py` 的 SENT_SPLIT 完全一致（连续标点视为一个边界），
-    保证「平均句长」等指标跨脚本可比。
+    保证「平均句长」等指标跨脚本可比。每个片段只做一次 strip（先在生成器里
+    strip，再用结果本身做非空判断）。
     """
-    return [s.strip() for s in _SENTENCE_SPLIT_RE.split(str(text or "")) if s.strip()]
+    parts = _SENTENCE_SPLIT_RE.split(str(text or ""))
+    return [s for s in (p.strip() for p in parts) if s]
 
 
 def burstiness(lengths) -> float:
@@ -655,9 +658,8 @@ def engagement_of(rec: dict) -> tuple[int, int, int]:
     )
 
 
-def parse_local_time(value) -> datetime | None:
-    """解析数据集的本地时间字段（'YYYYMMDDHH'，兼容 8 位日期）；失败返回 None。"""
-    s = str(value or "").strip()
+@lru_cache(maxsize=16384)
+def _parse_local_time_str(s: str) -> datetime | None:
     if not s.isdigit():
         return None
     try:
@@ -668,6 +670,16 @@ def parse_local_time(value) -> datetime | None:
     except ValueError:
         return None
     return None
+
+
+def parse_local_time(value) -> datetime | None:
+    """解析数据集的本地时间字段（'YYYYMMDDHH'，兼容 8 位日期）；失败返回 None。
+
+    数据集里同一时间戳被大量记录重复使用（探索集 87% 的 local_time 重复），
+    因此对规范化后的字符串做有界缓存（datetime 不可变，可安全共享）。先用
+    str()/strip() 归一化再查缓存，避免 1 与 1.0 之类的哈希等价键命中同一槽位。
+    """
+    return _parse_local_time_str(str(value or "").strip())
 
 
 def hour_of(value) -> int | None:

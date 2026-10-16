@@ -182,8 +182,10 @@ EMOJI_PATTERN = re.compile(
 
 RE_TOPIC_TAG = re.compile(r"#\w+\[话题\]")
 RE_HASHTAG = re.compile(r"#(\w+)")
-RE_PUNCT = re.compile(r"[^\w\s]")
 RE_DIGITS = re.compile(r"\d+")
+# 连续的非 \w 字符（标点/空白）直接作为分隔符切词，等价于原先「标点→空格再 split」，
+# 但省去一次全量替换与一次 split 的结果组装。
+RE_NONWORD = re.compile(r"[^\w]+")
 
 
 def setup_fonts():
@@ -246,9 +248,8 @@ def clean_tokenize(text):
     text = str(text)
     text = RE_TOPIC_TAG.sub(" ", text)
     text = RE_HASHTAG.sub(r"\1", text)
-    text = RE_PUNCT.sub(" ", text)
     text = RE_DIGITS.sub("", text)
-    return [w for w in text.split() if len(w) > 1 and w not in STOPWORDS]
+    return [w for w in RE_NONWORD.split(text) if len(w) > 1 and w not in STOPWORDS]
 
 
 def analyze_engagement_patterns(grouped):

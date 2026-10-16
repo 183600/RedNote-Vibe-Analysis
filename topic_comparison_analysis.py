@@ -14,8 +14,9 @@ import os
 
 RE_TOPIC_TAG = re.compile(r"#\w+\[话题\]")
 RE_HASHTAG = re.compile(r"#(\w+)")
-RE_PUNCT = re.compile(r"[^\w\s]")
 RE_DIGITS = re.compile(r"\d+")
+# 连续的非 \w 字符（标点/空白）作为分隔符直接切词，等价于原先「标点→空格再 split」。
+RE_NONWORD = re.compile(r"[^\w]+")
 RE_BRACKET = re.compile(r"\[.*?\]")
 
 
@@ -185,9 +186,8 @@ def clean_tokenize(text):
     text = str(text)
     text = RE_TOPIC_TAG.sub(" ", text)
     text = RE_HASHTAG.sub(r"\1", text)
-    text = RE_PUNCT.sub(" ", text)
     text = RE_DIGITS.sub("", text)
-    return [w for w in text.split() if len(w) > 1 and w not in STOPWORDS]
+    return [w for w in RE_NONWORD.split(text) if len(w) > 1 and w not in STOPWORDS]
 
 
 def load_aggregates(filepath):

@@ -146,7 +146,9 @@ def scan_sentence_stats(path: str) -> dict:
             metrics[slot] = m
     sent_lens = [l for m in metrics for l in m["sent_lens"]]
     bursts = [m["burst"] for m in metrics if m["burst"] is not None]
-    mean_sents = [float(np.mean(m["sent_lens"])) for m in metrics if m["sent_lens"]]
+    # 平均句长：sum/len 与 np.mean 对整数列表逐位一致，但省掉 15 万次数组构造。
+    mean_sents = [sum(m["sent_lens"]) / len(m["sent_lens"])
+                  for m in metrics if m["sent_lens"]]
     n_sents = [m["n_sent"] for m in metrics if m["sent_lens"]]
     return {
         "n_reps": len(metrics),

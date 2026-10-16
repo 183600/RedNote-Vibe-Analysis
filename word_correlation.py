@@ -8,20 +8,16 @@ from analysis_utils import BASE
 
 RE_TOPIC_TAG = re.compile(r"#\w+\[话题\]")
 RE_HASHTAG = re.compile(r"#\w+")
-RE_ASTRAL = re.compile(r"[\U00010000-\U0010ffff]")
-RE_ALNUM = re.compile(r"[0-9a-zA-Z]+")
-RE_NON_CJK = re.compile(r"[^\u4e00-\u9fff]")
+# 去掉话题标签后就只剩下汉字是有效字符：所有非汉字字符（含空白/标点/字母数字）
+# 一律作为分隔符切词，等价于原先依次把 astral/alnum/非汉字替换为空格再 split。
+RE_NON_CJK = re.compile(r"[^\u4e00-\u9fff]+")
 
 
 def clean_text(text):
     text = str(text)
     text = RE_TOPIC_TAG.sub(" ", text)
     text = RE_HASHTAG.sub(" ", text)
-    text = RE_ASTRAL.sub(" ", text)
-    text = RE_ALNUM.sub(" ", text)
-    text = RE_NON_CJK.sub(" ", text)
-    words = text.split()
-    return [w for w in words if len(w) >= 2]
+    return [w for w in RE_NON_CJK.split(text) if len(w) >= 2]
 
 
 def main():
@@ -37,7 +33,7 @@ def main():
     ) as f:
         for line in f:
             try:
-                item = json.loads(line.strip())
+                item = json.loads(line)
                 user_id = item.get("user_id")
                 if not user_id:
                     continue

@@ -102,13 +102,17 @@ STOPWORDS = set(
 )
 
 
+RE_DIGITS = re.compile(r"\d+")
+# 连续的非 \w 字符（标点/空白）作为分隔符直接切词，等价于原先「标点→空格再 split」。
+RE_NONWORD = re.compile(r"[^\w]+")
+
+
 def tokenize(text):
     if not text:
         return []
     text = str(text)
-    text = re.sub(r"[^\w\s]", " ", text)
-    text = re.sub(r"\d+", "", text)
-    words = text.lower().split()
+    text = RE_DIGITS.sub("", text)
+    words = RE_NONWORD.split(text.lower())
     return [w for w in words if len(w) > 1 and w not in STOPWORDS]
 
 
@@ -124,7 +128,7 @@ def stream_stats(filepath):
     with open(filepath, "r", encoding="utf-8") as f:
         for line in f:
             try:
-                item = json.loads(line.strip())
+                item = json.loads(line)
             except Exception:
                 continue
             total += 1

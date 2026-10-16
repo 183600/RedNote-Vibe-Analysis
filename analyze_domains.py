@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import json
 import re
-from collections import defaultdict, Counter
+from collections import Counter
 
 from analysis_utils import BASE
 
@@ -9,26 +9,40 @@ from analysis_utils import BASE
 exclude = set([u'话题', u'时尚薯', u'生活薯', u'知识薯', u'美食薯', u'校园薯',
                u'薯队长', u'薯条小助手', u'小红书创作学院', u'笔记灵感'])
 
+# 单个词的全部状态打包进一个 int：高位是出现该词的笔记数，低 _MASK_BITS 位是
+# 话题 bitmask。避免为每个词同时维护 Counter 计数 + 一个 set 对象（原先每个词
+# 一个 set，数百万个 set 对象是内存占用的主要来源）。
+_COUNT_SHIFT = 16
+_COUNT_ONE = 1 << _COUNT_SHIFT
+_MASK_BITS = _COUNT_ONE - 1
+
+
+def _bump(info, domain_bit):
+    """词频计数 +1 并并入话题 bit（info=None 表示首次出现）。"""
+    if info is None:
+        return _COUNT_ONE | domain_bit
+    return (info + _COUNT_ONE) | domain_bit
+
+
 def main():
     print('Loading...')
-    word_doc_freq = Counter()
-    word_domain_set = defaultdict(set)
+    word_info = {}
     domain_counts = Counter()
+    domain_bits = {}
 
     with open(BASE + 'exploring_set_fixed.jsonl', 'rb') as f:
         for line in f:
             try:
-                s = line.decode('utf-8').strip()
-                item = json.loads(s)
+                item = json.loads(line)
                 domain = item.get('domain', 'unknown')
                 domain_counts[domain] += 1
+                bit = domain_bits.setdefault(domain, 1 << len(domain_bits))
                 text = item.get('note_title', '') + ' ' + (
                     item.get('desc', '') or item.get('note_content', ''))
                 words = re.findall(r'[\u4e00-\u9fff]+', text)
                 for w in set(words):
                     if len(w) >= 2 and w not in exclude:
-                        word_doc_freq[w] += 1
-                        word_domain_set[w].add(domain)
+                        word_info[w] = _bump(word_info.get(w), bit)
             except:
                 pass
 
@@ -40,19 +54,22 @@ def main():
     }
 
     MIN_USERS = 30
-    top_words = [w for w, c in word_doc_freq.most_common(100) if c >= MIN_USERS]
+    # 等价于原先 Counter.most_common(100)：按计数降序、并列保持首次出现顺序。
+    ranked = sorted(word_info.items(), key=lambda kv: kv[1], reverse=True)
 
     results = []
-    for w in top_words:
-        domain_list = list(word_domain_set[w])
-        n_domains = len(domain_list)
-        results.append((w, n_domains, domain_list, word_doc_freq[w]))
+    for w, info in ranked[:100]:
+        count = info >> _COUNT_SHIFT
+        if count < MIN_USERS:
+            continue
+        mask = info & _MASK_BITS
+        results.append((w, bin(mask).count("1"), mask, count))
 
     results.sort(key=lambda x: x[1], reverse=True)
 
     # Count distribution
     dist = Counter()
-    for w, n, ds, c in results:
+    for w, n, m, c in results:
         dist[n] += 1
 
     with open("domain_coverage_results.md", "wb") as f:
@@ -69,14 +86,15 @@ def main():
     
         f.write((u"\n## 真正的跨话题词（在全部6个主要话题出现）\n\n").encode('utf-8'))
         major_domains = [u'\u60c5\u611f', u'\u7a7f\u642d', u'\u5fc3\u7406', u'\u5065\u5eb7', u'\u804c\u573a', u'\u65c5\u884c']
-        in_all_6 = [(w, c) for w, n, ds, c in results if all(d in ds for d in major_domains)]
+        in_all_6 = [(w, c) for w, n, m, c in results
+                    if all(m & domain_bits.get(d, 0) for d in major_domains)]
         f.write((u"共 " + str(len(in_all_6)) + u" 个词在6个主要话题都有出现:\n\n").encode('utf-8'))
         for w, c in in_all_6:
             f.write((u"- " + w + u": " + str(c) + u" 笔记\n").encode('utf-8'))
     
         f.write((u"\n## 只在少量话题出现的词\n\n").encode('utf-8'))
         f.write((u"以下词只在1-3个话题出现，不能算真正的\"跨话题\"词:\n\n").encode('utf-8'))
-        few_topics = [(w, n, c) for w, n, ds, c in results if n <= 3]
+        few_topics = [(w, n, c) for w, n, m, c in results if n <= 3]
         for w, n, c in few_topics[:15]:
             f.write((u"- " + w + u": " + str(n) + u"个话题, " + str(c) + u"笔记\n").encode('utf-8'))
     

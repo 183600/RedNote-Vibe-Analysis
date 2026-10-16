@@ -13,7 +13,7 @@ from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 from scipy import stats
 
-from analysis_utils import init_plot_style
+from analysis_utils import init_plot_style, engagement_of
 import matplotlib
 
 matplotlib.use("Agg")
@@ -195,7 +195,8 @@ def setup_fonts():
 # 下游分析只读取这些字段；加载时按白名单投影，避免整条记录（含 note_id /
 # user_id / time 等未使用字段）长期驻留内存。容错口径与原实现一致。
 _ITEM_KEYS = ("note_title", "note_content", "desc", "domain", "local_time",
-              "time", "liked_count", "collected_count", "comments_count")
+              "time", "liked_count", "collected_count", "comments_count",
+              "likes", "collections", "comments")
 
 
 def iter_jsonl_items(filepath):
@@ -265,9 +266,9 @@ def analyze_engagement_patterns(grouped):
             if not domain_items:
                 continue
 
-            likes = [item.get("liked_count", 0) for item in domain_items]
-            collects = [item.get("collected_count", 0) for item in domain_items]
-            comments = [item.get("comments_count", 0) for item in domain_items]
+            likes = [engagement_of(item)[0] for item in domain_items]
+            collects = [engagement_of(item)[1] for item in domain_items]
+            comments = [engagement_of(item)[2] for item in domain_items]
 
             total_likes = sum(likes)
             total_collects = sum(collects)

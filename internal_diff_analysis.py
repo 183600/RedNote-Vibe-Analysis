@@ -28,9 +28,9 @@ def iter_records(filepath):
 
 def pattern_counts(text):
     return {
-        "!": text.count("!"),
-        "?": text.count("?"),
-        "...": text.count("..."),
+        "!": text.count("!") + text.count("！"),
+        "?": text.count("?") + text.count("？"),
+        "...": (text.count("...") + text.count("…") + text.count("。。。")),
         "#": len(RE_HASHTAG.findall(text)),
         "@": len(RE_MENTION.findall(text)),
         "numbers": len(RE_NUMBERS.findall(text)),

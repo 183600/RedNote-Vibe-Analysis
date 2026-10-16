@@ -24,7 +24,7 @@
 | AIGC(17模型) | 25.64 | 35.89 | 10.0 |
 | 探索集(后LLM) | 22.12 | 26.68 | 5.0 |
 
-- human vs aigc：Cliff's δ=-0.522（p=0）；human vs exploring：δ=-0.632（p=0）。
+- aigc vs human：Cliff's δ=-0.522（p=0）；exploring vs human：δ=-0.632（p=0）。
 
 ## 4 重复内容与数据完整性
 

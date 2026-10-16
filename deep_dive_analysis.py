@@ -423,7 +423,7 @@ def plot_sentence_rhythm(stats: dict, out: dict) -> None:
         a = np.array(stats[other]["sent_mean"])
         h = np.array(stats["human"]["sent_mean"])
         u, p = mannwhitneyu(a, h, alternative="two-sided")
-        out["sentence_rhythm"][f"human_vs_{other}"] = {
+        out["sentence_rhythm"][f"{other}_vs_human"] = {
             "cliffs_delta": round(float(cliffs_delta_from_u(u, len(a), len(h))), 3),
             "p_value": float(p)}
     print("[句子节奏] 平均句长中位数: " + ", ".join(
@@ -555,10 +555,10 @@ def write_markdown(out: dict) -> None:
                      f"| {d['sentences_per_note_median']} |")
     lines += [
         "",
-        f"- human vs aigc：Cliff's δ={sr['human_vs_aigc']['cliffs_delta']}"
-        f"（p={sr['human_vs_aigc']['p_value']:.2g}）；"
-        f"human vs exploring：δ={sr['human_vs_exploring']['cliffs_delta']}"
-        f"（p={sr['human_vs_exploring']['p_value']:.2g}）。",
+        f"- aigc vs human：Cliff's δ={sr['aigc_vs_human']['cliffs_delta']}"
+        f"（p={sr['aigc_vs_human']['p_value']:.2g}）；"
+        f"exploring vs human：δ={sr['exploring_vs_human']['cliffs_delta']}"
+        f"（p={sr['exploring_vs_human']['p_value']:.2g}）。",
         "",
         "## 4 重复内容与数据完整性",
         "",

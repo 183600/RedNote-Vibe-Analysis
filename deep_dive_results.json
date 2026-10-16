@@ -340,11 +340,11 @@
     }
    }
   },
-  "human_vs_aigc": {
+  "aigc_vs_human": {
    "cliffs_delta": -0.522,
    "p_value": 0.0
   },
-  "human_vs_exploring": {
+  "exploring_vs_human": {
    "cliffs_delta": -0.632,
    "p_value": 0.0
   }

@@ -16,7 +16,7 @@ import warnings
 import numpy as np
 from collections import Counter, defaultdict
 from scipy import stats
-from analysis_utils import init_plot_style
+from analysis_utils import init_plot_style, engagement_of
 import matplotlib
 
 matplotlib.use("Agg")
@@ -75,11 +75,7 @@ def load_aggregates():
                     text = get_text(item)
                     length = len(text)
                     if length > 0:
-                        engagement = (
-                            item.get("liked_count", 0)
-                            + item.get("collected_count", 0)
-                            + item.get("comments_count", 0)
-                        )
+                        engagement = sum(engagement_of(item))
                         eng[domain].append(engagement / length)
                     rec = inter[domain]
                     rec[3] += 1

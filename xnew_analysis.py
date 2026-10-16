@@ -64,9 +64,10 @@ def main():
                     title_patterns["other"] += 1
 
             text = str(item.get("desc", "")) + " " + str(item.get("note_content", ""))
-            features["exclaim"] += text.count("!")
-            features["question"] += text.count("?")
-            features["ellipsis"] += text.count("...")
+            features["exclaim"] += text.count("!") + text.count("！")
+            features["question"] += text.count("?") + text.count("？")
+            features["ellipsis"] += (
+                text.count("...") + text.count("…") + text.count("。。。"))
             features["caps"] += sum(1 for c in text if c.isupper())
             features["quotes"] += len(re.findall(r'["\u201c\u201d]', text))
 

@@ -3,7 +3,7 @@ import array
 import json
 import re
 import numpy as np
-from analysis_utils import init_plot_style
+from analysis_utils import init_plot_style, engagement_of
 import matplotlib
 
 matplotlib.use("Agg")
@@ -265,13 +265,7 @@ def load_particle_data(files, particles):
                 text_lens.append(text_len)
                 domains.append(item.get("domain", ""))
                 local_times.append(item.get("local_time", ""))
-                liked = item.get("liked_count", 0)
-                if isinstance(liked, str):
-                    try:
-                        liked = int(liked)
-                    except ValueError:
-                        liked = 0
-                liked_vals.append(liked or 0)
+                liked_vals.append(engagement_of(item)[0])
         ratios = np.frombuffer(ratios_flat, dtype=np.float64).reshape(total, k)
         particle_stats[f] = {
             "n": total,

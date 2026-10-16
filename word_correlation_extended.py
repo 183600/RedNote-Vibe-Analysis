@@ -25,7 +25,8 @@ def main():
                 user_id = item.get("user_id")
                 if not user_id:
                     continue
-                text = item.get("note_title", "") + " " + item.get("desc", "")
+                text = item.get("note_title", "") + " " + (
+                    item.get("desc") or item.get("note_content") or "")
                 words = re.findall(r"[\u4e00-\u9fff]+", text)
                 for w in set(words):
                     if len(w) >= 2 and w not in exclude:

@@ -156,7 +156,7 @@ def main():
                 sent_stats.append(sent)
 
             rep = analyze_repetition(text)
-            if rep.get("repeat_ratio", 0) > 0:
+            if rep:
                 repeat_ratios.append(rep["repeat_ratio"])
 
         print("\n" + "=" * 50)
@@ -241,7 +241,7 @@ def main():
                 sent_stats_title.append(sent)
 
             rep = analyze_repetition(title)
-            if rep.get("repeat_ratio", 0) > 0:
+            if rep:
                 repeat_ratios_title.append(rep["repeat_ratio"])
 
         print("\n" + "=" * 50)

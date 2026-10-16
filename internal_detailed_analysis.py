@@ -9,6 +9,8 @@ import json
 import re
 from collections import Counter, defaultdict
 
+from analysis_utils import engagement_of
+
 RE_CJK = re.compile(r"[\u4e00-\u9fff]+")
 RE_SENT_SPLIT = re.compile(r"[。！？\n]")
 RE_LIST_ITEM = re.compile(r"^\d+[.、]", re.MULTILINE)
@@ -30,6 +32,9 @@ _DATA_KEYS = (
     "liked_count",
     "collected_count",
     "comments_count",
+    "likes",
+    "collections",
+    "comments",
 )
 
 
@@ -175,9 +180,10 @@ def scan(path):
         neg_t += sum(map(title.__contains__, negative_words))
 
         # 3. 互动
-        likes_sum += item.get("liked_count", 0)
-        collects_sum += item.get("collected_count", 0)
-        comments_sum += item.get("comments_count", 0)
+        like_i, coll_i, comm_i = engagement_of(item)
+        likes_sum += like_i
+        collects_sum += coll_i
+        comments_sum += comm_i
 
         # 4. 结构（正文）
         para_c += sum(1 for p in combined.split("\n") if p.strip())

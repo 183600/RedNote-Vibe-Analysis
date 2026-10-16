@@ -459,7 +459,10 @@ def main() -> None:
         view_stats[k] = {
             "n_records": scans[k]["n_raw"],
             "n_notes": int(len(sel)),
-            "n_short_excluded": scans[k]["n_short"],
+            # 去重后仍因过短而不参与模板统计的笔记数（非原始记录数，
+            # 否则探索集的重复副本会把该计数虚增 ~57%）。
+            "n_short_excluded": int(len(sel)) - n_used,
+            "n_short_records_raw": scans[k]["n_short"],
             "n_used": n_used,
             "top20_open": topk_coverage(oc, TOPK),
             "top50_open": topk_coverage(oc, 50),

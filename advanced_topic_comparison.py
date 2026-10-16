@@ -13,7 +13,7 @@ import numpy as np
 from collections import Counter, defaultdict
 from scipy import stats
 
-from analysis_utils import init_plot_style
+from analysis_utils import init_plot_style, engagement_of
 import matplotlib
 
 matplotlib.use("Agg")
@@ -203,7 +203,8 @@ def setup_fonts():
 # 下游分析只读取这些字段；加载时按白名单投影，避免整条记录（含 note_id /
 # user_id / time 等未使用字段）长期驻留内存。容错口径与原实现一致。
 _ITEM_KEYS = ("note_title", "note_content", "desc", "domain",
-              "liked_count", "collected_count", "comments_count")
+              "liked_count", "collected_count", "comments_count",
+              "likes", "collections", "comments")
 
 
 def iter_jsonl_items(filepath):
@@ -266,11 +267,7 @@ def compute_sentiment(text):
 
 
 def compute_engagement(item):
-    return (
-        item.get("liked_count", 0)
-        + item.get("collected_count", 0)
-        + item.get("comments_count", 0)
-    )
+    return sum(engagement_of(item))
 
 
 def extract_domain_items(data, domain):
@@ -298,13 +295,10 @@ def analyze_domain_stats(items):
     for t in texts:
         word_freq.update(clean_tokenize(t))
 
-    chars = set()
-    total_chars = 0
-    for t in texts:
-        chars.update(t)
-        total_chars += len(t)
-    unique_chars = len(chars)
-    ttr = unique_chars / total_chars if total_chars > 0 else 0
+    # 逐帖计算「独特字/总字」再取均值：语料级 TTR 会随语料规模系统性下降，
+    # 而三个数据集的域内帖数相差一个数量级，直接比较语料级 TTR 会引入规模混杂。
+    char_ratios = [len(set(t)) / len(t) for t in texts if t]
+    ttr = float(np.mean(char_ratios)) if char_ratios else 0.0
 
     exclaim = sum(t.count("!") + t.count("！") for t in texts)
     question = sum(t.count("?") + t.count("？") for t in texts)
@@ -466,9 +460,14 @@ def plot_domain_distribution_comparison(all_stats, totals, output_dir):
     a_counts = [all_stats["AIGC"].get(d, {}).get("count", 0) for d in domains]
     e_counts = [all_stats["Exploring"].get(d, {}).get("count", 0) for d in domains]
 
-    h_pct = [c / totals["Human"] * 100 for c in h_counts]
-    a_pct = [c / totals["AIGC"] * 100 for c in a_counts]
-    e_pct = [c / totals["Exploring"] * 100 for c in e_counts]
+    # 分母用「有领域标注的记录数」而非全部记录：探索集有 ~19% 记录缺 domain，
+    # 用人均全部记录作分母会把所有领域占比整体压小，破坏跨数据集可比性。
+    h_base = sum(h_counts) or 1
+    a_base = sum(a_counts) or 1
+    e_base = sum(e_counts) or 1
+    h_pct = [c / h_base * 100 for c in h_counts]
+    a_pct = [c / a_base * 100 for c in a_counts]
+    e_pct = [c / e_base * 100 for c in e_counts]
 
     fig, axes = plt.subplots(1, 2, figsize=(16, 6))
 

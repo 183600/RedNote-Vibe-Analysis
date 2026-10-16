@@ -37,7 +37,8 @@ def main():
                 user_id = item.get("user_id")
                 if not user_id:
                     continue
-                text = item.get("note_title", "") + " " + item.get("desc", "")
+                text = item.get("note_title", "") + " " + (
+                    item.get("desc") or item.get("note_content") or "")
                 words = clean_text(text)
                 note_counts[user_id] += 1
                 user_totals[user_id].update(words)

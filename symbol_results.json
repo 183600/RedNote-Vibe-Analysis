@@ -1,0 +1,2036 @@
+{
+ "meta": {
+  "tag_topk": 20,
+  "bin_edges": [
+   1,
+   2,
+   3,
+   5,
+   10
+  ],
+  "min_aigc_count": 15,
+  "min_human_count": 50,
+  "tag_ai_min_notes": 100,
+  "min_quarter_n": 300,
+  "min_cell_n": 100,
+  "min_body_len": 8,
+  "eng_month_from": "202301",
+  "exploring_content_len_mismatch": 0,
+  "note": "人类/探索集按 note_id 去重（保留元数据最完整一条）；AIGC 无 note_id 逐记录；p_ai 按行序对齐 paper_exploring_scores.csv.gz；标签与表情口径见脚本 docstring。",
+  "n_records": {
+   "human": 51878,
+   "aigc": 7254,
+   "exploring": 91517
+  },
+  "n_notes": {
+   "human": 51672,
+   "aigc": 7254,
+   "exploring": 60161
+  }
+ },
+ "hashtag_structure": {
+  "human": {
+   "n_notes": 51672,
+   "n_tagged": 28384,
+   "tagged_share": 0.5493110388605047,
+   "tags_total": 153200,
+   "tags_per_note_mean": 2.964855240749342,
+   "tags_per_note_median": 1.0,
+   "tags_per_note_p90": 8.0,
+   "tags_per_tagged_mean": 5.3974069898534385,
+   "unique_tags": 55768,
+   "unique_tag_ratio": 0.36402088772845953,
+   "singleton_tag_share": 0.7303650839190934,
+   "top20_coverage": 0.05646839632925693,
+   "entropy_mm": 14.329886699473304,
+   "tag_len_mean": 4.53105091383812,
+   "bins_pct": {
+    "0": 45.06889611394953,
+    "1": 7.263121226196005,
+    "2": 6.4115962223254375,
+    "3–4": 15.836429787892865,
+    "5–9": 18.180058832636632,
+    "10+": 7.239897816999536
+   }
+  },
+  "aigc": {
+   "n_notes": 7254,
+   "n_tagged": 5166,
+   "tagged_share": 0.7121588089330024,
+   "tags_total": 28550,
+   "tags_per_note_mean": 3.9357595809208714,
+   "tags_per_note_median": 3.0,
+   "tags_per_note_p90": 9.0,
+   "tags_per_tagged_mean": 5.526519550909795,
+   "unique_tags": 18715,
+   "unique_tag_ratio": 0.6555166374781086,
+   "singleton_tag_share": 0.8313652150681272,
+   "top20_coverage": 0.0393772572670851,
+   "entropy_mm": 14.068970712974162,
+   "tag_len_mean": 4.690647985989492,
+   "bins_pct": {
+    "0": 28.78411910669975,
+    "1": 2.012682657843948,
+    "2": 4.687069203198235,
+    "3–4": 23.586986490212297,
+    "5–9": 32.9059829059829,
+    "10+": 8.02315963606286
+   }
+  },
+  "exploring": {
+   "n_notes": 60161,
+   "n_tagged": 55279,
+   "tagged_share": 0.918851082927478,
+   "tags_total": 397907,
+   "tags_per_note_mean": 6.614035670949619,
+   "tags_per_note_median": 6.0,
+   "tags_per_note_p90": 11.0,
+   "tags_per_tagged_mean": 7.198158432677871,
+   "unique_tags": 91093,
+   "unique_tag_ratio": 0.22893037820395218,
+   "singleton_tag_share": 0.6514551063199148,
+   "top20_coverage": 0.04784613705639154,
+   "entropy_mm": 14.376597444249356,
+   "tag_len_mean": 4.849623153148851,
+   "bins_pct": {
+    "0": 8.114891707252207,
+    "1": 4.283505925765862,
+    "2": 6.607270490849554,
+    "3–4": 18.22276890344243,
+    "5–9": 35.29529096923255,
+    "10+": 27.476272003457392
+   }
+  }
+ },
+ "hashtag_specific": {
+  "aigc": [
+   {
+    "word": "健康生活",
+    "rate_diff_ppt": 1.02,
+    "aigc_per1k": 10.34,
+    "human_per1k": 0.14
+   },
+   {
+    "word": "ootd",
+    "rate_diff_ppt": 0.948,
+    "aigc_per1k": 9.93,
+    "human_per1k": 0.45
+   },
+   {
+    "word": "健康饮食",
+    "rate_diff_ppt": 0.911,
+    "aigc_per1k": 9.93,
+    "human_per1k": 0.81
+   },
+   {
+    "word": "情绪管理",
+    "rate_diff_ppt": 0.724,
+    "aigc_per1k": 7.72,
+    "human_per1k": 0.48
+   },
+   {
+    "word": "周末好去处",
+    "rate_diff_ppt": 0.665,
+    "aigc_per1k": 7.31,
+    "human_per1k": 0.66
+   },
+   {
+    "word": "情侣日常",
+    "rate_diff_ppt": 0.624,
+    "aigc_per1k": 6.34,
+    "human_per1k": 0.1
+   },
+   {
+    "word": "小个子穿搭",
+    "rate_diff_ppt": 0.615,
+    "aigc_per1k": 7.58,
+    "human_per1k": 1.43
+   },
+   {
+    "word": "好物推荐",
+    "rate_diff_ppt": 0.593,
+    "aigc_per1k": 7.31,
+    "human_per1k": 1.37
+   },
+   {
+    "word": "自我提升",
+    "rate_diff_ppt": 0.522,
+    "aigc_per1k": 8.68,
+    "human_per1k": 3.46
+   },
+   {
+    "word": "通勤穿搭",
+    "rate_diff_ppt": 0.509,
+    "aigc_per1k": 5.51,
+    "human_per1k": 0.43
+   },
+   {
+    "word": "夏日穿搭",
+    "rate_diff_ppt": 0.496,
+    "aigc_per1k": 6.2,
+    "human_per1k": 1.24
+   },
+   {
+    "word": "OOTD",
+    "rate_diff_ppt": 0.495,
+    "aigc_per1k": 5.38,
+    "human_per1k": 0.43
+   }
+  ],
+  "human": [
+   {
+    "word": "笔记灵感",
+    "rate_diff_ppt": 2.265,
+    "aigc_per1k": 4.14,
+    "human_per1k": 26.78
+   },
+   {
+    "word": "减肥减脂吃这些",
+    "rate_diff_ppt": 0.779,
+    "aigc_per1k": 1.52,
+    "human_per1k": 9.31
+   },
+   {
+    "word": "一起去露营",
+    "rate_diff_ppt": 0.676,
+    "aigc_per1k": 0.96,
+    "human_per1k": 7.72
+   },
+   {
+    "word": "又该减肥了",
+    "rate_diff_ppt": 0.643,
+    "aigc_per1k": 0.83,
+    "human_per1k": 7.26
+   },
+   {
+    "word": "我的日常",
+    "rate_diff_ppt": 0.642,
+    "aigc_per1k": 2.48,
+    "human_per1k": 8.9
+   },
+   {
+    "word": "书荒焦虑求推荐",
+    "rate_diff_ppt": 0.633,
+    "aigc_per1k": 0.96,
+    "human_per1k": 7.3
+   },
+   {
+    "word": "减肥",
+    "rate_diff_ppt": 0.632,
+    "aigc_per1k": 1.79,
+    "human_per1k": 8.11
+   },
+   {
+    "word": "减肥打卡",
+    "rate_diff_ppt": 0.57,
+    "aigc_per1k": 2.76,
+    "human_per1k": 8.46
+   },
+   {
+    "word": "周末探店",
+    "rate_diff_ppt": 0.56,
+    "aigc_per1k": 1.79,
+    "human_per1k": 7.39
+   },
+   {
+    "word": "读书",
+    "rate_diff_ppt": 0.515,
+    "aigc_per1k": 1.24,
+    "human_per1k": 6.39
+   },
+   {
+    "word": "美食日常",
+    "rate_diff_ppt": 0.503,
+    "aigc_per1k": 2.21,
+    "human_per1k": 7.24
+   },
+   {
+    "word": "露营",
+    "rate_diff_ppt": 0.47,
+    "aigc_per1k": 2.21,
+    "human_per1k": 6.91
+   }
+  ],
+  "aigc_top": [
+   {
+    "word": "周末去哪儿",
+    "aigc_per1k": 15.3
+   },
+   {
+    "word": "健康生活",
+    "aigc_per1k": 10.34
+   },
+   {
+    "word": "ootd",
+    "aigc_per1k": 9.93
+   },
+   {
+    "word": "健康饮食",
+    "aigc_per1k": 9.93
+   },
+   {
+    "word": "日常穿搭",
+    "aigc_per1k": 9.24
+   },
+   {
+    "word": "自我提升",
+    "aigc_per1k": 8.68
+   },
+   {
+    "word": "每日穿搭",
+    "aigc_per1k": 8.13
+   },
+   {
+    "word": "情绪管理",
+    "aigc_per1k": 7.72
+   },
+   {
+    "word": "小个子穿搭",
+    "aigc_per1k": 7.58
+   },
+   {
+    "word": "周末好去处",
+    "aigc_per1k": 7.31
+   },
+   {
+    "word": "好物推荐",
+    "aigc_per1k": 7.31
+   },
+   {
+    "word": "自我成长",
+    "aigc_per1k": 7.03
+   },
+   {
+    "word": "好物分享",
+    "aigc_per1k": 6.48
+   },
+   {
+    "word": "女性成长",
+    "aigc_per1k": 6.48
+   },
+   {
+    "word": "情侣日常",
+    "aigc_per1k": 6.34
+   },
+   {
+    "word": "夏日穿搭",
+    "aigc_per1k": 6.2
+   },
+   {
+    "word": "通勤穿搭",
+    "aigc_per1k": 5.51
+   },
+   {
+    "word": "OOTD",
+    "aigc_per1k": 5.38
+   },
+   {
+    "word": "平价好物",
+    "aigc_per1k": 4.96
+   },
+   {
+    "word": "情感",
+    "aigc_per1k": 4.96
+   },
+   {
+    "word": "职场干货",
+    "aigc_per1k": 4.82
+   },
+   {
+    "word": "恋爱日常",
+    "aigc_per1k": 4.82
+   },
+   {
+    "word": "显瘦穿搭",
+    "aigc_per1k": 4.82
+   },
+   {
+    "word": "穿搭分享",
+    "aigc_per1k": 4.55
+   },
+   {
+    "word": "职场穿搭",
+    "aigc_per1k": 4.41
+   },
+   {
+    "word": "ootd每日穿搭",
+    "aigc_per1k": 4.27
+   },
+   {
+    "word": "治愈系",
+    "aigc_per1k": 4.27
+   },
+   {
+    "word": "笔记灵感",
+    "aigc_per1k": 4.14
+   },
+   {
+    "word": "个人成长",
+    "aigc_per1k": 4.0
+   },
+   {
+    "word": "求职",
+    "aigc_per1k": 3.72
+   },
+   {
+    "word": "恋爱",
+    "aigc_per1k": 3.72
+   },
+   {
+    "word": "今日穿搭",
+    "aigc_per1k": 3.72
+   },
+   {
+    "word": "女性力量",
+    "aigc_per1k": 3.72
+   },
+   {
+    "word": "减脂餐",
+    "aigc_per1k": 3.72
+   },
+   {
+    "word": "职场生存指南",
+    "aigc_per1k": 3.72
+   },
+   {
+    "word": "小说推荐",
+    "aigc_per1k": 3.58
+   },
+   {
+    "word": "甜甜的恋爱",
+    "aigc_per1k": 3.58
+   },
+   {
+    "word": "日系穿搭",
+    "aigc_per1k": 3.45
+   },
+   {
+    "word": "下午茶",
+    "aigc_per1k": 3.45
+   },
+   {
+    "word": "秋冬穿搭",
+    "aigc_per1k": 3.45
+   },
+   {
+    "word": "心理健康",
+    "aigc_per1k": 3.45
+   },
+   {
+    "word": "职业规划",
+    "aigc_per1k": 3.31
+   },
+   {
+    "word": "平价穿搭",
+    "aigc_per1k": 3.31
+   },
+   {
+    "word": "美食分享",
+    "aigc_per1k": 3.31
+   },
+   {
+    "word": "异地恋",
+    "aigc_per1k": 3.31
+   },
+   {
+    "word": "成都周边游",
+    "aigc_per1k": 3.31
+   },
+   {
+    "word": "运动打卡",
+    "aigc_per1k": 3.31
+   },
+   {
+    "word": "自我疗愈",
+    "aigc_per1k": 3.31
+   },
+   {
+    "word": "自律",
+    "aigc_per1k": 3.17
+   },
+   {
+    "word": "时间管理",
+    "aigc_per1k": 3.17
+   }
+  ]
+ },
+ "tag_ai_ness": {
+  "min_notes": 100,
+  "overall_mean_p": 0.4676,
+  "n_tags_reported": 440,
+  "top_aigc": [
+   {
+    "tag": "健康生活",
+    "n": 125,
+    "mean_p": 0.6765,
+    "mean_resid": 0.2119
+   },
+   {
+    "tag": "手机推荐",
+    "n": 110,
+    "mean_p": 0.6415,
+    "mean_resid": 0.1848
+   },
+   {
+    "tag": "暴汗燃脂瘦全身",
+    "n": 283,
+    "mean_p": 0.636,
+    "mean_resid": 0.1685
+   },
+   {
+    "tag": "秋招提前批",
+    "n": 128,
+    "mean_p": 0.6279,
+    "mean_resid": 0.1683
+   },
+   {
+    "tag": "雅诗兰黛三抗防晒",
+    "n": 103,
+    "mean_p": 0.6522,
+    "mean_resid": 0.1646
+   },
+   {
+    "tag": "OPPOFindX8s",
+    "n": 575,
+    "mean_p": 0.6162,
+    "mean_resid": 0.1474
+   },
+   {
+    "tag": "瘦肚子",
+    "n": 210,
+    "mean_p": 0.5982,
+    "mean_resid": 0.1331
+   },
+   {
+    "tag": "留学生求职",
+    "n": 113,
+    "mean_p": 0.5925,
+    "mean_resid": 0.1314
+   },
+   {
+    "tag": "OPPO",
+    "n": 131,
+    "mean_p": 0.5934,
+    "mean_resid": 0.1292
+   },
+   {
+    "tag": "瘦腿瘦腰瘦肚子",
+    "n": 154,
+    "mean_p": 0.5915,
+    "mean_resid": 0.125
+   },
+   {
+    "tag": "数码大玩家",
+    "n": 160,
+    "mean_p": 0.5819,
+    "mean_resid": 0.1208
+   },
+   {
+    "tag": "小众避暑地",
+    "n": 159,
+    "mean_p": 0.5776,
+    "mean_resid": 0.118
+   },
+   {
+    "tag": "宅家健身打卡",
+    "n": 135,
+    "mean_p": 0.5684,
+    "mean_resid": 0.1027
+   },
+   {
+    "tag": "防晒分享",
+    "n": 104,
+    "mean_p": 0.5821,
+    "mean_resid": 0.1014
+   },
+   {
+    "tag": "有氧运动",
+    "n": 101,
+    "mean_p": 0.5612,
+    "mean_resid": 0.0972
+   }
+  ],
+  "top_human": [
+   {
+    "tag": "随便穿穿就很好看",
+    "n": 130,
+    "mean_p": 0.1615,
+    "mean_resid": -0.2983
+   },
+   {
+    "tag": "今天穿什么",
+    "n": 135,
+    "mean_p": 0.1904,
+    "mean_resid": -0.2702
+   },
+   {
+    "tag": "不费力气的穿撘",
+    "n": 211,
+    "mean_p": 0.201,
+    "mean_resid": -0.2585
+   },
+   {
+    "tag": "日语入门",
+    "n": 122,
+    "mean_p": 0.2196,
+    "mean_resid": -0.2508
+   },
+   {
+    "tag": "一周穿搭合集",
+    "n": 160,
+    "mean_p": 0.2105,
+    "mean_resid": -0.2497
+   },
+   {
+    "tag": "今天穿什么香",
+    "n": 229,
+    "mean_p": 0.2171,
+    "mean_resid": -0.245
+   },
+   {
+    "tag": "cleanfit简单出门",
+    "n": 151,
+    "mean_p": 0.2192,
+    "mean_resid": -0.2421
+   },
+   {
+    "tag": "学院风",
+    "n": 182,
+    "mean_p": 0.2222,
+    "mean_resid": -0.24
+   },
+   {
+    "tag": "日语",
+    "n": 121,
+    "mean_p": 0.2383,
+    "mean_resid": -0.2316
+   },
+   {
+    "tag": "学院风套装",
+    "n": 105,
+    "mean_p": 0.2306,
+    "mean_resid": -0.2315
+   },
+   {
+    "tag": "日常通勤穿搭",
+    "n": 213,
+    "mean_p": 0.2342,
+    "mean_resid": -0.2265
+   },
+   {
+    "tag": "打工人一周穿搭",
+    "n": 115,
+    "mean_p": 0.235,
+    "mean_resid": -0.2249
+   },
+   {
+    "tag": "每日穿搭",
+    "n": 633,
+    "mean_p": 0.2432,
+    "mean_resid": -0.2201
+   },
+   {
+    "tag": "韩系学院风",
+    "n": 129,
+    "mean_p": 0.2428,
+    "mean_resid": -0.2184
+   },
+   {
+    "tag": "慵懒感穿搭",
+    "n": 222,
+    "mean_p": 0.248,
+    "mean_resid": -0.2147
+   }
+  ]
+ },
+ "gradient": {
+  "tags": {
+   "n": 60161,
+   "spearman_tags": {
+    "rho": -0.213,
+    "p": 0.0
+   },
+   "spearman_tagged": {
+    "rho": -0.066,
+    "p": 1.2191700780812268e-59
+   },
+   "spearman_tags_nonpure": {
+    "rho": -0.258,
+    "p": 0.0,
+    "n": 57272
+   },
+   "within_length_rho": {
+    "weighted_rho": -0.2676,
+    "n_strata": 10
+   },
+   "cliff_aigc_tag": {
+    "delta": -0.154,
+    "p": 2.1261116587977433e-59
+   },
+   "cliff_human_tag": {
+    "delta": -0.052,
+    "p": 9.018085565240768e-06
+   },
+   "cliff_top_tag": {
+    "delta": -0.144,
+    "p": 2.71139511680938e-134
+   },
+   "deciles": [
+    {
+     "decile": 1,
+     "n": 6017,
+     "mean_p": 0.0076,
+     "tags_mean": 8.594,
+     "tagged_share": 0.8921,
+     "ge5_share": 0.8514,
+     "short_body_share": 0.0979,
+     "hit_aigc_tag": 0.1215,
+     "hit_aigc_tag_ci": [
+      0.1135,
+      0.13
+     ],
+     "hit_human_tag": 0.0407,
+     "hit_human_tag_ci": [
+      0.036,
+      0.046
+     ],
+     "hit_top_tag": 0.301,
+     "hit_top_tag_ci": [
+      0.2895,
+      0.3127
+     ]
+    },
+    {
+     "decile": 2,
+     "n": 6016,
+     "mean_p": 0.0298,
+     "tags_mean": 5.76,
+     "tagged_share": 0.9666,
+     "ge5_share": 0.573,
+     "short_body_share": 0.1295,
+     "hit_aigc_tag": 0.0816,
+     "hit_aigc_tag_ci": [
+      0.075,
+      0.0888
+     ],
+     "hit_human_tag": 0.0399,
+     "hit_human_tag_ci": [
+      0.0352,
+      0.0451
+     ],
+     "hit_top_tag": 0.2375,
+     "hit_top_tag_ci": [
+      0.2269,
+      0.2485
+     ]
+    },
+    {
+     "decile": 3,
+     "n": 6016,
+     "mean_p": 0.1115,
+     "tags_mean": 7.215,
+     "tagged_share": 0.9289,
+     "ge5_share": 0.6727,
+     "short_body_share": 0.0309,
+     "hit_aigc_tag": 0.067,
+     "hit_aigc_tag_ci": [
+      0.0609,
+      0.0736
+     ],
+     "hit_human_tag": 0.051,
+     "hit_human_tag_ci": [
+      0.0458,
+      0.0569
+     ],
+     "hit_top_tag": 0.2181,
+     "hit_top_tag_ci": [
+      0.2078,
+      0.2287
+     ]
+    },
+    {
+     "decile": 4,
+     "n": 6016,
+     "mean_p": 0.2254,
+     "tags_mean": 7.0,
+     "tagged_share": 0.938,
+     "ge5_share": 0.6451,
+     "short_body_share": 0.0987,
+     "hit_aigc_tag": 0.0524,
+     "hit_aigc_tag_ci": [
+      0.047,
+      0.0583
+     ],
+     "hit_human_tag": 0.047,
+     "hit_human_tag_ci": [
+      0.042,
+      0.0527
+     ],
+     "hit_top_tag": 0.1955,
+     "hit_top_tag_ci": [
+      0.1857,
+      0.2057
+     ]
+    },
+    {
+     "decile": 5,
+     "n": 6016,
+     "mean_p": 0.3665,
+     "tags_mean": 7.438,
+     "tagged_share": 0.9299,
+     "ge5_share": 0.6981,
+     "short_body_share": 0.0047,
+     "hit_aigc_tag": 0.0588,
+     "hit_aigc_tag_ci": [
+      0.0532,
+      0.0651
+     ],
+     "hit_human_tag": 0.047,
+     "hit_human_tag_ci": [
+      0.042,
+      0.0527
+     ],
+     "hit_top_tag": 0.2063,
+     "hit_top_tag_ci": [
+      0.1962,
+      0.2167
+     ]
+    },
+    {
+     "decile": 6,
+     "n": 6016,
+     "mean_p": 0.5174,
+     "tags_mean": 7.406,
+     "tagged_share": 0.9357,
+     "ge5_share": 0.7015,
+     "short_body_share": 0.0032,
+     "hit_aigc_tag": 0.067,
+     "hit_aigc_tag_ci": [
+      0.0609,
+      0.0736
+     ],
+     "hit_human_tag": 0.0504,
+     "hit_human_tag_ci": [
+      0.0451,
+      0.0562
+     ],
+     "hit_top_tag": 0.2214,
+     "hit_top_tag_ci": [
+      0.2111,
+      0.2321
+     ]
+    },
+    {
+     "decile": 7,
+     "n": 6016,
+     "mean_p": 0.6729,
+     "tags_mean": 7.21,
+     "tagged_share": 0.9373,
+     "ge5_share": 0.6853,
+     "short_body_share": 0.0003,
+     "hit_aigc_tag": 0.0615,
+     "hit_aigc_tag_ci": [
+      0.0557,
+      0.0679
+     ],
+     "hit_human_tag": 0.0459,
+     "hit_human_tag_ci": [
+      0.0409,
+      0.0515
+     ],
+     "hit_top_tag": 0.2088,
+     "hit_top_tag_ci": [
+      0.1987,
+      0.2192
+     ]
+    },
+    {
+     "decile": 8,
+     "n": 6016,
+     "mean_p": 0.8199,
+     "tags_mean": 6.643,
+     "tagged_share": 0.9385,
+     "ge5_share": 0.6498,
+     "short_body_share": 0.0101,
+     "hit_aigc_tag": 0.0602,
+     "hit_aigc_tag_ci": [
+      0.0544,
+      0.0665
+     ],
+     "hit_human_tag": 0.0469,
+     "hit_human_tag_ci": [
+      0.0418,
+      0.0525
+     ],
+     "hit_top_tag": 0.2015,
+     "hit_top_tag_ci": [
+      0.1915,
+      0.2118
+     ]
+    },
+    {
+     "decile": 9,
+     "n": 6016,
+     "mean_p": 0.9333,
+     "tags_mean": 5.619,
+     "tagged_share": 0.9181,
+     "ge5_share": 0.5352,
+     "short_body_share": 0.0065,
+     "hit_aigc_tag": 0.0554,
+     "hit_aigc_tag_ci": [
+      0.0499,
+      0.0614
+     ],
+     "hit_human_tag": 0.0346,
+     "hit_human_tag_ci": [
+      0.0302,
+      0.0395
+     ],
+     "hit_top_tag": 0.1607,
+     "hit_top_tag_ci": [
+      0.1517,
+      0.1702
+     ]
+    },
+    {
+     "decile": 10,
+     "n": 6016,
+     "mean_p": 0.9922,
+     "tags_mean": 3.257,
+     "tagged_share": 0.8035,
+     "ge5_share": 0.265,
+     "short_body_share": 0.0984,
+     "hit_aigc_tag": 0.0369,
+     "hit_aigc_tag_ci": [
+      0.0324,
+      0.042
+     ],
+     "hit_human_tag": 0.0231,
+     "hit_human_tag_ci": [
+      0.0196,
+      0.0272
+     ],
+     "hit_top_tag": 0.1054,
+     "hit_top_tag_ci": [
+      0.0979,
+      0.1134
+     ]
+    }
+   ]
+  },
+  "emoji": {
+   "deciles": [
+    {
+     "decile": 1,
+     "n": 6017,
+     "emoji_mean": 0.103,
+     "emoji_share": 0.0194,
+     "xhs_share": 0.0319
+    },
+    {
+     "decile": 2,
+     "n": 6016,
+     "emoji_mean": 0.7,
+     "emoji_share": 0.0989,
+     "xhs_share": 0.109
+    },
+    {
+     "decile": 3,
+     "n": 6016,
+     "emoji_mean": 2.288,
+     "emoji_share": 0.32,
+     "xhs_share": 0.2553
+    },
+    {
+     "decile": 4,
+     "n": 6016,
+     "emoji_mean": 2.86,
+     "emoji_share": 0.3599,
+     "xhs_share": 0.2314
+    },
+    {
+     "decile": 5,
+     "n": 6016,
+     "emoji_mean": 3.328,
+     "emoji_share": 0.4081,
+     "xhs_share": 0.2344
+    },
+    {
+     "decile": 6,
+     "n": 6016,
+     "emoji_mean": 3.294,
+     "emoji_share": 0.4194,
+     "xhs_share": 0.2123
+    },
+    {
+     "decile": 7,
+     "n": 6016,
+     "emoji_mean": 3.334,
+     "emoji_share": 0.4388,
+     "xhs_share": 0.1805
+    },
+    {
+     "decile": 8,
+     "n": 6016,
+     "emoji_mean": 2.944,
+     "emoji_share": 0.4269,
+     "xhs_share": 0.1591
+    },
+    {
+     "decile": 9,
+     "n": 6016,
+     "emoji_mean": 2.365,
+     "emoji_share": 0.3752,
+     "xhs_share": 0.138
+    },
+    {
+     "decile": 10,
+     "n": 6016,
+     "emoji_mean": 0.83,
+     "emoji_share": 0.2178,
+     "xhs_share": 0.0846
+    }
+   ],
+   "spearman_emoji_share": {
+    "rho": 0.169,
+    "p": 0.0
+   },
+   "spearman_emoji_mean": {
+    "rho": 0.16,
+    "p": 0.0
+   }
+  }
+ },
+ "quarterly": {
+  "diffusion": {
+   "quarters": {
+    "2023Q1": {
+     "n": 372,
+     "share_aigc_tag": 0.0323,
+     "ci_aigc_tag": [
+      0.0185,
+      0.0555
+     ],
+     "share_top_tag": 0.2151,
+     "share_human_tag": 0.1048
+    },
+    "2023Q2": {
+     "n": 463,
+     "share_aigc_tag": 0.0346,
+     "ci_aigc_tag": [
+      0.0214,
+      0.0554
+     ],
+     "share_top_tag": 0.1987,
+     "share_human_tag": 0.0734
+    },
+    "2023Q3": {
+     "n": 750,
+     "share_aigc_tag": 0.0427,
+     "ci_aigc_tag": [
+      0.0304,
+      0.0596
+     ],
+     "share_top_tag": 0.224,
+     "share_human_tag": 0.0933
+    },
+    "2023Q4": {
+     "n": 792,
+     "share_aigc_tag": 0.0467,
+     "ci_aigc_tag": [
+      0.0341,
+      0.0637
+     ],
+     "share_top_tag": 0.2184,
+     "share_human_tag": 0.0694
+    },
+    "2024Q1": {
+     "n": 3756,
+     "share_aigc_tag": 0.0248,
+     "ci_aigc_tag": [
+      0.0203,
+      0.0302
+     ],
+     "share_top_tag": 0.0889,
+     "share_human_tag": 0.0298
+    },
+    "2024Q2": {
+     "n": 4613,
+     "share_aigc_tag": 0.0321,
+     "ci_aigc_tag": [
+      0.0274,
+      0.0376
+     ],
+     "share_top_tag": 0.1355,
+     "share_human_tag": 0.041
+    },
+    "2024Q3": {
+     "n": 6725,
+     "share_aigc_tag": 0.0567,
+     "ci_aigc_tag": [
+      0.0514,
+      0.0624
+     ],
+     "share_top_tag": 0.1927,
+     "share_human_tag": 0.0523
+    },
+    "2024Q4": {
+     "n": 7018,
+     "share_aigc_tag": 0.0405,
+     "ci_aigc_tag": [
+      0.0361,
+      0.0453
+     ],
+     "share_top_tag": 0.1552,
+     "share_human_tag": 0.0378
+    },
+    "2025Q1": {
+     "n": 11022,
+     "share_aigc_tag": 0.0627,
+     "ci_aigc_tag": [
+      0.0583,
+      0.0674
+     ],
+     "share_top_tag": 0.1996,
+     "share_human_tag": 0.0349
+    },
+    "2025Q2": {
+     "n": 24614,
+     "share_aigc_tag": 0.0929,
+     "ci_aigc_tag": [
+      0.0893,
+      0.0966
+     ],
+     "share_top_tag": 0.256,
+     "share_human_tag": 0.043
+    }
+   },
+   "trend_aigc_tag": {
+    "rho": 0.588,
+    "p": 0.07387770688865808
+   },
+   "trend_top_tag": {
+    "rho": -0.042,
+    "p": 0.9073638178128159
+   },
+   "trend_human_tag": {
+    "rho": -0.709,
+    "p": 0.02166592336753244
+   }
+  },
+  "baselines": {
+   "human_all_aigc_tag": 0.0104,
+   "human_clean_aigc_tag": 0.0069,
+   "aigc_aigc_tag": 0.0835
+  },
+  "human_months": {
+   "n": 51672,
+   "clean_window_n": 37549
+  }
+ },
+ "emoji_structure": {
+  "human": {
+   "n_notes": 51672,
+   "emoji_share": 0.40844170924291684,
+   "emoji_per_note_mean": 2.395223718841926,
+   "emoji_per_note_median": 0.0,
+   "emoji_distinct": 1335,
+   "xhs_share": 0.29000232234091966,
+   "xhs_per_note_mean": 1.3341848583372038,
+   "xhs_distinct": 156,
+   "top_emoji": [
+    [
+     "✨",
+     8939,
+     173.0
+    ],
+    [
+     "➕",
+     7679,
+     148.61
+    ],
+    [
+     "✅",
+     7478,
+     144.72
+    ],
+    [
+     "⭐",
+     7305,
+     141.37
+    ],
+    [
+     "❤",
+     5961,
+     115.36
+    ],
+    [
+     "❗",
+     4111,
+     79.56
+    ],
+    [
+     "✔",
+     3170,
+     61.35
+    ],
+    [
+     "♀",
+     2610,
+     50.51
+    ],
+    [
+     "⚠",
+     2181,
+     42.21
+    ],
+    [
+     "🌟",
+     1998,
+     38.67
+    ],
+    [
+     "♥",
+     1881,
+     36.4
+    ],
+    [
+     "🏻",
+     1382,
+     26.75
+    ],
+    [
+     "☕",
+     1298,
+     25.12
+    ],
+    [
+     "♡",
+     1176,
+     22.76
+    ],
+    [
+     "➡",
+     1171,
+     22.66
+    ]
+   ],
+   "top_xhs": [
+    [
+     "[赞R]",
+     4985,
+     96.47
+    ],
+    [
+     "[哭惹R]",
+     4429,
+     85.71
+    ],
+    [
+     "[偷笑R]",
+     3934,
+     76.13
+    ],
+    [
+     "[笑哭R]",
+     3814,
+     73.81
+    ],
+    [
+     "[派对R]",
+     3630,
+     70.25
+    ],
+    [
+     "[害羞R]",
+     3383,
+     65.47
+    ],
+    [
+     "[萌萌哒R]",
+     2832,
+     54.81
+    ],
+    [
+     "[哇R]",
+     2797,
+     54.13
+    ],
+    [
+     "[失望R]",
+     2766,
+     53.53
+    ],
+    [
+     "[捂脸R]",
+     2658,
+     51.44
+    ],
+    [
+     "[飞吻R]",
+     2497,
+     48.32
+    ],
+    [
+     "[暗中观察R]",
+     1648,
+     31.89
+    ],
+    [
+     "[色色R]",
+     1615,
+     31.25
+    ],
+    [
+     "[微笑R]",
+     1564,
+     30.27
+    ],
+    [
+     "[大笑R]",
+     1431,
+     27.69
+    ]
+   ]
+  },
+  "aigc": {
+   "n_notes": 7254,
+   "emoji_share": 0.5851943755169562,
+   "emoji_per_note_mean": 3.3056244830438377,
+   "emoji_per_note_median": 1.0,
+   "emoji_distinct": 945,
+   "xhs_share": 0.13895781637717122,
+   "xhs_per_note_mean": 0.561345464571271,
+   "xhs_distinct": 341,
+   "top_emoji": [
+    [
+     "✨",
+     1949,
+     268.68
+    ],
+    [
+     "✅",
+     916,
+     126.28
+    ],
+    [
+     "🌟",
+     850,
+     117.18
+    ],
+    [
+     "⭐",
+     590,
+     81.33
+    ],
+    [
+     "➕",
+     531,
+     73.2
+    ],
+    [
+     "😭",
+     511,
+     70.44
+    ],
+    [
+     "❤",
+     463,
+     63.83
+    ],
+    [
+     "📍",
+     455,
+     62.72
+    ],
+    [
+     "💪",
+     453,
+     62.45
+    ],
+    [
+     "✔",
+     419,
+     57.76
+    ],
+    [
+     "⚠",
+     381,
+     52.52
+    ],
+    [
+     "🔥",
+     367,
+     50.59
+    ],
+    [
+     "♀",
+     324,
+     44.67
+    ],
+    [
+     "💖",
+     296,
+     40.81
+    ],
+    [
+     "❗",
+     273,
+     37.63
+    ]
+   ],
+   "top_xhs": [
+    [
+     "[赞R]",
+     249,
+     34.33
+    ],
+    [
+     "[偷笑R]",
+     224,
+     30.88
+    ],
+    [
+     "[哭惹R]",
+     210,
+     28.95
+    ],
+    [
+     "[捂脸R]",
+     188,
+     25.92
+    ],
+    [
+     "[笑哭R]",
+     184,
+     25.37
+    ],
+    [
+     "[飞吻R]",
+     142,
+     19.58
+    ],
+    [
+     "[哇R]",
+     122,
+     16.82
+    ],
+    [
+     "[派对R]",
+     119,
+     16.4
+    ],
+    [
+     "[害羞R]",
+     107,
+     14.75
+    ],
+    [
+     "[爱心R]",
+     106,
+     14.61
+    ],
+    [
+     "[色色R]",
+     81,
+     11.17
+    ],
+    [
+     "[萌萌哒R]",
+     79,
+     10.89
+    ],
+    [
+     "[得意R]",
+     75,
+     10.34
+    ],
+    [
+     "[抓狂R]",
+     61,
+     8.41
+    ],
+    [
+     "[开心R]",
+     60,
+     8.27
+    ]
+   ]
+  },
+  "exploring": {
+   "n_notes": 60161,
+   "emoji_share": 0.3084223998936188,
+   "emoji_per_note_mean": 2.2045344990940974,
+   "emoji_per_note_median": 0.0,
+   "emoji_distinct": 1308,
+   "xhs_share": 0.16364422133940593,
+   "xhs_per_note_mean": 0.6257542261598045,
+   "xhs_distinct": 179,
+   "top_emoji": [
+    [
+     "✅",
+     9021,
+     149.95
+    ],
+    [
+     "🌟",
+     4191,
+     69.66
+    ],
+    [
+     "✨",
+     4055,
+     67.4
+    ],
+    [
+     "📍",
+     3563,
+     59.22
+    ],
+    [
+     "✔",
+     3025,
+     50.28
+    ],
+    [
+     "➕",
+     2651,
+     44.07
+    ],
+    [
+     "👉",
+     2460,
+     40.89
+    ],
+    [
+     "⭐",
+     2436,
+     40.49
+    ],
+    [
+     "🏻",
+     2386,
+     39.66
+    ],
+    [
+     "➡",
+     2235,
+     37.15
+    ],
+    [
+     "💰",
+     2125,
+     35.32
+    ],
+    [
+     "❗",
+     1878,
+     31.22
+    ],
+    [
+     "⚠",
+     1667,
+     27.71
+    ],
+    [
+     "🔥",
+     1558,
+     25.9
+    ],
+    [
+     "❤",
+     1523,
+     25.32
+    ]
+   ],
+   "top_xhs": [
+    [
+     "[哭惹R]",
+     2894,
+     48.1
+    ],
+    [
+     "[笑哭R]",
+     1598,
+     26.56
+    ],
+    [
+     "[赞R]",
+     1384,
+     23.0
+    ],
+    [
+     "[偷笑R]",
+     1299,
+     21.59
+    ],
+    [
+     "[害羞R]",
+     1292,
+     21.48
+    ],
+    [
+     "[失望R]",
+     1203,
+     20.0
+    ],
+    [
+     "[派对R]",
+     1172,
+     19.48
+    ],
+    [
+     "[一R]",
+     1035,
+     17.2
+    ],
+    [
+     "[哇R]",
+     1024,
+     17.02
+    ],
+    [
+     "[星R]",
+     948,
+     15.76
+    ],
+    [
+     "[二R]",
+     889,
+     14.78
+    ],
+    [
+     "[捂脸R]",
+     874,
+     14.53
+    ],
+    [
+     "[萌萌哒R]",
+     864,
+     14.36
+    ],
+    [
+     "[种草R]",
+     815,
+     13.55
+    ],
+    [
+     "[三R]",
+     795,
+     13.21
+    ]
+   ]
+  }
+ },
+ "emoji_specific": {
+  "unicode": {
+   "human": [
+    {
+     "word": "✨",
+     "rate_diff_ppt": 9.568,
+     "aigc_per1k": 173.0,
+     "human_per1k": 268.68
+    },
+    {
+     "word": "🌟",
+     "rate_diff_ppt": 7.851,
+     "aigc_per1k": 38.67,
+     "human_per1k": 117.18
+    },
+    {
+     "word": "😭",
+     "rate_diff_ppt": 6.421,
+     "aigc_per1k": 6.23,
+     "human_per1k": 70.44
+    },
+    {
+     "word": "💪",
+     "rate_diff_ppt": 5.794,
+     "aigc_per1k": 4.51,
+     "human_per1k": 62.45
+    },
+    {
+     "word": "📍",
+     "rate_diff_ppt": 4.142,
+     "aigc_per1k": 21.31,
+     "human_per1k": 62.72
+    },
+    {
+     "word": "💖",
+     "rate_diff_ppt": 3.835,
+     "aigc_per1k": 2.46,
+     "human_per1k": 40.81
+    },
+    {
+     "word": "🔥",
+     "rate_diff_ppt": 3.679,
+     "aigc_per1k": 13.8,
+     "human_per1k": 50.59
+    }
+   ],
+   "aigc": [
+    {
+     "word": "➕",
+     "rate_diff_ppt": 7.541,
+     "aigc_per1k": 148.61,
+     "human_per1k": 73.2
+    },
+    {
+     "word": "⭐",
+     "rate_diff_ppt": 6.004,
+     "aigc_per1k": 141.37,
+     "human_per1k": 81.33
+    },
+    {
+     "word": "❤",
+     "rate_diff_ppt": 5.154,
+     "aigc_per1k": 115.36,
+     "human_per1k": 63.83
+    },
+    {
+     "word": "❗",
+     "rate_diff_ppt": 4.193,
+     "aigc_per1k": 79.56,
+     "human_per1k": 37.63
+    },
+    {
+     "word": "♥",
+     "rate_diff_ppt": 2.841,
+     "aigc_per1k": 36.4,
+     "human_per1k": 8.0
+    },
+    {
+     "word": "✅",
+     "rate_diff_ppt": 1.845,
+     "aigc_per1k": 144.72,
+     "human_per1k": 126.28
+    },
+    {
+     "word": "⭕",
+     "rate_diff_ppt": 1.492,
+     "aigc_per1k": 20.44,
+     "human_per1k": 5.51
+    }
+   ],
+   "exploring_top": [
+    [
+     "✅",
+     9021,
+     149.95
+    ],
+    [
+     "🌟",
+     4191,
+     69.66
+    ],
+    [
+     "✨",
+     4055,
+     67.4
+    ],
+    [
+     "📍",
+     3563,
+     59.22
+    ],
+    [
+     "✔",
+     3025,
+     50.28
+    ],
+    [
+     "➕",
+     2651,
+     44.07
+    ],
+    [
+     "👉",
+     2460,
+     40.89
+    ],
+    [
+     "⭐",
+     2436,
+     40.49
+    ],
+    [
+     "🏻",
+     2386,
+     39.66
+    ],
+    [
+     "➡",
+     2235,
+     37.15
+    ],
+    [
+     "💰",
+     2125,
+     35.32
+    ],
+    [
+     "❗",
+     1878,
+     31.22
+    ],
+    [
+     "⚠",
+     1667,
+     27.71
+    ],
+    [
+     "🔥",
+     1558,
+     25.9
+    ],
+    [
+     "❤",
+     1523,
+     25.32
+    ]
+   ]
+  },
+  "xhs": {
+   "human": [
+    {
+     "word": "[爱心R]",
+     "rate_diff_ppt": 1.179,
+     "aigc_per1k": 2.83,
+     "human_per1k": 14.61
+    },
+    {
+     "word": "[开心R]",
+     "rate_diff_ppt": 0.827,
+     "aigc_per1k": 0.0,
+     "human_per1k": 8.27
+    },
+    {
+     "word": "[比心R]",
+     "rate_diff_ppt": 0.331,
+     "aigc_per1k": 0.0,
+     "human_per1k": 3.31
+    },
+    {
+     "word": "[鼓掌R]",
+     "rate_diff_ppt": 0.199,
+     "aigc_per1k": 1.05,
+     "human_per1k": 3.03
+    },
+    {
+     "word": "[加油R]",
+     "rate_diff_ppt": 0.122,
+     "aigc_per1k": 3.19,
+     "human_per1k": 4.41
+    },
+    {
+     "word": "[庆祝R]",
+     "rate_diff_ppt": 0.086,
+     "aigc_per1k": 3.0,
+     "human_per1k": 3.86
+    },
+    {
+     "word": "[太阳R]",
+     "rate_diff_ppt": 0.004,
+     "aigc_per1k": 3.27,
+     "human_per1k": 3.31
+    }
+   ],
+   "aigc": [
+    {
+     "word": "[赞R]",
+     "rate_diff_ppt": 6.215,
+     "aigc_per1k": 96.47,
+     "human_per1k": 34.33
+    },
+    {
+     "word": "[哭惹R]",
+     "rate_diff_ppt": 5.676,
+     "aigc_per1k": 85.71,
+     "human_per1k": 28.95
+    },
+    {
+     "word": "[派对R]",
+     "rate_diff_ppt": 5.385,
+     "aigc_per1k": 70.25,
+     "human_per1k": 16.4
+    },
+    {
+     "word": "[害羞R]",
+     "rate_diff_ppt": 5.072,
+     "aigc_per1k": 65.47,
+     "human_per1k": 14.75
+    },
+    {
+     "word": "[笑哭R]",
+     "rate_diff_ppt": 4.845,
+     "aigc_per1k": 73.81,
+     "human_per1k": 25.37
+    },
+    {
+     "word": "[失望R]",
+     "rate_diff_ppt": 4.581,
+     "aigc_per1k": 53.53,
+     "human_per1k": 7.72
+    },
+    {
+     "word": "[偷笑R]",
+     "rate_diff_ppt": 4.525,
+     "aigc_per1k": 76.13,
+     "human_per1k": 30.88
+    }
+   ],
+   "exploring_top": [
+    [
+     "[哭惹R]",
+     2894,
+     48.1
+    ],
+    [
+     "[笑哭R]",
+     1598,
+     26.56
+    ],
+    [
+     "[赞R]",
+     1384,
+     23.0
+    ],
+    [
+     "[偷笑R]",
+     1299,
+     21.59
+    ],
+    [
+     "[害羞R]",
+     1292,
+     21.48
+    ],
+    [
+     "[失望R]",
+     1203,
+     20.0
+    ],
+    [
+     "[派对R]",
+     1172,
+     19.48
+    ],
+    [
+     "[一R]",
+     1035,
+     17.2
+    ],
+    [
+     "[哇R]",
+     1024,
+     17.02
+    ],
+    [
+     "[星R]",
+     948,
+     15.76
+    ],
+    [
+     "[二R]",
+     889,
+     14.78
+    ],
+    [
+     "[捂脸R]",
+     874,
+     14.53
+    ],
+    [
+     "[萌萌哒R]",
+     864,
+     14.36
+    ],
+    [
+     "[种草R]",
+     815,
+     13.55
+    ],
+    [
+     "[三R]",
+     795,
+     13.21
+    ]
+   ]
+  }
+ },
+ "tag_engagement": {
+  "bins": [
+   {
+    "bin": "0",
+    "n": 4879,
+    "likes_median": 10.0,
+    "zero_like_share": 0.23734371797499487,
+    "zero_like_ci": [
+     0.2256,
+     0.2495
+    ],
+    "coll_per_like": 0.13349064981857858
+   },
+   {
+    "bin": "1",
+    "n": 2573,
+    "likes_median": 8.0,
+    "zero_like_share": 0.23902059852312477,
+    "zero_like_ci": [
+     0.2229,
+     0.2559
+    ],
+    "coll_per_like": 0.08787346221441125
+   },
+   {
+    "bin": "2",
+    "n": 3975,
+    "likes_median": 9.0,
+    "zero_like_share": 0.24,
+    "zero_like_ci": [
+     0.227,
+     0.2535
+    ],
+    "coll_per_like": 0.1111111111111111
+   },
+   {
+    "bin": "3–4",
+    "n": 10959,
+    "likes_median": 16.0,
+    "zero_like_share": 0.25029655990510086,
+    "zero_like_ci": [
+     0.2423,
+     0.2585
+    ],
+    "coll_per_like": 0.16071428571428573
+   },
+   {
+    "bin": "5–9",
+    "n": 21218,
+    "likes_median": 59.0,
+    "zero_like_share": 0.2387124139881233,
+    "zero_like_ci": [
+     0.233,
+     0.2445
+    ],
+    "coll_per_like": 0.27476721751530914
+   },
+   {
+    "bin": "10+",
+    "n": 16521,
+    "likes_median": 179.0,
+    "zero_like_share": 0.21245687307063738,
+    "zero_like_ci": [
+     0.2063,
+     0.2188
+    ],
+    "coll_per_like": 0.4
+   }
+  ],
+  "within_cell": {
+   "weighted_rho": 0.1184,
+   "neg_cell_share": 0.2,
+   "n_cells": 100
+  }
+ }
+}

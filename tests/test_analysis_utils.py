@@ -416,5 +416,54 @@ class TestFontSetup(unittest.TestCase):
             self.assertGreater(out.stat().st_size, 0)
 
 
+class TestHashtagHelpers(unittest.TestCase):
+    def test_extract_hashtags_plain_and_huati_format(self):
+        from analysis_utils import extract_hashtags
+
+        self.assertEqual(extract_hashtags("#减肥  #打卡"),
+                         ["减肥", "打卡"])
+        self.assertEqual(extract_hashtags("#穿搭[话题]# #春日[话题]#"),
+                         ["穿搭", "春日"])
+        self.assertEqual(extract_hashtags("正文没有标签"), [])
+        self.assertEqual(extract_hashtags(None), [])
+
+    def test_extract_hashtags_strips_bom_and_skips_junk(self):
+        from analysis_utils import extract_hashtags
+
+        self.assertEqual(extract_hashtags("\ufeff#TVB[话题]#\ufeff"),
+                         ["TVB"])
+        self.assertEqual(extract_hashtags("#\ufeff \ufeff#我是追剧党[话题]#"),
+                         ["我是追剧党"])
+        self.assertEqual(extract_hashtags("##人生不会完蛋的[话题]#"),
+                         ["人生不会完蛋的"])
+        self.assertEqual(extract_hashtags("#话题 #"), [])
+
+    def test_extract_hashtags_keeps_original_case_and_length_cap(self):
+        from analysis_utils import extract_hashtags
+
+        self.assertEqual(extract_hashtags("#MBTI #mbti"), ["MBTI", "mbti"])
+        long_tag = "字" * 40
+        self.assertEqual(extract_hashtags("#" + long_tag),
+                         [long_tag[:30]])
+
+    def test_quarter_of(self):
+        from analysis_utils import quarter_of
+
+        self.assertEqual(quarter_of("202301"), "2023Q1")
+        self.assertEqual(quarter_of("202412"), "2024Q4")
+        self.assertIsNone(quarter_of("2023"))
+        self.assertIsNone(quarter_of(""))
+        self.assertIsNone(quarter_of(None))
+        self.assertIsNone(quarter_of("2023ab"))
+
+    def test_dedup_indices_keeps_best_per_id(self):
+        from analysis_utils import dedup_indices
+
+        ids = ["a", "a", "b", None, "b"]
+        meta = np.array([1, 5, 2, 0, 4])
+        self.assertEqual(dedup_indices(ids, meta), [1, 3, 4])
+        self.assertEqual(dedup_indices([None, None], np.array([0, 0])), [0, 1])
+
+
 if __name__ == "__main__":
     unittest.main()

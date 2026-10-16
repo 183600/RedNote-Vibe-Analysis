@@ -455,6 +455,89 @@ def compact_text(text: str | None) -> str:
     return re.sub(r"\s+", "", str(text or ""))
 
 
+# 话题标签：`#` 后跟最多 30 个非 `#`/空白/方括号字符。排除方括号是为了
+# 兼容 AIGC 与探索集的导出格式 `#标签[话题]#`（标签体在 `[话题]` 前结束）。
+_TAG_RE = re.compile(r"#([^#\s\[\]]{1,30})")
+# 采集残留：BOM / 零宽空格 / 方向标记，会混进标签首尾，需剥掉。
+_TAG_JUNK = "\ufeff\u200b\u200e\u200f"
+
+
+def extract_hashtags(text: str | None) -> list[str]:
+    """从文本中提取 `#话题` 标签列表（保留原大小写与首次出现的形态）。
+
+    兼容三种历史格式：人类的 `#标签`、AIGC 的 `#标签[话题]#`、
+    探索集行内混入的 BOM/零宽字符（如 `#\\ufeff标签`）。空标签与被
+    BOM 包裹出空串的标签不会返回；`#话题`（字面量）作为清洗残留剔除。
+    """
+    out = []
+    for raw in _TAG_RE.findall(str(text or "")):
+        tag = raw.strip(_TAG_JUNK + " \t\r\n")
+        if tag and tag != "话题":
+            out.append(tag)
+    return out
+
+
+def rate_diff_ranking(counts_a: dict, n_a: int, counts_h: dict, n_h: int,
+                      reverse: bool = False, min_count: int = 10,
+                      k: int = 30) -> list[dict]:
+    """按每篇发生率之差提炼某一侧专属词条（框架模板/话题标签/表情共用）。
+
+    reverse=False：A 侧专属（rate_a - rate_h 降序，要求 A 出现次数 >= min_count）；
+    reverse=True ：H 侧专属（rate_h - rate_a 降序，要求 H 出现次数 >= min_count）。
+    返回 [{"word", "rate_diff_ppt", "aigc_per1k", "human_per1k"}, ...]，
+    counts 为「每篇出现次数（去重）」的 Counter，n 为对应子集篇数。
+    """
+    rows = []
+    for w in set(counts_a) | set(counts_h):
+        ca, ch = counts_a.get(w, 0), counts_h.get(w, 0)
+        if (ch if reverse else ca) < min_count:
+            continue
+        diff = (ch / n_h - ca / n_a) if reverse else (ca / n_a - ch / n_h)
+        rows.append((w, diff, ca, ch))
+    rows.sort(key=lambda r: (-r[1], r[0]))
+    return [{"word": w, "rate_diff_ppt": round(d * 100, 3),
+             "aigc_per1k": round(ca / n_a * 1000, 2),
+             "human_per1k": round(ch / n_h * 1000, 2)}
+            for w, d, ca, ch in rows[:k]]
+
+
+def rate_top(counts: dict, n: int, min_count: int = 10,
+             k: int = 50) -> list[dict]:
+    """单侧高频词条（按每篇发生率降序，不做另一侧过滤）。"""
+    rows = [(w, c / n) for w, c in counts.items() if c >= min_count]
+    rows.sort(key=lambda r: -r[1])
+    return [{"word": w, "aigc_per1k": round(r * 1000, 2)} for w, r in rows[:k]]
+
+
+def quarter_of(month: str | None) -> str | None:
+    """把 `YYYYMM` 月份键转为 `YYYYQX` 季度键；非法输入返回 None。"""
+    m = str(month or "")
+    if len(m) < 6 or not m[:6].isdigit():
+        return None
+    q = (int(m[4:6]) - 1) // 3 + 1
+    if not 1 <= q <= 4:
+        return None
+    return f"{m[:4]}Q{q}"
+
+
+def dedup_indices(ids: list, meta) -> list[int]:
+    """按 note_id 去重：同名笔记保留元数据最完整（meta 分数最高）的一条。
+
+    meta 与 ids 等长（可为 numpy 数组或列表）；打分规则由调用方决定
+    （见各全量扫描脚本）。无 note_id 的记录全部保留，返回值按原顺序。
+    规则与 deep_dive_analysis.py / framing_analysis.py 完全一致。
+    """
+    best: dict = {}
+    for i, nid in enumerate(ids):
+        if nid is None:
+            continue
+        j = best.get(nid)
+        if j is None or meta[i] > meta[j]:
+            best[nid] = i
+    keep = set(best.values())
+    return [i for i, nid in enumerate(ids) if nid is None or i in keep]
+
+
 _SENTENCE_SPLIT_RE = re.compile(r"[。！？!?；;…]+|\n+")
 
 

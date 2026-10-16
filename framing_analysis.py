@@ -42,8 +42,9 @@ import pandas as pd
 from scipy.stats import spearmanr
 
 from analysis_utils import (BASE, INSIGHTS, PALETTE, init_plot_style, save_fig,
-                            cliffs_delta, clean_body, content_of, engagement_of,
-                            iter_jsonl, parse_local_time, shannon_entropy,
+                            cliffs_delta, clean_body, content_of, dedup_indices,
+                            engagement_of, iter_jsonl, parse_local_time,
+                            rate_diff_ranking, rate_top, shannon_entropy,
                             topk_coverage, wilson_ci)
 from paper_features import EMOJI
 
@@ -155,22 +156,6 @@ def scan_view(path: str, content_len_ref: np.ndarray | None = None) -> dict:
     }
 
 
-def dedup_indices(ids: list, meta: np.ndarray) -> list[int]:
-    """按 note_id 去重：同名笔记保留元数据最完整（meta 分数最高）的一条。
-
-    规则与 deep_dive_analysis.py 相同；无 note_id 的记录全部保留。
-    """
-    best: dict = {}
-    for i, nid in enumerate(ids):
-        if nid is None:
-            continue
-        j = best.get(nid)
-        if j is None or meta[i] > meta[j]:
-            best[nid] = i
-    keep = set(best.values())
-    return [i for i, nid in enumerate(ids) if nid is None or i in keep]
-
-
 def encode(values: list) -> tuple[np.ndarray, np.ndarray, dict]:
     """把字符串列表编码为整数码；返回 (codes, valid_mask, code->str 映射)。"""
     mapping: dict = {}
@@ -200,33 +185,19 @@ def bootstrap_equal_n(codes: np.ndarray, valid: np.ndarray, n_sub: int,
     return cov, ent
 
 
+# 框架模板的提炼/排序复用 analysis_utils 的通用实现（标签/表情分析同口径）。
 def specific_templates(counts_a: dict, n_a: int, counts_h: dict, n_h: int,
-                       reverse: bool, min_count: int, k: int = TEMPLATE_K) -> list[dict]:
-    """按每帖发生率之差提取某侧专属模板。
-
-    reverse=False：AIGC 专属（rate_a - rate_h 降序，要求 AIGC 出现次数 >= min_count）；
-    reverse=True ：人类专属（rate_h - rate_a 降序，要求人类出现次数 >= min_count）。
-    """
-    rows = []
-    for w in set(counts_a) | set(counts_h):
-        ca, ch = counts_a.get(w, 0), counts_h.get(w, 0)
-        if (ch if reverse else ca) < min_count:
-            continue
-        diff = (ch / n_h - ca / n_a) if reverse else (ca / n_a - ch / n_h)
-        rows.append((w, diff, ca, ch))
-    rows.sort(key=lambda r: (-r[1], r[0]))
-    return [{"word": w, "rate_diff_ppt": round(d * 100, 3),
-             "aigc_per1k": round(ca / n_a * 1000, 2),
-             "human_per1k": round(ch / n_h * 1000, 2)}
-            for w, d, ca, ch in rows[:k]]
+                       reverse: bool, min_count: int,
+                       k: int = TEMPLATE_K) -> list[dict]:
+    """按每帖发生率之差提取某侧专属模板（analysis_utils.rate_diff_ranking 的别名）。"""
+    return rate_diff_ranking(counts_a, n_a, counts_h, n_h, reverse=reverse,
+                             min_count=min_count, k=k)
 
 
 def top_templates(counts_a: dict, n_a: int, min_count: int,
                   k: int = TOP_OPEN_K) -> list[dict]:
-    """AIGC 侧高频框架模板（按 AIGC 每帖发生率降序，不做人类侧过滤）。"""
-    rows = [(w, c / n_a) for w, c in counts_a.items() if c >= min_count]
-    rows.sort(key=lambda r: -r[1])
-    return [{"word": w, "aigc_per1k": round(r * 1000, 2)} for w, r in rows[:k]]
+    """AIGC 侧高频框架模板（analysis_utils.rate_top 的别名）。"""
+    return rate_top(counts_a, n_a, min_count=min_count, k=k)
 
 
 # --------------------------------------------------------------------------

@@ -205,8 +205,8 @@ _ITEM_KEYS = ("note_title", "note_content", "desc", "domain",
               "liked_count", "collected_count", "comments_count")
 
 
-def load_jsonl(filepath):
-    data = []
+def iter_jsonl_items(filepath):
+    """流式读取并按下游用到的字段白名单投影；容错口径与旧 load_jsonl 一致。"""
     with open(filepath, "r", encoding="utf-8") as f:
         for line in f:
             if not line or line.isspace():
@@ -215,8 +215,23 @@ def load_jsonl(filepath):
                 item = json.loads(line)
             except Exception:
                 continue
-            data.append({k: item[k] for k in _ITEM_KEYS if k in item})
-    return data
+            yield {k: item[k] for k in _ITEM_KEYS if k in item}
+
+
+def load_jsonl(filepath):
+    return list(iter_jsonl_items(filepath))
+
+
+def group_by_domain(filepath):
+    """单次流式扫描 → ({domain: [items]}, 总记录数)，域内记录顺序不变。"""
+    grouped = {d: [] for d in DOMAINS}
+    total = 0
+    for item in iter_jsonl_items(filepath):
+        total += 1
+        d = item.get("domain")
+        if isinstance(d, str) and d in grouped:
+            grouped[d].append(item)
+    return grouped, total
 
 
 def get_text(item):
@@ -307,6 +322,10 @@ def analyze_domain_stats(items):
 
     return {
         "count": len(items),
+        # 原始数组随统计结果一并返回，供统计检验复用，避免重复扫描文本
+        "lengths": lengths,
+        "emojis": emoji_counts,
+        "engagements": engagements,
         "avg_length": np.mean(lengths),
         "median_length": np.median(lengths),
         "std_length": np.std(lengths),
@@ -441,11 +460,11 @@ def colors_hack(idx):
     return ["#2196F3", "#FF5722", "#4CAF50"][idx]
 
 
-def plot_domain_distribution_comparison(grouped, totals, output_dir):
+def plot_domain_distribution_comparison(all_stats, totals, output_dir):
     domains = DOMAINS
-    h_counts = [len(grouped["Human"].get(d, [])) for d in domains]
-    a_counts = [len(grouped["AIGC"].get(d, [])) for d in domains]
-    e_counts = [len(grouped["Exploring"].get(d, [])) for d in domains]
+    h_counts = [all_stats["Human"].get(d, {}).get("count", 0) for d in domains]
+    a_counts = [all_stats["AIGC"].get(d, {}).get("count", 0) for d in domains]
+    e_counts = [all_stats["Exploring"].get(d, {}).get("count", 0) for d in domains]
 
     h_pct = [c / totals["Human"] * 100 for c in h_counts]
     a_pct = [c / totals["AIGC"] * 100 for c in a_counts]
@@ -465,22 +484,13 @@ def plot_domain_distribution_comparison(grouped, totals, output_dir):
     axes[0].set_ylabel("Percentage (%)")
     axes[0].legend()
 
-    h_eng_by_domain = []
-    a_eng_by_domain = []
-    e_eng_by_domain = []
-    for d in domains:
-        h_items = grouped["Human"].get(d, [])
-        a_items = grouped["AIGC"].get(d, [])
-        e_items = grouped["Exploring"].get(d, [])
-        h_eng_by_domain.append(
-            np.mean([compute_engagement(item) for item in h_items]) if h_items else 0
-        )
-        a_eng_by_domain.append(
-            np.mean([compute_engagement(item) for item in a_items]) if a_items else 0
-        )
-        e_eng_by_domain.append(
-            np.mean([compute_engagement(item) for item in e_items]) if e_items else 0
-        )
+    # 复用 analyze_domain_stats 已算好的平均互动，避免逐域重复遍历记录
+    h_eng_by_domain = [all_stats["Human"].get(d, {}).get("avg_engagement", 0)
+                       for d in domains]
+    a_eng_by_domain = [all_stats["AIGC"].get(d, {}).get("avg_engagement", 0)
+                       for d in domains]
+    e_eng_by_domain = [all_stats["Exploring"].get(d, {}).get("avg_engagement", 0)
+                       for d in domains]
 
     axes[1].bar(
         x - width, h_eng_by_domain, width, label="Human", color="#2196F3", alpha=0.85
@@ -796,7 +806,7 @@ def print_cross_topic_analysis(all_stats):
         )
 
 
-def print_statistical_tests(all_stats, grouped):
+def print_statistical_tests(all_stats):
     datasets = ["Human", "AIGC", "Exploring"]
     common_domains = sorted(
         set.intersection(*[set(s.keys()) for s in all_stats.values()])
@@ -816,24 +826,21 @@ def print_statistical_tests(all_stats, grouped):
         print("-" * 75)
 
         for ds1, ds2 in pairs:
-            data1 = grouped[ds1].get(domain, [])
-            data2 = grouped[ds2].get(domain, [])
+            # 复用分析阶段已提取的长度/表情/互动数组，不再重复处理文本
+            s1 = all_stats[ds1].get(domain)
+            s2 = all_stats[ds2].get(domain)
+            lens1 = s1["lengths"] if s1 else []
+            lens2 = s2["lengths"] if s2 else []
 
-            if len(data1) < 5 or len(data2) < 5:
+            if len(lens1) < 5 or len(lens2) < 5:
                 print(f"{ds1} vs {ds2:<17} {'N/A':>15} {'N/A':>15} {'N/A':>18}")
                 continue
 
-            lens1 = [len(get_text(item)) for item in data1]
-            lens2 = [len(get_text(item)) for item in data2]
             _, p_len = stats.mannwhitneyu(lens1, lens2, alternative="two-sided")
-
-            emojis1 = [count_emojis(get_text(item)) for item in data1]
-            emojis2 = [count_emojis(get_text(item)) for item in data2]
-            _, p_emoji = stats.mannwhitneyu(emojis1, emojis2, alternative="two-sided")
-
-            eng1 = [compute_engagement(item) for item in data1]
-            eng2 = [compute_engagement(item) for item in data2]
-            _, p_eng = stats.mannwhitneyu(eng1, eng2, alternative="two-sided")
+            _, p_emoji = stats.mannwhitneyu(s1["emojis"], s2["emojis"],
+                                            alternative="two-sided")
+            _, p_eng = stats.mannwhitneyu(s1["engagements"], s2["engagements"],
+                                          alternative="two-sided")
 
             sig_len = (
                 "***"
@@ -874,27 +881,19 @@ def main():
     os.makedirs(output_dir, exist_ok=True)
 
     print("Loading datasets...")
-    human_data = load_jsonl("training_set_human.jsonl")
-    aigc_data = load_jsonl("training_set_aigc.jsonl")
-    exploring_data = load_jsonl("exploring_set.jsonl")
-    print(f"  Human: {len(human_data)} records")
-    print(f"  AIGC:  {len(aigc_data)} records")
-    print(f"  Exploring: {len(exploring_data)} records")
+    grouped = {}
+    totals = {}
+    for ds_name, filepath in [
+        ("Human", "training_set_human.jsonl"),
+        ("AIGC", "training_set_aigc.jsonl"),
+        ("Exploring", "exploring_set.jsonl"),
+    ]:
+        # 逐数据集流式读取并一次性按域分桶，避免整份 load 与逐域重复扫描
+        grouped[ds_name], totals[ds_name] = group_by_domain(filepath)
+        print(f"  {ds_name}: {totals[ds_name]} records")
 
     print("\nAnalyzing domain statistics for each dataset...")
     all_stats = {"Human": {}, "AIGC": {}, "Exploring": {}}
-
-    grouped = {}
-    totals = {}
-    for ds_name, data in [
-        ("Human", human_data),
-        ("AIGC", aigc_data),
-        ("Exploring", exploring_data),
-    ]:
-        grouped[ds_name] = {}
-        totals[ds_name] = len(data)
-        for domain in DOMAINS:
-            grouped[ds_name][domain] = extract_domain_items(data, domain)
 
     for domain in DOMAINS:
         for ds_name in ["Human", "AIGC", "Exploring"]:
@@ -905,16 +904,19 @@ def main():
                     all_stats[ds_name][domain] = stats
                     print(f"  {ds_name} - {domain}: {stats['count']} items processed")
 
+    # 统计结果已包含后续所需的全部数组，释放原始记录（大文本）再绘图
+    del grouped
+
     print("\nGenerating visualizations...")
     plot_three_way_domain_comparison(all_stats, output_dir)
     plot_domain_word_similarity(all_stats, output_dir)
-    plot_domain_distribution_comparison(grouped, totals, output_dir)
+    plot_domain_distribution_comparison(all_stats, totals, output_dir)
     plot_domain_sentiment_comparison(all_stats, output_dir)
     plot_domain_structure_comparison(all_stats, output_dir)
 
     print_detailed_comparison(all_stats)
     print_cross_topic_analysis(all_stats)
-    print_statistical_tests(all_stats, grouped)
+    print_statistical_tests(all_stats)
 
     print("\n" + "=" * 100)
     print("ANALYSIS COMPLETE")

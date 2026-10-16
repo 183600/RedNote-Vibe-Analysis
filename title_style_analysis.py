@@ -24,6 +24,7 @@
 from __future__ import annotations
 
 import os
+import re
 
 # 单线程 BLAS：小矩阵下多线程同步开销大于收益
 os.environ.setdefault("OMP_NUM_THREADS", "1")
@@ -45,7 +46,7 @@ from sklearn.preprocessing import StandardScaler
 from analysis_utils import (BASE, INSIGHTS, init_plot_style, save_fig,
                             save_json, engagement_of, iter_jsonl,
                             linear_score, load_detector_model, parse_local_time,
-                            title_of, detector_score, compact_text, content_of,
+                            title_of, detector_score, content_of,
                             prefix_ngram_counts, shannon_entropy, topk_coverage,
                             bootstrap_median_ci, cliffs_delta, wilson_ci)
 from framing_analysis import dedup_indices, specific_templates
@@ -115,6 +116,9 @@ def fit_title_model(df: pd.DataFrame, title_feats: list[str]) -> dict:
     }
 
 
+_RE_NONSPACE = re.compile(r"\S")
+
+
 def scan_titles(path: str) -> tuple[list[str], list, np.ndarray]:
     """流式扫描标题；meta 分数用于按 note_id 去重时保留最完整的一条。"""
     titles, ids, metas = [], [], []
@@ -125,7 +129,7 @@ def scan_titles(path: str) -> tuple[list[str], list, np.ndarray]:
         has_meta = bool(rec.get("user_id")) and rec.get("domain") not in (None, "", "未知")
         metas.append(int(has_meta) + int(bool(likes)) + int(bool(colls))
                      + int(bool(comms)) + int(dt is not None)
-                     + int(bool(compact_text(content_of(rec)))))
+                     + int(_RE_NONSPACE.search(str(content_of(rec))) is not None))
         titles.append(title)
         ids.append(rec.get("note_id"))
     return titles, ids, np.asarray(metas, dtype=np.int64)

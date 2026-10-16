@@ -66,14 +66,13 @@ MIN_DOMAIN_N = 30
 
 def part_length_matched(human: pd.DataFrame, aigc: pd.DataFrame) -> dict:
     rows = {}
-    human = human.copy()
-    aigc = aigc.copy()
-    for df in (human, aigc):
-        df["__bin__"] = pd.cut(df["content_len"], LENGTH_EDGES, right=False,
-                               labels=LENGTH_LABELS)
+    human_bins = pd.cut(human["content_len"], LENGTH_EDGES, right=False,
+                        labels=LENGTH_LABELS)
+    aigc_bins = pd.cut(aigc["content_len"], LENGTH_EDGES, right=False,
+                       labels=LENGTH_LABELS)
     for lab in LENGTH_LABELS:
-        gh = human[human["__bin__"] == lab]
-        ga = aigc[aigc["__bin__"] == lab]
+        gh = human[human_bins == lab]
+        ga = aigc[aigc_bins == lab]
         if len(gh) < MIN_BIN_N or len(ga) < MIN_BIN_N:
             continue
         rows[lab] = {"n_human": int(len(gh)), "n_aigc": int(len(ga)), "features": {}}
@@ -163,21 +162,18 @@ def part_domain_consistency(human: pd.DataFrame, aigc: pd.DataFrame) -> dict:
             "sign_consistency": sign_consistency}
 
 
-def part_cross_domain(human: pd.DataFrame, aigc: pd.DataFrame,
+def part_cross_domain(df: pd.DataFrame, X: np.ndarray, y: np.ndarray,
                       ref_auc: float) -> dict:
-    feats = [c for c in human.columns if c not in FEATURE_META]
-    df = pd.concat([human, aigc], ignore_index=True)
-    y = (df["dataset"] == "aigc").astype(int).values
-    X = df[feats].fillna(0).values
     pipe = make_pipeline(StandardScaler(),
                          LogisticRegression(max_iter=2000, class_weight="balanced"))
-    domains = sorted(set(human["domain"]) & set(aigc["domain"]))
+    domains = sorted(set(df.loc[df["dataset"] == "human", "domain"])
+                     & set(df.loc[df["dataset"] == "aigc", "domain"]))
+    is_human = (df["dataset"] == "human").values
+    is_aigc = (df["dataset"] == "aigc").values
     rows = {}
     for d in domains:
         tr = (df["domain"] != d).values
         te = (df["domain"] == d).values
-        is_human = (df["dataset"] == "human").values
-        is_aigc = (df["dataset"] == "aigc").values
         pipe.fit(X[tr], y[tr])
         proba = pipe.predict_proba(X[te])[:, 1]
         rows[d] = {"auc": round(float(roc_auc_score(y[te], proba)), 4),
@@ -213,11 +209,7 @@ def part_cross_domain(human: pd.DataFrame, aigc: pd.DataFrame,
     return {"per_domain": rows, "summary": summary}
 
 
-def part_detector_ci(human: pd.DataFrame, aigc: pd.DataFrame) -> dict:
-    feats = [c for c in human.columns if c not in FEATURE_META]
-    df = pd.concat([human, aigc], ignore_index=True)
-    X = df[feats].fillna(0).values
-    y = (df["dataset"] == "aigc").astype(int).values
+def part_detector_ci(X: np.ndarray, y: np.ndarray) -> dict:
     pipe = make_pipeline(StandardScaler(),
                          LogisticRegression(max_iter=2000, class_weight="balanced"))
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
@@ -321,6 +313,11 @@ def main() -> None:
     aigc = load_features("aigc")
     expl = load_features("exploring")
 
+    feats = [c for c in human.columns if c not in FEATURE_META]
+    df = pd.concat([human, aigc], ignore_index=True)
+    X = df[feats].fillna(0).values
+    y = (df["dataset"] == "aigc").astype(int).values
+
     print("=== 1. 长度匹配 ===")
     length_matched = part_length_matched(human, aigc)
     for f in LENGTH_FEATS:
@@ -335,13 +332,13 @@ def main() -> None:
 
     ref_auc = 0.9402
     print("=== 3. 留一领域 ===")
-    transfer = part_cross_domain(human, aigc, ref_auc)
+    transfer = part_cross_domain(df, X, y, ref_auc)
     for d, r in sorted(transfer["per_domain"].items(), key=lambda x: x[1]["auc"]):
         print(f"{d}: AUC={r['auc']:.4f} (H={r['n_human']}, A={r['n_aigc']})")
     print("汇总:", transfer["summary"])
 
     print("=== 4. 检测器置信区间与 PR ===")
-    det = part_detector_ci(human, aigc)
+    det = part_detector_ci(X, y)
     print("AUC bootstrap:", det["auc_bootstrap"])
     print("AP:", det["average_precision"], "P≥0.9工作点:", det["pr_at_threshold_0.9"])
 

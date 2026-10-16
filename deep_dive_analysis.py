@@ -75,6 +75,7 @@ def collect(path: str) -> dict:
     monthly = defaultdict(lambda: [0, 0, 0])  # [正文字符数, AI词次数, 人类连接词次数]
     sent_mean, sent_counts, sent_body_len = [], [], []
     content_seen, title_seen, id_seen = Counter(), Counter(), Counter()
+    totals = [0, 0, 0]  # 逐记录 [正文字符数, AI词次数, 人类连接词次数]
     notes: dict = {}
     n = 0
     has_user_field = False
@@ -99,6 +100,9 @@ def collect(path: str) -> dict:
         content = content_of(rec)
         body = clean_body(content)
         body_len, ai, hum, sent_m, sent_n = body_stats(body)
+        totals[0] += body_len
+        totals[1] += ai
+        totals[2] += hum
         raw = WS.sub("", content)
         if raw:
             content_seen[raw] += 1
@@ -187,6 +191,7 @@ def collect(path: str) -> dict:
         "note_content_dup_records": note_dup,
         "note_content_dup_groups": note_dup_groups,
         "n_notes": len(notes) if notes else n,
+        "totals": totals,
     }
 
 
@@ -300,13 +305,8 @@ def plot_lexicon_diffusion(stats: dict, out: dict) -> None:
                              gridspec_kw={"width_ratios": [0.9, 1.25]})
     out["lexicon_diffusion"] = {}
 
-    aigc_body = 0
-    aigc_ai, aigc_hum = 0, 0
-    for rec in iter_jsonl(DATASETS["aigc"]):
-        body = clean_body(content_of(rec))
-        aigc_body += len(body)
-        aigc_ai += sum(body.count(w) for w in AI_WORDS)
-        aigc_hum += sum(body.count(w) for w in HUMAN_WORDS)
+    # AIGC 参考水平复用 collect() 中同一次扫描累计的逐记录总量，避免二次全量扫描
+    aigc_body, aigc_ai, aigc_hum = stats["aigc"]["totals"]
     ai_base = aigc_ai / max(aigc_body, 1) * 10000
     hum_base = aigc_hum / max(aigc_body, 1) * 10000
     out["lexicon_diffusion"]["aigc_reference_per10k"] = {

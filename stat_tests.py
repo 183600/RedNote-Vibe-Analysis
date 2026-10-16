@@ -126,6 +126,7 @@ def main():
         pos_scores = []
         neg_scores = []
         net_scores = []
+        lengths = []
 
         for item in texts_data[f]:
             text = item.get("desc", "") or item.get("note_content", "")
@@ -133,15 +134,13 @@ def main():
             pos_scores.append(pos)
             neg_scores.append(neg)
             net_scores.append(net)
+            lengths.append(len(text))
 
         sentiments[f] = {
             "pos": pos_scores,
             "neg": neg_scores,
             "net": net_scores,
-            "length": [
-                len(item.get("desc", "") or item.get("note_content", ""))
-                for item in texts_data[f]
-            ],
+            "length": lengths,
         }
 
     print("\n1. T-Tests (Net Sentiment):")

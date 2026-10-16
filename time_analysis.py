@@ -69,7 +69,7 @@ def main():
         texts_data[f] = data
 
     print("\n=== Time Series Analysis ===")
-    timestamps = []
+    file_dates = []
 
     for f in files:
         ts_list = []
@@ -77,34 +77,26 @@ def main():
             ts = get_time_features(item)
             if ts:
                 ts_list.append(ts)
-        timestamps.append(ts_list)
-
-        if ts_list:
-            valid_ts = [t for t in ts_list if t]
-            if valid_ts:
-                ts_arr = np.array(valid_ts)
-                if ts_arr.max() > 1e10:
-                    ts_arr = ts_arr / 1000
-                print(f"\n{f}:")
-                print(f"  Samples with timestamp: {len(valid_ts)}")
-                print(f"  Earliest: {pd.Timestamp(ts_arr.min(), unit='s')}")
-                print(f"  Latest: {pd.Timestamp(ts_arr.max(), unit='s')}")
+        valid_ts = [t for t in ts_list if t]
+        dates = None
+        if valid_ts:
+            ts_arr = np.array(valid_ts)
+            if ts_arr.max() > 1e10:
+                ts_arr = ts_arr / 1000
+            print(f"\n{f}:")
+            print(f"  Samples with timestamp: {len(valid_ts)}")
+            print(f"  Earliest: {pd.Timestamp(ts_arr.min(), unit='s')}")
+            print(f"  Latest: {pd.Timestamp(ts_arr.max(), unit='s')}")
+            dates = pd.to_datetime(ts_arr, unit="s")
+        file_dates.append(dates)
 
     fig, axes = plt.subplots(1, 3, figsize=(18, 6))
 
-    for idx, (f, ts_list) in enumerate(zip(files, timestamps)):
-        valid_ts = [t for t in ts_list if t]
-        if not valid_ts:
+    for idx, (f, dates) in enumerate(zip(files, file_dates)):
+        if dates is None:
             continue
 
-        ts_arr = np.array(valid_ts)
-        if ts_arr.max() > 1e10:
-            ts_arr = ts_arr / 1000
-
-        dates = pd.to_datetime(ts_arr, unit="s")
-        hours = dates.hour
-
-        axes[idx].hist(hours, bins=24, alpha=0.7, color="steelblue")
+        axes[idx].hist(dates.hour, bins=24, alpha=0.7, color="steelblue")
         axes[idx].set_title(f.replace(".jsonl", "") + " Post Hour Distribution")
         axes[idx].set_xlabel("Hour of Day")
         axes[idx].set_ylabel("Count")
@@ -115,16 +107,9 @@ def main():
 
     fig, axes = plt.subplots(1, 3, figsize=(18, 6))
 
-    for idx, (f, ts_list) in enumerate(zip(files, timestamps)):
-        valid_ts = [t for t in ts_list if t]
-        if not valid_ts:
+    for idx, (f, dates) in enumerate(zip(files, file_dates)):
+        if dates is None:
             continue
-
-        ts_arr = np.array(valid_ts)
-        if ts_arr.max() > 1e10:
-            ts_arr = ts_arr / 1000
-
-        dates = pd.to_datetime(ts_arr, unit="s")
 
         axes[idx].hist(dates.month, bins=12, alpha=0.7, color="coral")
         axes[idx].set_title(f.replace(".jsonl", "") + " Post Month Distribution")

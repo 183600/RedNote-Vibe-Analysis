@@ -18,6 +18,9 @@ RE_QUANTITY = re.compile(
     r"\d+\s*(?:个|件|次|只|天|年|月|周|小时|分钟|杯|份|款|张|条|篇|本|套|位|人|岁|遍|组|双|对|袋|盒|瓶|支|斤|公斤|克|米|公里)"
 )
 RE_SENTENCE = re.compile(r"[。！？!?.]+")
+RE_LIST_NUM = re.compile(r"^\d+[.\s]", re.MULTILINE)
+RE_BULLET = re.compile(r"[-+*]\s")
+RE_LIST_ITEMS = re.compile(r"^\d+[.\s]|[-+*]\s", re.MULTILINE)
 
 
 def load_jsonl(filepath, limit=SAMPLE_LIMIT, seed=42):
@@ -30,9 +33,10 @@ def analyze_structure(text):
         return {}
     lines = text.split("\n")
     paragraphs = [p.strip() for p in lines if p.strip()]
-    has_list = bool(re.search(r"^\d+[.\s]", str(text), re.MULTILINE))
-    has_bullet = bool(re.search(r"[-+*]\s", str(text)))
-    list_items = re.findall(r"^\d+[.\s]|[-+*]\s", str(text), re.MULTILINE)
+    text_str = str(text)
+    has_list = bool(RE_LIST_NUM.search(text_str))
+    has_bullet = bool(RE_BULLET.search(text_str))
+    list_items = RE_LIST_ITEMS.findall(text_str)
     return {
         "num_paragraphs": len(paragraphs),
         "has_list": has_list,

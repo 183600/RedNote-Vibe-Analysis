@@ -196,8 +196,8 @@ _ITEM_KEYS = ("note_title", "note_content", "desc", "domain", "local_time",
               "time", "liked_count", "collected_count", "comments_count")
 
 
-def load_jsonl(filepath):
-    data = []
+def iter_jsonl_items(filepath):
+    """流式读取并按下游用到的字段白名单投影；容错口径与旧 load_jsonl 一致。"""
     with open(filepath, "r", encoding="utf-8") as f:
         for line in f:
             if not line or line.isspace():
@@ -206,8 +206,34 @@ def load_jsonl(filepath):
                 item = json.loads(line)
             except Exception:
                 continue
-            data.append({k: item[k] for k in _ITEM_KEYS if k in item})
-    return data
+            yield {k: item[k] for k in _ITEM_KEYS if k in item}
+
+
+def load_jsonl(filepath):
+    return list(iter_jsonl_items(filepath))
+
+
+def load_grouped_with_counts(filepath):
+    """单次流式扫描：按域分桶，并同步累计词频与 token 总数。
+
+    返回 (grouped, word_counters, token_totals, n_records)：域内记录顺序与
+    原先「整份载入后逐域 filter」完全一致；词频在记录顺序上累加，
+    most_common 的并列顺序也不变。
+    """
+    grouped = {d: [] for d in DOMAINS}
+    counters = {d: Counter() for d in DOMAINS}
+    totals = {d: 0 for d in DOMAINS}
+    n_records = 0
+    for item in iter_jsonl_items(filepath):
+        n_records += 1
+        d = item.get("domain")
+        if isinstance(d, str) and d in grouped:
+            grouped[d].append(item)
+            tokens = clean_tokenize(get_text(item))
+            counters[d].update(tokens)
+            totals[d] += len(tokens)
+    return (grouped, {d: counters[d].most_common(100) for d in DOMAINS},
+            totals, n_records)
 
 
 def get_text(item):
@@ -1211,36 +1237,17 @@ def main():
     os.makedirs(output_dir, exist_ok=True)
 
     print("Loading datasets...")
-    human_data = load_jsonl("training_set_human.jsonl")
-    aigc_data = load_jsonl("training_set_aigc.jsonl")
-    exploring_data = load_jsonl("exploring_set.jsonl")
-
-    print("  Human: " + str(len(human_data)) + " records")
-    print("  AIGC: " + str(len(aigc_data)) + " records")
-    print("  Exploring: " + str(len(exploring_data)) + " records")
-
     grouped = {}
     word_counters = {}
     token_totals = {}
-    for ds_name, data in [
-        ("Human", human_data),
-        ("AIGC", aigc_data),
-        ("Exploring", exploring_data),
+    for ds_name, filepath in [
+        ("Human", "training_set_human.jsonl"),
+        ("AIGC", "training_set_aigc.jsonl"),
+        ("Exploring", "exploring_set.jsonl"),
     ]:
-        grouped[ds_name] = {}
-        word_counters[ds_name] = {}
-        token_totals[ds_name] = {}
-        for domain in DOMAINS:
-            domain_items = [item for item in data if item.get("domain") == domain]
-            grouped[ds_name][domain] = domain_items
-            counter = Counter()
-            n_tokens = 0
-            for item in domain_items:
-                tokens = clean_tokenize(get_text(item))
-                counter.update(tokens)
-                n_tokens += len(tokens)
-            word_counters[ds_name][domain] = counter.most_common(100)
-            token_totals[ds_name][domain] = n_tokens
+        (grouped[ds_name], word_counters[ds_name],
+         token_totals[ds_name], n_records) = load_grouped_with_counts(filepath)
+        print("  " + ds_name + ": " + str(n_records) + " records")
 
     print("\n" + "=" * 80)
     print("NEW TOPIC COMPARISON ANALYSIS: Exploring vs AIGC vs Human")

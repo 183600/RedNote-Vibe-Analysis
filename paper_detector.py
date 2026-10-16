@@ -43,15 +43,15 @@ _FAM_CTX: dict = {}
 
 def _family_fit(fam: str) -> tuple[str, float]:
     """单个家族 vs 人类的 5 折 CV AUC（口径与串行主循环完全一致）。"""
-    human = _FAM_CTX["human"]
     aigc = _FAM_CTX["aigc"]
     feats = _FAM_CTX["feats"]
     pipe = _FAM_CTX["pipe"]
     cv = _FAM_CTX["cv"]
+    X_human = _FAM_CTX["X_human"]
     g = aigc[aigc["model_family"] == fam]
-    sub = pd.concat([human, g], ignore_index=True)
-    Xs = sub[feats].fillna(0).values
-    ys = (sub["dataset"] == "aigc").astype(int).values
+    Xs = np.vstack([X_human, g[feats].fillna(0).values])
+    ys = np.zeros(Xs.shape[0], dtype=int)
+    ys[X_human.shape[0]:] = 1
     ps = cross_val_predict(pipe, Xs, ys, cv=cv, method="predict_proba")[:, 1]
     return fam, float(roc_auc_score(ys, ps))
 
@@ -125,7 +125,8 @@ def main():
     # ---- 3. 各家族检测难度（相互独立，多进程并行，结果与串行一致）----
     fam_auc = {}
     families = sorted(aigc["model_family"].unique())
-    _FAM_CTX.update(human=human, aigc=aigc, feats=feats, pipe=pipe, cv=cv)
+    _FAM_CTX.update(aigc=aigc, feats=feats, pipe=pipe, cv=cv,
+                    X_human=human[feats].fillna(0).values)
     pool = make_pool()
     try:
         rows = (pool.map(_family_fit, families) if pool is not None

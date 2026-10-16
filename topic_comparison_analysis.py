@@ -247,6 +247,7 @@ def analyze_domain_differences(human_agg, output_dir):
 
         lengths = [l for l in d["lengths"] if l > 0]
         emoji_counts = [e for e, l in zip(d["emoji"], d["lengths"]) if l > 0]
+        eng = [x + y + z for x, y, z in zip(d["liked"], d["collected"], d["comments"])]
 
         results[domain] = {
             "count": d["count"],
@@ -254,6 +255,7 @@ def analyze_domain_differences(human_agg, output_dir):
             "median_length": np.median(lengths) if lengths else 0,
             "top_words": d["words"].most_common(30),
             "avg_emojis": np.mean(emoji_counts) if emoji_counts else 0,
+            "avg_engagement": np.mean(eng) if eng else 0,
             "liked": d["liked"],
             "collected": d["collected"],
             "comments": d["comments"],
@@ -261,16 +263,12 @@ def analyze_domain_differences(human_agg, output_dir):
 
     print("\n=== Domain Differences Analysis ===")
     for domain, data in results.items():
-        eng = [
-            x + y + z
-            for x, y, z in zip(data["liked"], data["collected"], data["comments"])
-        ]
         print(f"\n{domain}:")
         print(
             f"  Count: {data['count']}, Avg length: {data['avg_length']:.1f}, Avg emojis: {data['avg_emojis']:.2f}"
         )
         print(f"  Top 10 words: {[w for w, c in data['top_words'][:10]]}")
-        print(f"  Avg engagement: {np.mean(eng):.2f}")
+        print(f"  Avg engagement: {data['avg_engagement']:.2f}")
 
     plot_domain_comparison(results, output_dir)
     return results
@@ -299,17 +297,7 @@ def plot_domain_comparison(results, output_dir):
     axes[1, 0].set_ylabel("Emoji count")
     axes[1, 0].tick_params(axis="x", rotation=45)
 
-    eng_means = [
-        np.mean(
-            [
-                x + y + z
-                for x, y, z in zip(
-                    results[d]["liked"], results[d]["collected"], results[d]["comments"]
-                )
-            ]
-        )
-        for d in domains
-    ]
+    eng_means = [results[d]["avg_engagement"] for d in domains]
     axes[1, 1].bar(domains, eng_means, color="orchid")
     axes[1, 1].set_title("Average Engagement by Domain")
     axes[1, 1].set_ylabel("Engagement")

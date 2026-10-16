@@ -193,10 +193,10 @@ def scan(path):
         hashtag_t += len(RE_HASHTAG_CJK.findall(title))
 
         # 5. 复杂度（正文）
-        chars = extract_chinese(content)
-        if chars:
-            total = sum(map(len, chars))
-            unique = len(set("".join(chars)))
+        words = extract_chinese(content)
+        if words:
+            total = sum(map(len, words))
+            unique = len(set("".join(words)))
             chars_sum_c += total
             chars_cnt_c += 1
             ratio_sum_c += unique / total if total > 0 else 0
@@ -232,8 +232,7 @@ def scan(path):
             if RE_EMOJI.search(title):
                 title_emo += 1
 
-        # 7. 词表多样性（汉字串）
-        words = extract_chinese(content)
+        # 7. 词表多样性（汉字串，复用第 5 步的正文汉字串）
         ttr_total += len(words)
         seen_runs.update(words)
 

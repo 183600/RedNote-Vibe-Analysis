@@ -170,19 +170,17 @@ def stream_all(filepath, sample_size=5000, seed=42):
             words_title = tokenize(title)
 
             if len(sample) < sample_size:
-                sample.append((text, title))
+                sample.append((text, title, words, words_title))
             else:
                 j = rng.randint(0, total)
                 if j < sample_size:
-                    sample[j] = (text, title)
+                    sample[j] = (text, title, words, words_title)
 
             freq_desc.update(words)
             freq_title.update(words_title)
             total += 1
 
-    for text, title in sample:
-        words = tokenize(text)
-        words_title = tokenize(title)
+    for text, title, words, words_title in sample:
         if len(words) >= 2:
             for bigram in zip(words, words[1:]):
                 bigrams_desc[bigram] += 1

@@ -444,6 +444,7 @@ def main() -> None:
         sel = kept[k]
         side_arrays[k] = {}
         side_counts[k] = {}
+        side_bincount: dict = {}
         for side, values in (("open", [scans[k]["heads"][i] for i in sel]),
                              ("close", [scans[k]["tails"][i] for i in sel])):
             codes, valid, cmap = encode(values)
@@ -451,9 +452,10 @@ def main() -> None:
             side_arrays[k][side] = (codes, valid, cmap)
             side_counts[k][side] = {cmap[i]: int(v)
                                     for i, v in enumerate(cnt) if v}
+            side_bincount[side] = cnt
         n_used = int(side_arrays[k]["open"][1].sum())
-        oc = np.bincount(side_arrays[k]["open"][0][side_arrays[k]["open"][1]])
-        cc = np.bincount(side_arrays[k]["close"][0][side_arrays[k]["close"][1]])
+        oc = side_bincount["open"]
+        cc = side_bincount["close"]
         view_stats[k] = {
             "n_records": scans[k]["n_raw"],
             "n_notes": int(len(sel)),
@@ -611,9 +613,11 @@ def main() -> None:
                if h is not None]
     quarterly["aigc_share"] = round(
         sum(1 for h in a_heads if h in a_open_set) / max(len(a_heads), 1), 4)
+    head_e_counter = Counter(h for h in head_e if h is not None)
+    n_head_e = sum(head_e_counter.values())
     quarterly["template_exploring_per1k"] = {
-        t["word"]: round(float(np.mean([h == t["word"] for h in head_e
-                                        if h is not None])) * 1000, 2)
+        t["word"]: round(head_e_counter.get(t["word"], 0) / max(n_head_e, 1)
+                         * 1000, 2)
         for t in templates["aigc_specific_open"]}
     print(f"[quarterly] exploring AI-template {quarterly['exploring_share']:.1%}, "
           f"human clean {quarterly['human_clean_share']:.1%}, "

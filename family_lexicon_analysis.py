@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 import jieba
 
 from analysis_utils import (BASE, INSIGHTS, init_plot_style, save_fig, save_json,
-                            load_records, post_text, make_pool, close_pool)
+                            iter_jsonl, post_text, make_pool, close_pool)
 from paper_lexicon import clean, count_clean_words, log_odds
 from paper_features import AI_WORDS
 
@@ -83,16 +83,17 @@ def _doc_meta(cleaned: str) -> tuple[int, int, Counter]:
             count_clean_words(cleaned))
 
 
-def collect_group_stats(records: list[dict], pool=None, keys: tuple[str, ...] = (
+def collect_group_stats(records, pool=None, keys: tuple[str, ...] = (
         "model_family", "model")) -> tuple[
         dict[str, dict[str, Counter]], dict[str, dict[str, Counter]],
-        Counter, Counter]:
+        Counter, Counter, int]:
     """单次遍历记录：一次清洗 + 一次分词，同时聚合多个分组维度的词频。
 
-    返回 (raw, weighted, ai_hits, ai_chars)：raw/weighted 按分组键索引到
-    {组: Counter}（口径与原先逐维度独立扫描完全一致）；ai_hits/ai_chars
-    按 `model_family` 累计共享 AI 味词表命中数与清洗后字符数。
-    传入 pool 时按批并行分词，逐帖结果与串行完全一致。
+    `records` 可以是列表或任意可迭代（如 iter_jsonl 生成器），按批处理避免
+    一次性持有全部记录。返回 (raw, weighted, ai_hits, ai_chars, n_records)：
+    raw/weighted 按分组键索引到 {组: Counter}（口径与原先逐维度独立扫描完全
+    一致）；ai_hits/ai_chars 按 `model_family` 累计共享 AI 味词表命中数与清洗
+    后字符数。传入 pool 时按批并行分词，逐帖结果与串行完全一致。
     """
     cell: dict[str, dict[tuple[str, str], Counter]] = {key: {} for key in keys}
     cell_n: dict[str, Counter] = {key: Counter() for key in keys}
@@ -100,14 +101,12 @@ def collect_group_stats(records: list[dict], pool=None, keys: tuple[str, ...] = 
     dom_n: dict[str, Counter] = {key: Counter() for key in keys}
     ai_hits: Counter = Counter()
     ai_chars: Counter = Counter()
+    n_records = 0
 
     batch = 256
-    for start in range(0, len(records), batch):
-        kept = []
-        for rec in records[start:start + batch]:
-            by_key = {key: (rec.get(key) or "") for key in keys}
-            if any(by_key.values()):
-                kept.append((rec, by_key))
+    kept: list = []
+
+    def flush() -> None:
         docs = [clean(post_text(rec)) for rec, _ in kept]
         metas = (pool.map(_doc_meta, docs) if pool is not None
                  else [_doc_meta(t) for t in docs])
@@ -128,12 +127,23 @@ def collect_group_stats(records: list[dict], pool=None, keys: tuple[str, ...] = 
                 cell_n[key][k] += 1
                 group_n[key][g] += 1
                 dom_n[key][d] += 1
+        kept.clear()
+
+    for rec in records:
+        n_records += 1
+        by_key = {key: (rec.get(key) or "") for key in keys}
+        if any(by_key.values()):
+            kept.append((rec, by_key))
+        if len(kept) >= batch:
+            flush()
+    if kept:
+        flush()
 
     raw, weighted = {}, {}
     for key in keys:
         raw[key], weighted[key] = _finalize_weighting(
             cell[key], cell_n[key], group_n[key], dom_n[key])
-    return raw, weighted, ai_hits, ai_chars
+    return raw, weighted, ai_hits, ai_chars, n_records
 
 
 def one_vs_rest(counts: dict[str, Counter], target: str,
@@ -203,14 +213,13 @@ def plot_family(fam_z: dict[str, dict[str, float]], fam_cnt: dict[str, Counter],
 
 def main() -> None:
     init_plot_style()
-    records = load_records(BASE + "training_set_aigc.jsonl")
-    print(f"AIGC 记录数: {len(records)}")
-
     pool = make_pool(preload=jieba.initialize)
     try:
-        raw, weighted, ai_hits, ai_chars = collect_group_stats(records, pool)
+        raw, weighted, ai_hits, ai_chars, n_records = collect_group_stats(
+            iter_jsonl(BASE + "training_set_aigc.jsonl"), pool)
     finally:
         close_pool(pool)
+    print(f"AIGC 记录数: {n_records}")
     fam_cnt, fam_wcnt = raw["model_family"], weighted["model_family"]
     model_cnt, model_wcnt = raw["model"], weighted["model"]
     fam_total = {g: sum(c.values()) for g, c in fam_cnt.items()}
@@ -246,7 +255,8 @@ def main() -> None:
     print(f"AI 味词密度（每万字符）: human={human_density:.2f}", ai_density)
 
     # 家族词表是否被话题构成混杂：家族 × 领域占比（%）
-    aigc_feats = pd.read_csv(BASE + "paper_features_aigc.csv.gz")
+    aigc_feats = pd.read_csv(BASE + "paper_features_aigc.csv.gz",
+                             usecols=["model_family", "domain"])
     ct = pd.crosstab(aigc_feats["model_family"], aigc_feats["domain"],
                      normalize="index") * 100
     domain_share = {FAMILY_NAME.get(f, f): {d: round(float(v), 2)
@@ -257,7 +267,7 @@ def main() -> None:
     plot_family(fam_z, fam_cnt, fam_total, ai_density, human_density)
 
     out = {
-        "n_records": len(records),
+        "n_records": n_records,
         "family_token_counts": {FAMILY_NAME.get(g, g): v
                                 for g, v in fam_total.items()},
         "family_top_words": family_top,

@@ -281,6 +281,7 @@ def load_particle_data(files, particles):
             "stored_particles": stored_particles,
             "text_len": np.frombuffer(text_lens, dtype=np.int64),
             "domain": domains,
+            "domain_index": _group_indices(domains),
             "local_time": local_times,
             "liked": np.asarray(liked_vals, dtype=np.int64),
         }
@@ -337,7 +338,7 @@ def analyze_particle_by_domain(particle_stats, files, top_particles):
 
     for f in files:
         stats_data = particle_stats[f]
-        domain_index = _group_indices(stats_data["domain"])
+        domain_index = stats_data["domain_index"]
         print("\n{}:".format(f))
         for domain in sorted(domain_index.keys()):
             idxs = domain_index[domain]
@@ -377,7 +378,7 @@ def _domain_mean_ratios(stats_data, particle):
     """按 domain 聚合该粒子的平均 ratio（用于跨语料的可比统计）。"""
     ratios = _ratios_for(stats_data, particle)
     out = {}
-    for dom, idxs in _group_indices(stats_data["domain"]).items():
+    for dom, idxs in stats_data["domain_index"].items():
         if dom:
             out[dom] = float(np.mean(ratios[idxs]))
     return out

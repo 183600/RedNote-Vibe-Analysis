@@ -42,16 +42,24 @@ def monthly_series(df, col="p_ai"):
 
 
 def domain_adjusted(df, domains, weights):
-    """固定领域权重的月度均值。"""
+    """固定领域权重的月度均值。
+
+    先用一次 groupby 建好 (月, 领域) 的行索引，后续按索引切片取均值，
+    避免每个月对 10 个领域做重复的布尔扫描；每个单元格的均值仍走
+    `Series.mean()` 的同一计算路径，数值逐位一致。
+    """
     rows = {}
-    for m, gm in df.groupby("month"):
-        if len(gm) < MIN_MONTH_N:
+    size_m = df.groupby("month").size()
+    cell_idx = df.groupby(["month", "domain"], sort=True).indices
+    p = df["p_ai"]
+    for m in size_m.index:
+        if size_m[m] < MIN_MONTH_N:
             continue
         vals, ws = [], []
         for d in domains:
-            gd = gm[gm["domain"] == d]
-            if len(gd) >= 20:
-                vals.append(gd["p_ai"].mean())
+            idx = cell_idx.get((m, d))
+            if idx is not None and len(idx) >= 20:
+                vals.append(p.iloc[idx].mean())
                 ws.append(weights[d])
         if sum(ws) > 0.5:  # 至少覆盖一半权重
             rows[m] = float(np.average(vals, weights=ws))

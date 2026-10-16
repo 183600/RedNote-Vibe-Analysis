@@ -72,10 +72,8 @@ def load_labeled() -> tuple[pd.DataFrame, list[str]]:
     return df, feats
 
 
-def cv_proba(df: pd.DataFrame, feats: list[str]) -> np.ndarray:
-    """5 折分层交叉验证的袋外概率，与 paper_detector.py 同管道同种子。"""
-    X = df[feats].fillna(0).values
-    y = (df["dataset"] == "aigc").astype(int).values
+def cv_proba_X(X: np.ndarray, y: np.ndarray) -> np.ndarray:
+    """对已构建的特征矩阵做 5 折分层 CV 袋外概率（同管道同种子）。"""
     pipe = make_pipeline(StandardScaler(),
                          LogisticRegression(max_iter=2000,
                                             class_weight="balanced"))
@@ -83,21 +81,29 @@ def cv_proba(df: pd.DataFrame, feats: list[str]) -> np.ndarray:
     return cross_val_predict(pipe, X, y, cv=cv, method="predict_proba")[:, 1]
 
 
+def cv_proba(df: pd.DataFrame, feats: list[str]) -> np.ndarray:
+    """5 折分层交叉验证的袋外概率，与 paper_detector.py 同管道同种子。"""
+    X = df[feats].fillna(0).values
+    y = (df["dataset"] == "aigc").astype(int).values
+    return cv_proba_X(X, y)
+
+
 def length_decile_table(df: pd.DataFrame, y, proba) -> list[dict]:
     dec = pd.qcut(df["content_len"], 10, labels=False, duplicates="drop")
+    lengths = df["content_len"].values
     rows = []
     for d in sorted(pd.unique(dec.dropna())):
         m = (dec == d).values
         yy, pp = y[m], proba[m]
-        sub = df[m]
+        ln = lengths[m]
         if len(yy) == 0:
             continue
         row = {
             "decile": int(d) + 1,
             "n": int(len(yy)),
-            "len_min": int(sub["content_len"].min()),
-            "len_max": int(sub["content_len"].max()),
-            "len_median": int(sub["content_len"].median()),
+            "len_min": int(ln.min()),
+            "len_max": int(ln.max()),
+            "len_median": int(np.median(ln)),
             "human_fp_rate": round(float((pp[yy == 0] >= 0.5).mean()), 4)
             if (yy == 0).any() else None,
             "aigc_fn_rate": round(float((pp[yy == 1] < 0.5).mean()), 4)
@@ -146,14 +152,15 @@ def error_profiles(df: pd.DataFrame, y, proba, model: dict,
         else:
             wrong, right = (proba < 0.5), (proba >= 0.5)
         mask_w, mask_r = (y == cls) & wrong, (y == cls) & right
-        diff = z[mask_w].mean(axis=0) - z[mask_r].mean(axis=0)
+        zw, zr = z[mask_w], z[mask_r]
+        diff = zw.mean(axis=0) - zr.mean(axis=0)
         order = np.argsort(-np.abs(diff))[:top_k]
         out[name] = {
             "n_wrong": int(mask_w.sum()), "n_right": int(mask_r.sum()),
             "features": [{"feature": feats[i], "label": LABELS.get(feats[i], feats[i]),
                           "z_diff": round(float(diff[i]), 3),
-                          "wrong_mean": round(float(z[mask_w][:, i].mean()), 3),
-                          "right_mean": round(float(z[mask_r][:, i].mean()), 3)}
+                          "wrong_mean": round(float(zw[:, i].mean()), 3),
+                          "right_mean": round(float(zr[:, i].mean()), 3)}
                          for i in order],
         }
     return out
@@ -352,11 +359,11 @@ def ecdf_curves(df: pd.DataFrame, scores: pd.DataFrame, model: dict) -> dict:
         return [0.0] + xs.tolist(), [0.0] + ys.tolist()
 
     is_human = (df["dataset"] == "human").values
+    # 整表打一次分再按行拆分，避免对两个子表分别做一次标准化矩阵运算
+    score = detector_score(df, model, robust=True)
     out = {}
-    out["人类（前LLM）"] = (*curve(detector_score(df[is_human], model, robust=True)),
-                        COLORS["human"], "-")
-    out["AIGC"] = (*curve(detector_score(df[~is_human], model, robust=True)),
-                   COLORS["aigc"], "-")
+    out["人类（前LLM）"] = (*curve(score[is_human]), COLORS["human"], "-")
+    out["AIGC"] = (*curve(score[~is_human]), COLORS["aigc"], "-")
     e23 = scores[scores["month"] <= "202306"]["p_ai"]
     e25 = scores[scores["month"] >= "202501"]["p_ai"]
     out["探索集 2023H1"] = (*curve(e23), COLORS["exploring"], "--")
@@ -376,8 +383,11 @@ def main() -> None:
     n_h, n_a = int((y == 0).sum()), int((y == 1).sum())
     print(f"标注数据: human={n_h} aigc={n_a} (features={len(feats)}, robust={len(robust_feats)})")
 
-    proba = cv_proba(df, feats)
-    proba_r = cv_proba(df, robust_feats)
+    # 特征矩阵只构建一次：稳健特征是全特征矩阵的列子集，直接切片复用
+    X_full = df[feats].fillna(0).values
+    col_idx = {c: i for i, c in enumerate(feats)}
+    proba = cv_proba_X(X_full, y)
+    proba_r = cv_proba_X(X_full[:, [col_idx[c] for c in robust_feats]], y)
     auc = float(roc_auc_score(y, proba))
     auc_r = float(roc_auc_score(y, proba_r))
     print(f"全特征 CV AUC={auc:.4f}（paper_detector 记录 0.9402）")

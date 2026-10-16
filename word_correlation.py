@@ -25,7 +25,8 @@ def clean_text(text):
 
 
 def main():
-    note_by_user = defaultdict(list)
+    note_counts = defaultdict(int)
+    user_totals = defaultdict(Counter)
     word_doc_freq = Counter()
 
     print("Loading...")
@@ -42,32 +43,25 @@ def main():
                     continue
                 text = item.get("note_title", "") + " " + item.get("desc", "")
                 words = clean_text(text)
-                note_by_user[user_id].append(Counter(words))
+                note_counts[user_id] += 1
+                user_totals[user_id].update(words)
                 for w in set(words):
                     word_doc_freq[w] += 1
             except:
                 continue
 
     MIN_NOTES = 2
-    active_users = {u: n for u, n in note_by_user.items() if len(n) >= MIN_NOTES}
+    user_ids = [u for u, n in note_counts.items() if n >= MIN_NOTES]
 
     MIN_USERS = 3
     topWords = [w for w, c in word_doc_freq.most_common(200) if c >= MIN_USERS]
 
     all_words = topWords
     word_to_idx = {w: i for i, w in enumerate(all_words)}
-    user_ids = list(active_users.keys())
     n_users = len(user_ids)
     n_words = len(all_words)
 
     print(f"{n_users} users, {n_words} words")
-
-    user_totals = {}
-    for uid in user_ids:
-        total = Counter()
-        for c in active_users[uid]:
-            total.update(c)
-        user_totals[uid] = total
 
     matrix = np.zeros((n_users, n_words))
     for i, uid in enumerate(user_ids):

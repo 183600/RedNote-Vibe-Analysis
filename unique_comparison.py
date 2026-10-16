@@ -564,13 +564,13 @@ def main():
 
     all_results = generate_summary_dashboard(aggs, output_dir)
 
-    eng_results = analyze_engagement_efficiency(aggs)
+    eng_results = all_results["engagement_efficiency"]
     plot_user_engagement_comparison(eng_results, output_dir)
 
-    inter_results = analyze_interactive_elements(aggs)
+    inter_results = all_results["interactive_elements"]
     plot_interactive_elements(inter_results, output_dir)
 
-    conc_results = analyze_domain_concentration(aggs)
+    conc_results = all_results["domain_concentration"]
     plot_domain_concentration(conc_results, output_dir)
 
     print("\n" + "=" * 80)

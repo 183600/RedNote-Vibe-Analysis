@@ -254,11 +254,9 @@ def analyze_unique_words(freqs, files, word_sets=None):
             results[key1] = sorted1
             results[key2] = sorted2
     common = set.intersection(*word_sets)
+    totals = {w: sum(f.get(w, 0) for f in freqs) for w in common}
     results["common_words"] = [
-        (w, sum(f.get(w, 0) for f in freqs))
-        for w in heapq.nlargest(
-            50, common, key=lambda w: sum(f.get(w, 0) for f in freqs)
-        )
+        (w, totals[w]) for w in heapq.nlargest(50, totals, key=totals.get)
     ]
     return results
 
@@ -268,21 +266,24 @@ def analyze_vocabulary_overlap(freqs, files, word_sets=None):
         word_sets = [set(freq.keys()) for freq in freqs]
     results = {}
     all_sets = word_sets
-    for f, word_set in zip(files, all_sets):
-        results[f + "_total_words"] = len(word_set)
+    sizes = [len(word_set) for word_set in all_sets]
+    for f, size in zip(files, sizes):
+        results[f + "_total_words"] = size
+    pair_common = {}
     for i in range(len(files)):
         for j in range(i + 1, len(files)):
-            common = all_sets[i] & all_sets[j]
-            union = all_sets[i] | all_sets[j]
-            jaccard = len(common) / len(union) if union else 0
+            common_count = len(all_sets[i] & all_sets[j])
+            union_count = sizes[i] + sizes[j] - common_count
+            jaccard = common_count / union_count if union_count else 0
             key = files[i] + "_and_" + files[j]
-            results[key + "_common"] = len(common)
+            pair_common[(i, j)] = common_count
+            results[key + "_common"] = common_count
             results[key + "_jaccard"] = round(jaccard, 4)
     common_all = set.intersection(*all_sets)
-    union_all = set.union(*all_sets)
+    union_all = (sum(sizes) - sum(pair_common.values()) + len(common_all))
     results["common_all_three"] = len(common_all)
     results["jaccard_all_three"] = (
-        round(len(common_all) / len(union_all), 4) if union_all else 0
+        round(len(common_all) / union_all, 4) if union_all else 0
     )
     return results
 

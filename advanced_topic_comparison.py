@@ -282,9 +282,12 @@ def analyze_domain_stats(items):
     for t in texts:
         word_freq.update(clean_tokenize(t))
 
-    all_chars = "".join(texts)
-    unique_chars = len(set(all_chars))
-    total_chars = len(all_chars)
+    chars = set()
+    total_chars = 0
+    for t in texts:
+        chars.update(t)
+        total_chars += len(t)
+    unique_chars = len(chars)
     ttr = unique_chars / total_chars if total_chars > 0 else 0
 
     exclaim = sum(t.count("!") + t.count("！") for t in texts)

@@ -539,8 +539,9 @@ def analyze_sentence_features(grouped):
             if not domain_items:
                 continue
 
-            sentence_counts = [count_sentences(get_text(item)) for item in domain_items]
-            content_lens = [len(get_text(item)) for item in domain_items]
+            texts = [get_text(item) for item in domain_items]
+            sentence_counts = [count_sentences(t) for t in texts]
+            content_lens = [len(t) for t in texts]
 
             avg_sent_len = []
             for s, l in zip(sentence_counts, content_lens):
@@ -773,7 +774,7 @@ def plot_content_consistency(results, output_dir):
     print("Saved: " + os.path.join(output_dir, "content_consistency.png"))
 
 
-def analyze_emotion_intensity(grouped):
+def analyze_emotion_intensity(grouped, token_totals):
     print("\n" + "=" * 80)
     print("7. EMOTION INTENSITY ANALYSIS: Positive vs Negative Word Strength")
     print("=" * 80)
@@ -837,18 +838,19 @@ def analyze_emotion_intensity(grouped):
             if not domain_items:
                 continue
 
-            text_all = " ".join(get_text(item) for item in domain_items)
+            pos_strong = pos_mild = neg_strong = neg_mild = 0
+            for item in domain_items:
+                text = get_text(item)
+                for w in INTENSITY_WORDS["positive_strong"]:
+                    pos_strong += text.count(w)
+                for w in INTENSITY_WORDS["positive_mild"]:
+                    pos_mild += text.count(w)
+                for w in INTENSITY_WORDS["negative_strong"]:
+                    neg_strong += text.count(w)
+                for w in INTENSITY_WORDS["negative_mild"]:
+                    neg_mild += text.count(w)
 
-            pos_strong = sum(
-                text_all.count(w) for w in INTENSITY_WORDS["positive_strong"]
-            )
-            pos_mild = sum(text_all.count(w) for w in INTENSITY_WORDS["positive_mild"])
-            neg_strong = sum(
-                text_all.count(w) for w in INTENSITY_WORDS["negative_strong"]
-            )
-            neg_mild = sum(text_all.count(w) for w in INTENSITY_WORDS["negative_mild"])
-
-            total_words = len(clean_tokenize(text_all))
+            total_words = token_totals[ds_name][domain]
 
             results[ds_name][domain] = {
                 "pos_strong_per_k": pos_strong / total_words * 1000
@@ -1110,14 +1112,16 @@ def analyze_punctuation_diversity(grouped):
             if not domain_items:
                 continue
 
-            text_all = "".join(get_text(item) for item in domain_items)
-
-            comma_count = text_all.count(",") + text_all.count("，")
-            period_count = text_all.count(".") + text_all.count("。")
-            exclaim_count = text_all.count("!") + text_all.count("！")
-            question_count = text_all.count("?") + text_all.count("？")
-            colon_count = text_all.count(":") + text_all.count("：")
-            semicolon_count = text_all.count(";") + text_all.count("；")
+            comma_count = period_count = exclaim_count = 0
+            question_count = colon_count = semicolon_count = 0
+            for item in domain_items:
+                text = get_text(item)
+                comma_count += text.count(",") + text.count("，")
+                period_count += text.count(".") + text.count("。")
+                exclaim_count += text.count("!") + text.count("！")
+                question_count += text.count("?") + text.count("？")
+                colon_count += text.count(":") + text.count("：")
+                semicolon_count += text.count(";") + text.count("；")
 
             total_posts = len(domain_items)
 
@@ -1215,6 +1219,7 @@ def main():
 
     grouped = {}
     word_counters = {}
+    token_totals = {}
     for ds_name, data in [
         ("Human", human_data),
         ("AIGC", aigc_data),
@@ -1222,13 +1227,18 @@ def main():
     ]:
         grouped[ds_name] = {}
         word_counters[ds_name] = {}
+        token_totals[ds_name] = {}
         for domain in DOMAINS:
             domain_items = [item for item in data if item.get("domain") == domain]
             grouped[ds_name][domain] = domain_items
             counter = Counter()
+            n_tokens = 0
             for item in domain_items:
-                counter.update(clean_tokenize(get_text(item)))
+                tokens = clean_tokenize(get_text(item))
+                counter.update(tokens)
+                n_tokens += len(tokens)
             word_counters[ds_name][domain] = counter.most_common(100)
+            token_totals[ds_name][domain] = n_tokens
 
     print("\n" + "=" * 80)
     print("NEW TOPIC COMPARISON ANALYSIS: Exploring vs AIGC vs Human")
@@ -1251,7 +1261,7 @@ def main():
     consistency_results = analyze_content_consistency(grouped)
     plot_content_consistency(consistency_results, output_dir)
 
-    emotion_results = analyze_emotion_intensity(grouped)
+    emotion_results = analyze_emotion_intensity(grouped, token_totals)
     plot_emotion_intensity(emotion_results, output_dir)
 
     time_results = analyze_time_distribution(grouped)

@@ -160,7 +160,9 @@ def extract_emoji_face(text):
 def extract_punctuation(text):
     if not text:
         return {}
-    punctuation = re.findall(r"([!?。.,，:\"\'\-\(\)【】{}《》])", str(text))
+    # ASCII 与对应全角标点都要统计：中文语料里 ！？：远超其半角形式，
+    # 只统计半角会让热图低估主要句末标点（与各脚本统一的「半角+全角」口径一致）。
+    punctuation = re.findall(r"([!?。.,，:：！？\"\'\-\(\)【】{}《》])", str(text))
     return Counter(punctuation)
 
 

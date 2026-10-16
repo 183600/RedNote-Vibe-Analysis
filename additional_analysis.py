@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import heapq
 import json
 import re
 import numpy as np
@@ -98,6 +97,8 @@ STOPWORDS = set(
         "jiang",
         "dui",
         "ke",
+        "话题",
+        "day",
     ]
 )
 
@@ -105,12 +106,15 @@ STOPWORDS = set(
 RE_DIGITS = re.compile(r"\d+")
 # 连续的非 \w 字符（标点/空白）作为分隔符直接切词，等价于原先「标点→空格再 split」。
 RE_NONWORD = re.compile(r"[^\w]+")
+# 小红书表情占位符（如 [笑哭R]）不是词，先删掉再分词（口径同 word_freq_analysis）。
+RE_XHS_EMO = re.compile(r"\[[^\[\]]{1,8}R\]")
 
 
 def tokenize(text):
     if not text:
         return []
     text = str(text)
+    text = RE_XHS_EMO.sub(" ", text)
     text = RE_DIGITS.sub("", text)
     words = RE_NONWORD.split(text.lower())
     return [w for w in words if len(w) > 1 and w not in STOPWORDS]
@@ -204,14 +208,14 @@ def analyze_unique_words(freqs, files, word_sets=None):
                                           start=i + 1):
             keys2 = word_sets[j]
 
-            unique1_top = [
-                (w, freq1[w])
-                for w in heapq.nlargest(20, keys1 - keys2, key=freq1.__getitem__)
-            ]
-            unique2_top = [
-                (w, freq2[w])
-                for w in heapq.nlargest(20, keys2 - keys1, key=freq2.__getitem__)
-            ]
+            unique1_top = sorted(
+                ((w, freq1[w]) for w in keys1 - keys2),
+                key=lambda x: (-x[1], x[0]),
+            )[:20]
+            unique2_top = sorted(
+                ((w, freq2[w]) for w in keys2 - keys1),
+                key=lambda x: (-x[1], x[0]),
+            )[:20]
 
             results[f"{f1}_unique_in_{f2}"] = unique1_top
             results[f"{f2}_unique_in_{f1}"] = unique2_top

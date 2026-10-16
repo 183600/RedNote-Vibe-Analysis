@@ -277,13 +277,16 @@ def scan(path):
         if lt and len(lt) >= 6:
             months[lt[:6]] += 1
 
-        # 12. 标点
+        # 12. 标点（与 internal_diff_analysis / paper_features 同口径：
+        #     省略号同时统计 ASCII "..."、Unicode "…" 与中文 "。。。"）
         punct_c["!"] += content.count("!") + content.count("！")
         punct_c["?"] += content.count("?") + content.count("？")
-        punct_c["..."] += content.count("...")
+        punct_c["..."] += (content.count("...") + content.count("…")
+                           + content.count("。。。"))
         punct_t["!"] += title.count("!") + title.count("！")
         punct_t["?"] += title.count("?") + title.count("？")
-        punct_t["..."] += title.count("...")
+        punct_t["..."] += (title.count("...") + title.count("…")
+                           + title.count("。。。"))
 
         # 13. 领域-长度
         d = item.get("domain", "Unknown")

@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import heapq
 import json
 import random
 import re
@@ -9,6 +8,8 @@ from collections import Counter
 RE_DIGITS = re.compile(r"\d+")
 # 连续的非 \w 字符（标点/空白）作为分隔符直接切词，等价于原先「标点→空格再 split」。
 RE_NONWORD = re.compile(r"[^\w]+")
+# 小红书表情占位符（如 [笑哭R]）不是词，先删掉再分词（口径同 word_freq_analysis）。
+RE_XHS_EMO = re.compile(r"\[[^\[\]]{1,8}R\]")
 RE_HASHTAG = re.compile(r"#(\w+)")
 RE_LINK = re.compile(r"http[s]?://|www\.")
 
@@ -104,6 +105,7 @@ def tokenize(text):
     if not text:
         return []
     text = str(text)
+    text = RE_XHS_EMO.sub(" ", text)
     text = RE_DIGITS.sub("", text)
     words = RE_NONWORD.split(text.lower())
     return [w for w in words if len(w) > 1 and w not in STOPWORDS]
@@ -190,16 +192,18 @@ def stream_all(filepath, sample_size=5000, seed=42):
             for bigram in zip(words_title, words_title[1:]):
                 bigrams_title[bigram] += 1
         if text:
-            ling_desc["exclaim"] += text.count("!")
-            ling_desc["question"] += text.count("?")
-            ling_desc["ellipsis"] += text.count("...")
+            ling_desc["exclaim"] += text.count("!") + text.count("！")
+            ling_desc["question"] += text.count("?") + text.count("？")
+            ling_desc["ellipsis"] += (text.count("...") + text.count("…")
+                                      + text.count("。。。"))
             ling_desc["upper"] += sum(map(str.isupper, text))
             ling_desc["digit"] += sum(map(str.isdigit, text))
             ling_desc["link"] += len(RE_LINK.findall(text))
         if title:
-            ling_title["exclaim"] += title.count("!")
-            ling_title["question"] += title.count("?")
-            ling_title["ellipsis"] += title.count("...")
+            ling_title["exclaim"] += title.count("!") + title.count("！")
+            ling_title["question"] += title.count("?") + title.count("？")
+            ling_title["ellipsis"] += (title.count("...") + title.count("…")
+                                       + title.count("。。。"))
             ling_title["upper"] += sum(map(str.isupper, title))
             ling_title["digit"] += sum(map(str.isdigit, title))
             ling_title["link"] += len(RE_LINK.findall(title))
@@ -245,23 +249,24 @@ def analyze_unique_words(freqs, files, word_sets=None):
             f1, f2 = files[i], files[j]
             freq1, freq2 = freqs[i], freqs[j]
             keys_j = word_sets[j]
-            sorted1 = [
-                (w, freq1[w])
-                for w in heapq.nlargest(30, keys_i - keys_j, key=freq1.__getitem__)
-            ]
-            sorted2 = [
-                (w, freq2[w])
-                for w in heapq.nlargest(30, keys_j - keys_i, key=freq2.__getitem__)
-            ]
+            sorted1 = sorted(
+                ((w, freq1[w]) for w in keys_i - keys_j),
+                key=lambda x: (-x[1], x[0]),
+            )[:30]
+            sorted2 = sorted(
+                ((w, freq2[w]) for w in keys_j - keys_i),
+                key=lambda x: (-x[1], x[0]),
+            )[:30]
             key1 = f1 + "_unique_in_" + f2
             key2 = f2 + "_unique_in_" + f1
             results[key1] = sorted1
             results[key2] = sorted2
     common = set.intersection(*word_sets)
     totals = {w: sum(f.get(w, 0) for f in freqs) for w in common}
-    results["common_words"] = [
-        (w, totals[w]) for w in heapq.nlargest(50, totals, key=totals.get)
-    ]
+    results["common_words"] = sorted(
+        ((w, totals[w]) for w in common),
+        key=lambda x: (-x[1], x[0]),
+    )[:50]
     return results
 
 

@@ -168,14 +168,13 @@ def scan(path):
         n += 1
         title = item.get("note_title", "")
         content = get_text(item)
-        combined = content + " " + title
 
         # 1. 领域分布
         domains[item.get("domain", "Unknown")] += 1
 
         # 2. 情感
-        pos_c += sum(map(combined.__contains__, positive_words))
-        neg_c += sum(map(combined.__contains__, negative_words))
+        pos_c += sum(map(content.__contains__, positive_words))
+        neg_c += sum(map(content.__contains__, negative_words))
         pos_t += sum(map(title.__contains__, positive_words))
         neg_t += sum(map(title.__contains__, negative_words))
 
@@ -186,11 +185,11 @@ def scan(path):
         comments_sum += comm_i
 
         # 4. 结构（正文）
-        para_c += sum(1 for p in combined.split("\n") if p.strip())
-        list_c += len(RE_LIST_ITEM.findall(combined))
-        bullet_c += len(RE_BULLET.findall(combined))
-        emoji_c += len(RE_EMOJI.findall(combined))
-        hashtag_c += len(RE_HASHTAG_CJK.findall(combined))
+        para_c += sum(1 for p in content.split("\n") if p.strip())
+        list_c += len(RE_LIST_ITEM.findall(content))
+        bullet_c += len(RE_BULLET.findall(content))
+        emoji_c += len(RE_EMOJI.findall(content))
+        hashtag_c += len(RE_HASHTAG_CJK.findall(content))
         # 4b. 结构（标题）
         para_t += sum(1 for p in title.split("\n") if p.strip())
         list_t += len(RE_LIST_ITEM.findall(title))

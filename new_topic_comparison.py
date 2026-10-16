@@ -993,6 +993,13 @@ def analyze_time_distribution(grouped):
             if not hours:
                 continue
 
+            if len(set(hours)) <= 1:
+                results[ds_name][domain] = {
+                    "hour_field_note":
+                        f"local_time 小时恒为占位值 {hours[0]:02d}，小时分布不可用",
+                }
+                continue
+
             morning = sum(1 for h in hours if 6 <= h < 12)
             afternoon = sum(1 for h in hours if 12 <= h < 18)
             evening = sum(1 for h in hours if 18 <= h < 24)
@@ -1019,6 +1026,9 @@ def analyze_time_distribution(grouped):
         for ds in ["Human", "AIGC", "Exploring"]:
             if ds in results and domain in results[ds]:
                 r = results[ds][domain]
+                if "hour_field_note" in r:
+                    print("  " + ds + ": " + r["hour_field_note"])
+                    continue
                 print(
                     "  "
                     + ds

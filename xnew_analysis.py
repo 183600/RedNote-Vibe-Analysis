@@ -6,10 +6,20 @@ import re
 import codecs
 from collections import Counter
 
+import jieba
+
 from analysis_utils import iter_jsonl_codecs, load_records_with_total
 
 
 SAMPLE_LIMIT = 5000
+
+jieba.setLogLevel(60)
+TOKEN_KEEP = re.compile(r"[\u4e00-\u9fffA-Za-z0-9]")
+
+
+def title_tokens(title):
+    return [t for t in (tok.strip().lower() for tok in jieba.lcut(str(title)))
+            if t and TOKEN_KEEP.search(t)]
 
 
 def load_jsonl(filepath, limit=SAMPLE_LIMIT, seed=42):
@@ -45,7 +55,7 @@ def main():
             if title:
                 title_lengths.append(len(title))
 
-                words = title.split()
+                words = title_tokens(title)
                 title_words.extend(words)
 
                 if re.match(r"^\d+[\u3001.\s]", str(title)):

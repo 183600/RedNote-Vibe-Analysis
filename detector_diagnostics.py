@@ -364,7 +364,7 @@ def ecdf_curves(df: pd.DataFrame, scores: pd.DataFrame, model: dict) -> dict:
     out = {}
     out["人类（前LLM）"] = (*curve(score[is_human]), COLORS["human"], "-")
     out["AIGC"] = (*curve(score[~is_human]), COLORS["aigc"], "-")
-    e23 = scores[scores["month"] <= "202306"]["p_ai"]
+    e23 = scores[(scores["month"] >= "202301") & (scores["month"] <= "202306")]["p_ai"]
     e25 = scores[scores["month"] >= "202501"]["p_ai"]
     out["探索集 2023H1"] = (*curve(e23), COLORS["exploring"], "--")
     out["探索集 2025H1"] = (*curve(e25), "#937860", "--")

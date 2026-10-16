@@ -7,7 +7,7 @@ from analysis_utils import BASE
 
 
 exclude = set([u'话题', u'时尚薯', u'生活薯', u'知识薯', u'美食薯', u'校园薯',
-               u'薯队长', u'薯条小助手', u'小红书创作学院', u'笔记灵感'])
+               u'薯队长', u'薯条小助手', u'小红书创作学院', u'笔记灵感', u'无标题'])
 
 # 单个词的全部状态打包进一个 int：高位是出现该词的笔记数，低 _MASK_BITS 位是
 # 话题 bitmask。避免为每个词同时维护 Counter 计数 + 一个 set 对象（原先每个词
@@ -54,8 +54,10 @@ def main():
     }
 
     MIN_USERS = 30
-    # 等价于原先 Counter.most_common(100)：按计数降序、并列保持首次出现顺序。
-    ranked = sorted(word_info.items(), key=lambda kv: kv[1], reverse=True)
+    # 等价于原先 Counter.most_common(100)：按计数降序，并列时保持首次出现顺序
+    # （info 低 16 位是话题 bitmask，排序时必须右移，否则并列会按 bitmask 值排序）。
+    ranked = sorted(word_info.items(),
+                    key=lambda kv: kv[1] >> _COUNT_SHIFT, reverse=True)
 
     results = []
     for w, info in ranked[:100]:

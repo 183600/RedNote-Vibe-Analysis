@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib
 
 matplotlib.use("Agg")
+import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 from matplotlib import font_manager
 from collections import Counter
@@ -93,13 +94,23 @@ def main():
     fig, axes = plt.subplots(1, 3, figsize=(18, 6))
 
     for idx, (f, dates) in enumerate(zip(files, file_dates)):
-        if dates is None:
-            continue
-
-        axes[idx].hist(dates.hour, bins=24, alpha=0.7, color="steelblue")
         axes[idx].set_title(f.replace(".jsonl", "") + " Post Hour Distribution")
         axes[idx].set_xlabel("Hour of Day")
         axes[idx].set_ylabel("Count")
+        if dates is None:
+            axes[idx].text(0.5, 0.5, "无时间字段", ha="center", va="center",
+                           transform=axes[idx].transAxes, fontsize=12)
+            continue
+
+        hours = np.asarray(dates.hour)
+        if np.unique(hours).size <= 1:
+            axes[idx].text(
+                0.5, 0.5,
+                f"小时字段恒为占位值 {int(hours[0]):02d}，\n不反映真实发帖时间",
+                ha="center", va="center", transform=axes[idx].transAxes,
+                fontsize=12, color="#8c2d2d")
+            continue
+        axes[idx].hist(dates.hour, bins=24, alpha=0.7, color="steelblue")
 
     plt.tight_layout()
     plt.savefig("time_distribution.png", dpi=150)
@@ -108,13 +119,20 @@ def main():
     fig, axes = plt.subplots(1, 3, figsize=(18, 6))
 
     for idx, (f, dates) in enumerate(zip(files, file_dates)):
-        if dates is None:
-            continue
-
-        axes[idx].hist(dates.month, bins=12, alpha=0.7, color="coral")
-        axes[idx].set_title(f.replace(".jsonl", "") + " Post Month Distribution")
+        axes[idx].set_title(f.replace(".jsonl", "") + " Monthly Post Distribution")
         axes[idx].set_xlabel("Month")
         axes[idx].set_ylabel("Count")
+        if dates is None:
+            axes[idx].text(0.5, 0.5, "无时间字段", ha="center", va="center",
+                           transform=axes[idx].transAxes, fontsize=12)
+            continue
+
+        monthly = dates.to_period("M").value_counts().sort_index()
+        axes[idx].plot(monthly.index.to_timestamp(), monthly.values, "o-",
+                       color="coral")
+        axes[idx].xaxis.set_major_formatter(mdates.DateFormatter("%Y-%m"))
+        for label in axes[idx].get_xticklabels():
+            label.set_rotation(45)
 
     plt.tight_layout()
     plt.savefig("month_distribution.png", dpi=150)

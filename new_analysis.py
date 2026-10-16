@@ -6,10 +6,20 @@ import re
 import codecs
 from collections import Counter
 
+import jieba
+
 from analysis_utils import iter_jsonl_codecs, load_records_with_total
 
 
 SAMPLE_LIMIT = 5000
+
+jieba.setLogLevel(60)
+TOKEN_KEEP = re.compile(r"[\u4e00-\u9fffA-Za-z0-9]")
+
+
+def words_of(text):
+    return [t for t in (tok.strip().lower() for tok in jieba.lcut(str(text)))
+            if t and TOKEN_KEEP.search(t)]
 
 RE_PRICE = re.compile(
     r"[¥￥$]\s*\d+|\d+\.?\d*\s*(?:元|块|万元|美元|美金|欧元|日元)"
@@ -76,7 +86,7 @@ def analyze_sentences(text):
     sentences = [s.strip() for s in sentences if s.strip()]
     if not sentences:
         return {}
-    words_list = [s.split() for s in sentences]
+    words_list = [words_of(s) for s in sentences]
     total_words = sum(len(w) for w in words_list)
     unique_words = set()
     for words in words_list:
@@ -92,7 +102,7 @@ def analyze_sentences(text):
 def analyze_repetition(text):
     if not text:
         return {}
-    words = text.split()
+    words = words_of(text)
     if len(words) < 3:
         return {"repeat_ratio": 0}
     repeat_count = sum(

@@ -360,7 +360,7 @@ def plot_lexicon_diffusion(stats: dict, out: dict) -> None:
             "ai_lex_trend": {"rho": round(float(rho), 3), "p": float(p)},
         }
         if name == "exploring":
-            h1 = [v for m, v in zip(months, ai_rates) if m <= "202306"]
+            h1 = [v for m, v in zip(months, ai_rates) if "202301" <= m <= "202306"]
             h2 = [v for m, v in zip(months, ai_rates) if m >= "202501"]
             out["lexicon_diffusion"]["exploring_phase_means_ai_lex"] = {
                 "2023H1": round(float(np.mean(h1)), 2),
@@ -377,14 +377,17 @@ def plot_sentence_rhythm(stats: dict, out: dict) -> None:
     fig, axes = plt.subplots(1, 2, figsize=(13.5, 4.6))
 
     ax = axes[0]
-    bins = np.arange(0, 81, 3)
+    vals_all = np.concatenate([np.asarray(stats[n]["sent_mean"], dtype=float)
+                               for n in ("human", "aigc", "exploring")])
+    bins = np.geomspace(max(float(vals_all.min()), 1.0), float(vals_all.max()) * 1.05, 40)
     for name in ("human", "aigc", "exploring"):
         vals = np.array(stats[name]["sent_mean"])
         ax.hist(vals, bins=bins, density=True, histtype="step", lw=1.7,
                 color=PALETTE[name], label=f"{LABELS[name]} (中位 {np.median(vals):.0f}字)")
-    ax.set_xlabel("笔记平均句长（字）")
+    ax.set_xscale("log")
+    ax.set_xlabel("笔记平均句长（字，对数刻度，长尾不截断）")
     ax.set_ylabel("密度")
-    ax.set_title("平均句长分布")
+    ax.set_title("平均句长分布（全量）")
     ax.legend(fontsize=8.5)
 
     ax = axes[1]

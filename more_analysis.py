@@ -220,7 +220,11 @@ def stream_all(filepath, sample_size=5000, seed=42):
 def extract_emojis(text):
     if not text:
         return []
-    return EMOJI_PATTERN.findall(str(text))
+    emojis = EMOJI_PATTERN.findall(str(text))
+    result = []
+    for e in emojis:
+        result.extend(list(e))
+    return result
 
 
 def extract_hashtags(text):

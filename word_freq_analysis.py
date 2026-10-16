@@ -2,7 +2,7 @@
 import json
 import re
 import numpy as np
-from analysis_utils import init_plot_style
+from analysis_utils import init_plot_style, clean_body
 import matplotlib
 
 matplotlib.use("Agg")
@@ -14,6 +14,8 @@ from scipy import stats
 import os
 
 init_plot_style()
+
+RE_XHS_EMO = re.compile(r"\[[^\[\]]{1,8}R\]")
 
 STOPWORDS = set(
     [
@@ -107,7 +109,7 @@ STOPWORDS = set(
 def tokenize(text):
     if not text:
         return []
-    text = str(text)
+    text = RE_XHS_EMO.sub(" ", clean_body(str(text)))
     text = re.sub(r"[^\w\s]", " ", text)
     text = re.sub(r"\d+", "", text)
     words = text.lower().split()

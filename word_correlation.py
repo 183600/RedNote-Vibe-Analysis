@@ -102,6 +102,7 @@ def main():
     print(f"Total: {len(all_results)}")
 
     pos = [(w1, w2, r) for w1, w2, r, p in all_results if r > 0.2]
+    pos.sort(key=lambda x: x[2], reverse=True)
     neg = [(w1, w2, r) for w1, w2, r, p in all_results if r < 0]
 
     print(f"\nPositive (>0.2): {len(pos)}")

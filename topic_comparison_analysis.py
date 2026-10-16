@@ -261,7 +261,10 @@ def analyze_domain_differences(human_agg, output_dir):
 
     print("\n=== Domain Differences Analysis ===")
     for domain, data in results.items():
-        eng = data["liked"] + data["collected"] + data["comments"]
+        eng = [
+            x + y + z
+            for x, y, z in zip(data["liked"], data["collected"], data["comments"])
+        ]
         print(f"\n{domain}:")
         print(
             f"  Count: {data['count']}, Avg length: {data['avg_length']:.1f}, Avg emojis: {data['avg_emojis']:.2f}"
@@ -297,7 +300,14 @@ def plot_domain_comparison(results, output_dir):
     axes[1, 0].tick_params(axis="x", rotation=45)
 
     eng_means = [
-        np.mean(results[d]["liked"] + results[d]["collected"] + results[d]["comments"])
+        np.mean(
+            [
+                x + y + z
+                for x, y, z in zip(
+                    results[d]["liked"], results[d]["collected"], results[d]["comments"]
+                )
+            ]
+        )
         for d in domains
     ]
     axes[1, 1].bar(domains, eng_means, color="orchid")

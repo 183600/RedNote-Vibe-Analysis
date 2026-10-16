@@ -88,6 +88,7 @@ def main():
     all_results.sort(key=lambda x: x[2])
 
     pos = [(w1, w2, r) for w1, w2, r in all_results if r > 0.15]
+    pos.sort(key=lambda x: x[2], reverse=True)
     neg = [(w1, w2, r) for w1, w2, r in all_results if r < -0.05]
 
     print("Pos: " + str(len(pos)) + ", Neg: " + str(len(neg)))

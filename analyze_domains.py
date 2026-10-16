@@ -22,7 +22,8 @@ def main():
                 item = json.loads(s)
                 domain = item.get('domain', 'unknown')
                 domain_counts[domain] += 1
-                text = item.get('note_title', '') + ' ' + item.get('desc', '')
+                text = item.get('note_title', '') + ' ' + (
+                    item.get('desc', '') or item.get('note_content', ''))
                 words = re.findall(r'[\u4e00-\u9fff]+', text)
                 for w in set(words):
                     if len(w) >= 2 and w not in exclude:
@@ -71,13 +72,13 @@ def main():
         in_all_6 = [(w, c) for w, n, ds, c in results if all(d in ds for d in major_domains)]
         f.write((u"共 " + str(len(in_all_6)) + u" 个词在6个主要话题都有出现:\n\n").encode('utf-8'))
         for w, c in in_all_6:
-            f.write((u"- " + w + u": " + str(c) + u" 用户\n").encode('utf-8'))
+            f.write((u"- " + w + u": " + str(c) + u" 笔记\n").encode('utf-8'))
     
         f.write((u"\n## 只在少量话题出现的词\n\n").encode('utf-8'))
         f.write((u"以下词只在1-3个话题出现，不能算真正的\"跨话题\"词:\n\n").encode('utf-8'))
         few_topics = [(w, n, c) for w, n, ds, c in results if n <= 3]
         for w, n, c in few_topics[:15]:
-            f.write((u"- " + w + u": " + str(n) + u"个话题, " + str(c) + u"用户\n").encode('utf-8'))
+            f.write((u"- " + w + u": " + str(n) + u"个话题, " + str(c) + u"笔记\n").encode('utf-8'))
     
         f.write((u"\n## 结论\n\n").encode('utf-8'))
         n_all6 = len(in_all_6)

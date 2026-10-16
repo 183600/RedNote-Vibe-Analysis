@@ -11,6 +11,14 @@ from analysis_utils import iter_jsonl_codecs, load_records_with_total
 
 SAMPLE_LIMIT = 5000
 
+RE_PRICE = re.compile(
+    r"[¥￥$]\s*\d+|\d+\.?\d*\s*(?:元|块|万元|美元|美金|欧元|日元)"
+)
+RE_QUANTITY = re.compile(
+    r"\d+\s*(?:个|件|次|只|天|年|月|周|小时|分钟|杯|份|款|张|条|篇|本|套|位|人|岁|遍|组|双|对|袋|盒|瓶|支|斤|公斤|克|米|公里)"
+)
+RE_SENTENCE = re.compile(r"[。！？!?.]+")
+
 
 def load_jsonl(filepath, limit=SAMPLE_LIMIT, seed=42):
     return load_records_with_total(filepath, sample=limit, seed=seed,
@@ -51,8 +59,8 @@ def analyze_numbers(text):
         return {}
     text = str(text)
     numbers = re.findall(r"\d+\.?\d*", text)
-    has_price = bool(re.search(r"\d+\.?\d*$", text))
-    has_count = bool(re.search(r"\d+[\x00-\xff]*", text))
+    has_price = bool(RE_PRICE.search(text))
+    has_count = bool(RE_QUANTITY.search(text))
     return {"num_numbers": len(numbers), "has_price": has_price, "has_count": has_count}
 
 
@@ -60,7 +68,7 @@ def analyze_sentences(text):
     if not text:
         return {}
     text = str(text)
-    sentences = re.split(r"[.!?]+", text)
+    sentences = RE_SENTENCE.split(text)
     sentences = [s.strip() for s in sentences if s.strip()]
     if not sentences:
         return {}

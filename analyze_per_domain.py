@@ -8,7 +8,7 @@ from analysis_utils import BASE
 exclude = set([u'话题', u'时尚薯', u'生活薯', u'知识薯', u'美食薯', u'校园薯',
                u'薯队长', u'薯条小助手', u'小红书创作学院', u'笔记灵感'])
 
-# 36个跨话题词
+# 35个跨话题词
 cross_topic_words = [
     u'分钟', u'小时', u'女性成长', u'哭惹', u'笑哭', u'偷笑', u'失望', u'所以',
     u'害羞', u'左右', u'派对', u'捂脸', u'比如', u'姐妹们', u'周末去哪儿', 
@@ -37,7 +37,8 @@ def main():
                 if domain not in major_domains:
                     continue
             
-                text = item.get("note_title", "") + " " + item.get("desc", "")
+                text = item.get("note_title", "") + " " + (
+                    item.get("desc", "") or item.get("note_content", ""))
                 words = re.findall(r"[\u4e00-\u9fff]+", text)
             
                 domain_total[domain] += 1
@@ -94,7 +95,7 @@ def main():
     # 保存结果
     with open("per_domain_word_freq_results.md", "wb") as f:
         f.write((u"# 各话题中的跨话题文风词分析\n\n").encode('utf-8'))
-        f.write((u"## 36个跨话题词在6个主要话题的词频分布\n\n").encode('utf-8'))
+        f.write((u"## " + str(len(cross_topic_words)) + u"个跨话题词在6个主要话题的词频分布\n\n").encode('utf-8'))
         f.write((u"词频占比(%)\n\n").encode('utf-8'))
     
         header = u"词语 | 情感 | 穿搭 | 心理 | 健康 | 职场 | 旅行 | 平均"

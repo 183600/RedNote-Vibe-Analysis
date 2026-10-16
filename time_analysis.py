@@ -33,23 +33,25 @@ def parse_timestamp(ts):
         return None
     try:
         if isinstance(ts, (int, float)):
-            return float(ts) / 1000.0 if ts > 1e10 else float(ts)
+            value = float(ts) / 1000.0 if ts > 1e10 else float(ts)
+            return value + 8 * 3600
         ts_str = str(ts).strip()
         if len(ts_str) == 10 and ts_str.isdigit() and ts_str[:2] in ("19", "20"):
             dt = datetime.strptime(ts_str, "%Y%m%d%H").replace(tzinfo=timezone.utc)
             return dt.timestamp()
         value = float(ts_str)
-        return value / 1000.0 if value > 1e10 else value
+        value = value / 1000.0 if value > 1e10 else value
+        return value + 8 * 3600
     except:
         return None
 
 
 def get_time_features(item):
     ts = (
-        item.get("timestamp")
+        item.get("local_time")
+        or item.get("timestamp")
         or item.get("create_time")
         or item.get("time")
-        or item.get("local_time")
     )
     if ts:
         return parse_timestamp(ts)

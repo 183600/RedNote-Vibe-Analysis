@@ -182,7 +182,8 @@ EMOJI_PATTERN = re.compile(
     "\U0001f680-\U0001f6ff"
     "\U0001f1e0-\U0001f1ff"
     "\U00002702-\U000027b0"
-    "\U000024c2-\U0001f251"
+    "\U0001f900-\U0001f9ff"
+    "\U0001fa00-\U0001fa6f"
     "]+",
     flags=re.UNICODE,
 )
@@ -822,16 +823,16 @@ def print_statistical_tests(all_stats, grouped):
                 print(f"{ds1} vs {ds2:<17} {'N/A':>15} {'N/A':>15} {'N/A':>18}")
                 continue
 
-            lens1 = [len(get_text(item)) for item in data1[:2000]]
-            lens2 = [len(get_text(item)) for item in data2[:2000]]
+            lens1 = [len(get_text(item)) for item in data1]
+            lens2 = [len(get_text(item)) for item in data2]
             _, p_len = stats.mannwhitneyu(lens1, lens2, alternative="two-sided")
 
-            emojis1 = [count_emojis(get_text(item)) for item in data1[:2000]]
-            emojis2 = [count_emojis(get_text(item)) for item in data2[:2000]]
+            emojis1 = [count_emojis(get_text(item)) for item in data1]
+            emojis2 = [count_emojis(get_text(item)) for item in data2]
             _, p_emoji = stats.mannwhitneyu(emojis1, emojis2, alternative="two-sided")
 
-            eng1 = [compute_engagement(item) for item in data1[:2000]]
-            eng2 = [compute_engagement(item) for item in data2[:2000]]
+            eng1 = [compute_engagement(item) for item in data1]
+            eng2 = [compute_engagement(item) for item in data2]
             _, p_eng = stats.mannwhitneyu(eng1, eng2, alternative="two-sided")
 
             sig_len = (

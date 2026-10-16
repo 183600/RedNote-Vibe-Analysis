@@ -87,7 +87,9 @@ def load_aggregates():
                         rec[0] += 1
                     if re.search(r"@[\w]+", text):
                         rec[1] += 1
-                    rec[2] += len(re.findall(r"\[.*?\]", text))
+                    rec[2] += len(
+                        [e for e in re.findall(r"\[.*?\]", text) if e != "[话题]"]
+                    )
         aggs[ds_name] = {
             "total": total,
             "has_user_id": has_user_id,
@@ -527,7 +529,8 @@ def generate_summary_dashboard(aggs, output_dir):
         domain_engs = [
             eng_results[ds].get(d, {}).get("avg_efficiency", 0) for d in DOMAINS
         ]
-        avg_eng.append(np.mean([e for e in domain_engs if e > 0]))
+        positive_engs = [e for e in domain_engs if e > 0]
+        avg_eng.append(np.mean(positive_engs) if positive_engs else 0.0)
     axes[1, 2].bar(x, avg_eng, color=colors)
     axes[1, 2].set_xticks(x)
     axes[1, 2].set_xticklabels(datasets)

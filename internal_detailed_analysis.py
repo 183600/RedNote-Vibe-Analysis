@@ -15,7 +15,9 @@ RE_LIST_ITEM = re.compile(r"^\d+[.、]", re.MULTILINE)
 RE_BULLET = re.compile(r"^[、•·]", re.MULTILINE)
 RE_HASHTAG_CJK = re.compile(r"#[\u4e00-\u9fff]+")
 RE_EMOJI = re.compile(
-    r"[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF]"
+    r"[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF"
+    r"\U0001F1E0-\U0001F1FF\U00002702-\U000027B0"
+    r"\U0001F900-\U0001F9FF\U0001FA00-\U0001FA6F]"
 )
 RE_DIGIT = re.compile(r"\d")
 
@@ -387,7 +389,12 @@ def metadata(result, name):
 
 def domain_style(result, name):
     print(f"\n{name}:")
-    for d, (p, n) in list(result["domain_sent"].items())[:5]:
+    top_domains = sorted(
+        result["domain_sent"].items(),
+        key=lambda kv: kv[1][0] + kv[1][1],
+        reverse=True,
+    )[:5]
+    for d, (p, n) in top_domains:
         ratio = p / n if n > 0 else float("inf")
         print(f"  {d}: pos={p}, neg={n}, ratio={ratio:.2f}")
 

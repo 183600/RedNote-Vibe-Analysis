@@ -16,27 +16,9 @@ import pandas as pd
 from pandas import Timestamp, DatetimeIndex
 from datetime import datetime, timezone
 
-from analysis_utils import load_records_with_total
+from analysis_utils import init_plot_style, load_records_with_total
 
-font_dir = "/usr/share/fonts/noto-cjk"
-noto_files = sorted(
-    [f for f in os.listdir(font_dir) if "NotoSansCJK" in f and f.endswith(".ttc")]
-)
-if noto_files:
-    font_path = os.path.join(font_dir, noto_files[0])
-    prop = font_manager.FontProperties(fname=font_path)
-    plt.rcParams["font.family"] = prop.get_name()
-else:
-    for fallback in [
-        "Noto Sans CJK SC",
-        "WenQuanYi Micro Hei",
-        "SimHei",
-        "Microsoft YaHei",
-    ]:
-        if any(fallback in f.get_name() for f in font_manager.fontManager.ttflist):
-            plt.rcParams["font.family"] = fallback
-            break
-plt.rcParams["axes.unicode_minus"] = False
+init_plot_style()
 
 warnings.filterwarnings("ignore")
 

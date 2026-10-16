@@ -12,25 +12,10 @@ from collections import Counter, defaultdict
 import warnings
 import os
 
-from analysis_utils import load_records_with_total
+from analysis_utils import init_plot_style, load_records_with_total
 
 # Configure font for Chinese character support
-noto_fonts = sorted([f for f in font_manager.findSystemFonts() if "NotoSansCJK" in f])
-if noto_fonts:
-    font_path = noto_fonts[0]
-    prop = font_manager.FontProperties(fname=font_path)
-    plt.rcParams["font.family"] = prop.get_name()
-else:
-    for fallback in [
-        "Noto Sans CJK SC",
-        "WenQuanYi Micro Hei",
-        "SimHei",
-        "Microsoft YaHei",
-    ]:
-        if any(fallback in f.get_name() for f in font_manager.fontManager.ttflist):
-            plt.rcParams["font.family"] = fallback
-            break
-plt.rcParams["axes.unicode_minus"] = False
+init_plot_style()
 
 warnings.filterwarnings("ignore")
 
@@ -66,52 +51,57 @@ def extract_emojis(text):
     return result
 
 
-files = ["training_set_human.jsonl", "training_set_aigc.jsonl", "exploring_set.jsonl"]
+def main():
+    files = ["training_set_human.jsonl", "training_set_aigc.jsonl", "exploring_set.jsonl"]
 
-print("Loading data...")
-texts_data = {}
-for f in files:
-    data, total = load_jsonl(f)
-    print("  {}: {} records".format(f, total))
-    texts_data[f] = data
+    print("Loading data...")
+    texts_data = {}
+    for f in files:
+        data, total = load_jsonl(f)
+        print("  {}: {} records".format(f, total))
+        texts_data[f] = data
 
-print("\n=== Emoji Analysis ===")
-emoji_counts = []
+    print("\n=== Emoji Analysis ===")
+    emoji_counts = []
 
-for f in files:
-    all_emojis = []
-    for item in texts_data[f]:
-        text = item.get("desc", "") or item.get("note_content", "")
-        all_emojis.extend(extract_emojis(text))
+    for f in files:
+        all_emojis = []
+        for item in texts_data[f]:
+            text = item.get("desc", "") or item.get("note_content", "")
+            all_emojis.extend(extract_emojis(text))
 
-    emoji_counts.append(Counter(all_emojis))
+        emoji_counts.append(Counter(all_emojis))
 
-    print("\n{}:".format(f))
-    print("  Total emojis: {}".format(len(all_emojis)))
-    print("  Unique emojis: {}".format(len(emoji_counts[-1])))
-    if emoji_counts[-1]:
-        top5 = emoji_counts[-1].most_common(5)
-        print("  Top 5: {}".format(top5))
+        print("\n{}:".format(f))
+        print("  Total emojis: {}".format(len(all_emojis)))
+        print("  Unique emojis: {}".format(len(emoji_counts[-1])))
+        if emoji_counts[-1]:
+            top5 = emoji_counts[-1].most_common(5)
+            print("  Top 5: {}".format(top5))
 
-fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+    fig, axes = plt.subplots(1, 3, figsize=(18, 6))
 
-for idx, (f, counts) in enumerate(zip(files, emoji_counts)):
-    top_emojis = counts.most_common(20)
-    if not top_emojis:
-        continue
-    emojis = [e for e, c in top_emojis]
-    counts_list = [c for e, c in top_emojis]
+    for idx, (f, counts) in enumerate(zip(files, emoji_counts)):
+        top_emojis = counts.most_common(20)
+        if not top_emojis:
+            continue
+        emojis = [e for e, c in top_emojis]
+        counts_list = [c for e, c in top_emojis]
 
-    color = plt.cm.Set3(idx / 3)
-    axes[idx].barh(range(len(emojis)), counts_list, color=color)
-    axes[idx].set_yticks(range(len(emojis)))
-    axes[idx].set_yticklabels(emojis, fontsize=8)
-    axes[idx].invert_yaxis()
-    axes[idx].set_title(f.replace(".jsonl", "") + " Emoji Distribution")
-    axes[idx].set_xlabel("Count")
+        color = plt.cm.Set3(idx / 3)
+        axes[idx].barh(range(len(emojis)), counts_list, color=color)
+        axes[idx].set_yticks(range(len(emojis)))
+        axes[idx].set_yticklabels(emojis, fontsize=8)
+        axes[idx].invert_yaxis()
+        axes[idx].set_title(f.replace(".jsonl", "") + " Emoji Distribution")
+        axes[idx].set_xlabel("Count")
 
-plt.tight_layout()
-plt.savefig("emoji_distribution.png", dpi=150)
-print("\nGenerated: emoji_distribution.png")
+    plt.tight_layout()
+    plt.savefig("emoji_distribution.png", dpi=150)
+    print("\nGenerated: emoji_distribution.png")
 
-print("\n=== Complete ===")
+    print("\n=== Complete ===")
+
+
+if __name__ == "__main__":
+    main()

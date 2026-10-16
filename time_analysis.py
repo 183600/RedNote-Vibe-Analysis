@@ -14,27 +14,9 @@ import os
 import pandas as pd
 from datetime import datetime, timezone
 
-from analysis_utils import load_records_with_total
+from analysis_utils import init_plot_style, load_records_with_total
 
-font_dir = "/usr/share/fonts/noto-cjk"
-noto_files = sorted(
-    [f for f in os.listdir(font_dir) if "NotoSansCJK" in f and f.endswith(".ttc")]
-)
-if noto_files:
-    font_path = os.path.join(font_dir, noto_files[0])
-    prop = font_manager.FontProperties(fname=font_path)
-    plt.rcParams["font.family"] = prop.get_name()
-else:
-    for fallback in [
-        "Noto Sans CJK SC",
-        "WenQuanYi Micro Hei",
-        "SimHei",
-        "Microsoft YaHei",
-    ]:
-        if any(fallback in f.get_name() for f in font_manager.fontManager.ttflist):
-            plt.rcParams["font.family"] = fallback
-            break
-plt.rcParams["axes.unicode_minus"] = False
+init_plot_style()
 
 warnings.filterwarnings("ignore")
 
@@ -74,80 +56,85 @@ def get_time_features(item):
     return None
 
 
-files = ["training_set_human.jsonl", "training_set_aigc.jsonl", "exploring_set.jsonl"]
+def main():
+    files = ["training_set_human.jsonl", "training_set_aigc.jsonl", "exploring_set.jsonl"]
 
-print("Loading data...")
-texts_data = {}
-for f in files:
-    data, total = load_jsonl(f)
-    print(f"  {f}: {total} records")
-    texts_data[f] = data
+    print("Loading data...")
+    texts_data = {}
+    for f in files:
+        data, total = load_jsonl(f)
+        print(f"  {f}: {total} records")
+        texts_data[f] = data
 
-print("\n=== Time Series Analysis ===")
-timestamps = []
+    print("\n=== Time Series Analysis ===")
+    timestamps = []
 
-for f in files:
-    ts_list = []
-    for item in texts_data[f]:
-        ts = get_time_features(item)
-        if ts:
-            ts_list.append(ts)
-    timestamps.append(ts_list)
+    for f in files:
+        ts_list = []
+        for item in texts_data[f]:
+            ts = get_time_features(item)
+            if ts:
+                ts_list.append(ts)
+        timestamps.append(ts_list)
 
-    if ts_list:
+        if ts_list:
+            valid_ts = [t for t in ts_list if t]
+            if valid_ts:
+                ts_arr = np.array(valid_ts)
+                if ts_arr.max() > 1e10:
+                    ts_arr = ts_arr / 1000
+                print(f"\n{f}:")
+                print(f"  Samples with timestamp: {len(valid_ts)}")
+                print(f"  Earliest: {pd.Timestamp(ts_arr.min(), unit='s')}")
+                print(f"  Latest: {pd.Timestamp(ts_arr.max(), unit='s')}")
+
+    fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+
+    for idx, (f, ts_list) in enumerate(zip(files, timestamps)):
         valid_ts = [t for t in ts_list if t]
-        if valid_ts:
-            ts_arr = np.array(valid_ts)
-            if ts_arr.max() > 1e10:
-                ts_arr = ts_arr / 1000
-            print(f"\n{f}:")
-            print(f"  Samples with timestamp: {len(valid_ts)}")
-            print(f"  Earliest: {pd.Timestamp(ts_arr.min(), unit='s')}")
-            print(f"  Latest: {pd.Timestamp(ts_arr.max(), unit='s')}")
+        if not valid_ts:
+            continue
 
-fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+        ts_arr = np.array(valid_ts)
+        if ts_arr.max() > 1e10:
+            ts_arr = ts_arr / 1000
 
-for idx, (f, ts_list) in enumerate(zip(files, timestamps)):
-    valid_ts = [t for t in ts_list if t]
-    if not valid_ts:
-        continue
+        dates = pd.to_datetime(ts_arr, unit="s")
+        hours = dates.hour
 
-    ts_arr = np.array(valid_ts)
-    if ts_arr.max() > 1e10:
-        ts_arr = ts_arr / 1000
+        axes[idx].hist(hours, bins=24, alpha=0.7, color="steelblue")
+        axes[idx].set_title(f.replace(".jsonl", "") + " Post Hour Distribution")
+        axes[idx].set_xlabel("Hour of Day")
+        axes[idx].set_ylabel("Count")
 
-    dates = pd.to_datetime(ts_arr, unit="s")
-    hours = dates.hour
+    plt.tight_layout()
+    plt.savefig("time_distribution.png", dpi=150)
+    print("\nGenerated: time_distribution.png")
 
-    axes[idx].hist(hours, bins=24, alpha=0.7, color="steelblue")
-    axes[idx].set_title(f.replace(".jsonl", "") + " Post Hour Distribution")
-    axes[idx].set_xlabel("Hour of Day")
-    axes[idx].set_ylabel("Count")
+    fig, axes = plt.subplots(1, 3, figsize=(18, 6))
 
-plt.tight_layout()
-plt.savefig("time_distribution.png", dpi=150)
-print("\nGenerated: time_distribution.png")
+    for idx, (f, ts_list) in enumerate(zip(files, timestamps)):
+        valid_ts = [t for t in ts_list if t]
+        if not valid_ts:
+            continue
 
-fig, axes = plt.subplots(1, 3, figsize=(18, 6))
+        ts_arr = np.array(valid_ts)
+        if ts_arr.max() > 1e10:
+            ts_arr = ts_arr / 1000
 
-for idx, (f, ts_list) in enumerate(zip(files, timestamps)):
-    valid_ts = [t for t in ts_list if t]
-    if not valid_ts:
-        continue
+        dates = pd.to_datetime(ts_arr, unit="s")
 
-    ts_arr = np.array(valid_ts)
-    if ts_arr.max() > 1e10:
-        ts_arr = ts_arr / 1000
+        axes[idx].hist(dates.month, bins=12, alpha=0.7, color="coral")
+        axes[idx].set_title(f.replace(".jsonl", "") + " Post Month Distribution")
+        axes[idx].set_xlabel("Month")
+        axes[idx].set_ylabel("Count")
 
-    dates = pd.to_datetime(ts_arr, unit="s")
+    plt.tight_layout()
+    plt.savefig("month_distribution.png", dpi=150)
+    print("Generated: month_distribution.png")
 
-    axes[idx].hist(dates.month, bins=12, alpha=0.7, color="coral")
-    axes[idx].set_title(f.replace(".jsonl", "") + " Post Month Distribution")
-    axes[idx].set_xlabel("Month")
-    axes[idx].set_ylabel("Count")
+    print("\n=== Complete ===")
 
-plt.tight_layout()
-plt.savefig("month_distribution.png", dpi=150)
-print("Generated: month_distribution.png")
 
-print("\n=== Complete ===")
+if __name__ == "__main__":
+    main()

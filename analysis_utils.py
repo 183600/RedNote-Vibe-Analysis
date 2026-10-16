@@ -8,6 +8,8 @@ from __future__ import annotations
 import json
 import os
 import random
+import re
+from collections import Counter
 from collections.abc import Iterator
 from datetime import datetime
 
@@ -25,6 +27,17 @@ CONTENT_KEYS = ("note_content", "desc")
 
 # 三个子集统一的绘图配色（Human / AIGC / 后 LLM 探索集）
 PALETTE = {"human": "#4C72B0", "aigc": "#C44E52", "exploring": "#55A868"}
+
+# 三个研究数据集的标准名称 -> 文件名映射（脚本统一走 dataset_path）
+DATASETS = {
+    "human": "training_set_human.jsonl",
+    "aigc": "training_set_aigc.jsonl",
+    "exploring": "exploring_set.jsonl",
+}
+
+# 三个子集的中文显示名（图表/报告统一）
+DATASET_LABELS = {"human": "人类(前LLM)", "aigc": "AIGC(17模型)",
+                  "exploring": "探索集(后LLM)"}
 
 _CJK_FALLBACKS = ("Noto Sans CJK SC", "Noto Sans CJK JP", "Noto Sans CJK TC",
                   "Source Han Sans SC", "WenQuanYi Micro Hei", "SimHei")
@@ -174,6 +187,120 @@ def content_of(rec: dict) -> str:
     return rec.get("note_content") or rec.get("desc") or ""
 
 
+def dataset_path(name: str, base: str = BASE) -> str:
+    """标准数据集名（human/aigc/exploring）-> 绝对路径；未知名称直接报错。"""
+    try:
+        filename = DATASETS[name]
+    except KeyError:
+        raise ValueError(f"unknown dataset {name!r}; expected one of {sorted(DATASETS)}")
+    return os.path.join(base, filename)
+
+
+def title_of(rec: dict) -> str:
+    """取标题（缺失时返回空串），与正文口径分开。"""
+    return rec.get("note_title") or ""
+
+
+def compact_text(text: str | None) -> str:
+    """去掉全部空白字符，得到用于前缀/模板统计的紧凑文本（与 framing 口径一致）。"""
+    return re.sub(r"\s+", "", str(text or ""))
+
+
+_SENTENCE_SPLIT_RE = re.compile(r"[。！？!?；;…]+|\n+")
+
+
+def split_sentences(text: str | None) -> list[str]:
+    """把正文切成句子（按中英文句末标点/换行/分号），去除空片段与首尾空白。
+
+    正则与 `deep_dive_analysis.py` 的 SENT_SPLIT 完全一致（连续标点视为一个边界），
+    保证「平均句长」等指标跨脚本可比。
+    """
+    return [s.strip() for s in _SENTENCE_SPLIT_RE.split(str(text or "")) if s.strip()]
+
+
+def burstiness(lengths) -> float:
+    """句长变异系数 CV=std/mean（人类写作「有起伏」，模板化文本更均匀）。
+
+    少于 2 个句长或均值为 0 时返回 0.0。
+    """
+    arr = np.asarray(list(lengths), dtype=float)
+    if arr.size < 2:
+        return 0.0
+    mean = float(arr.mean())
+    if mean <= 0:
+        return 0.0
+    return float(arr.std() / mean)
+
+
+def _mtld_pass(tokens: list[str], threshold: float) -> float:
+    types: set[str] = set()
+    factors = 0.0
+    start = 0
+    n = len(tokens)
+    for i in range(n):
+        types.add(tokens[i])
+        seen = i - start + 1
+        if len(types) / seen <= threshold:
+            factors += 1.0
+            types = set()
+            start = i + 1
+    if start < n:
+        seen = n - start
+        ttr = len(types) / seen
+        factors += (1.0 - ttr) / (1.0 - threshold)
+    return factors
+
+
+def mtld(tokens, threshold: float = 0.72) -> float:
+    """Measure of Textual Lexical Diversity（McCarthy & Jarvis, 2010）。
+
+    双向（正向 + 反向）因子的平均长度，值越大词汇越丰富；文本过短时不稳定，
+    调用方可自行设置最小 token 数。空输入或全部重复 token 返回 0.0。
+    """
+    toks = [t for t in tokens if t]
+    if len(toks) < 2:
+        return 0.0
+    if not 0.0 < threshold < 1.0:
+        raise ValueError("threshold must be in (0, 1)")
+
+    def direction_value(seq: list[str]) -> float:
+        factors = _mtld_pass(seq, threshold)
+        if factors <= 0:
+            # 全程 TTR 都高于阈值（几乎全部 token 互不相同）：整段文本视为
+            # 单个因子，MTLD 退化为文本长度，避免把最丰富的文本记成 0。
+            return float(len(seq))
+        return len(seq) / factors
+
+    return float((direction_value(toks) + direction_value(toks[::-1])) / 2.0)
+
+
+def prefix_ngram_counts(texts, n: int = 4) -> Counter:
+    """统计文本前缀 n-gram 频次（先做 `compact_text`，长度不足 n 的跳过）。"""
+    counts: Counter[str] = Counter()
+    for t in texts:
+        compact = compact_text(t)
+        if len(compact) >= n:
+            counts[compact[:n]] += 1
+    return counts
+
+
+def prefix_ngram_stats(texts, n: int = 4, k: int = 20) -> dict:
+    """文本前缀 n-gram 集中度统计（模板化的直接度量）。
+
+    先对每条文本做 `compact_text`，长度不足 n 的跳过；返回 Top-k 覆盖率、
+    前缀经验熵（bit，越高越多样）与前缀唯一率。
+    """
+    counts = prefix_ngram_counts(texts, n)
+    total = sum(counts.values())
+    return {
+        "n_texts": total,
+        "coverage_topk": topk_coverage(counts, k),
+        "entropy": shannon_entropy(counts),
+        "unique_ratio": (len(counts) / total) if total else 0.0,
+        "top": counts.most_common(k),
+    }
+
+
 def clean_body(content: str | None) -> str:
     """与 paper_features.py 相同的正文清洗口径。
 
@@ -312,23 +439,24 @@ def load_detector_model(base: str = BASE) -> dict:
         return json.load(f)
 
 
+def linear_score(df: pd.DataFrame, features, mean, scale, coef, intercept) -> np.ndarray:
+    """通用线性模型打分：z-score 标准化后的逻辑回归 -> P∈(0,1)。
+
+    所有自定义特征子集的打分（如仅标题特征）复用这一实现，避免重复公式。
+    """
+    z = (df[list(features)].fillna(0).values - np.asarray(mean)) / np.asarray(scale)
+    logit = z @ np.asarray(coef) + intercept
+    return 1.0 / (1.0 + np.exp(-logit))
+
+
 def detector_score(df: pd.DataFrame, model: dict, robust: bool = True) -> np.ndarray:
     """用保存的逻辑回归参数对 DataFrame 打分；robust=True 用稳健特征模型。"""
     if robust:
-        feats = model["robust_features"]
-        mean = model["robust_scaler_mean"]
-        scale = model["robust_scaler_scale"]
-        coef = model["robust_coef"]
-        b = model["robust_intercept"]
-    else:
-        feats = model["features"]
-        mean = model["scaler_mean"]
-        scale = model["scaler_scale"]
-        coef = model["coef"]
-        b = model["intercept"]
-    z = (df[feats].fillna(0).values - np.asarray(mean)) / np.asarray(scale)
-    logit = z @ np.asarray(coef) + b
-    return 1.0 / (1.0 + np.exp(-logit))
+        return linear_score(df, model["robust_features"], model["robust_scaler_mean"],
+                            model["robust_scaler_scale"], model["robust_coef"],
+                            model["robust_intercept"])
+    return linear_score(df, model["features"], model["scaler_mean"],
+                        model["scaler_scale"], model["coef"], model["intercept"])
 
 
 def cliffs_delta_from_u(u: float, n1: int, n2: int) -> float:
@@ -388,6 +516,32 @@ def bootstrap_auc(y, proba, n_boot: int = 1000, seed: int = 42) -> dict:
         "ci_high": float(np.percentile(aucs, 97.5)),
         "n_boot": int(len(aucs)),
     }
+
+
+def bootstrap_median_ci(values, n_boot: int = 1000, seed: int = 42,
+                        alpha: float = 0.05) -> dict:
+    """对一维样本做 bootstrap，返回中位数及其 (1-alpha) 置信区间。
+
+    分块重采样避免构造 (n_boot, n) 的大矩阵；NaN 自动剔除。
+    """
+    arr = np.asarray(list(values), dtype=float)
+    arr = arr[~np.isnan(arr)]
+    if arr.size == 0:
+        return {"median": float("nan"), "ci_low": float("nan"),
+                "ci_high": float("nan"), "n": 0}
+    rng = np.random.default_rng(seed)
+    n = arr.size
+    meds = np.empty(n_boot)
+    chunk = max(1, 2_000_000 // max(n, 1))
+    done = 0
+    while done < n_boot:
+        size = min(chunk, n_boot - done)
+        idx = rng.integers(0, n, (size, n))
+        meds[done:done + size] = np.median(arr[idx], axis=1)
+        done += size
+    lo, hi = np.percentile(meds, [100 * alpha / 2, 100 * (1 - alpha / 2)])
+    return {"median": float(np.median(arr)), "ci_low": float(lo),
+            "ci_high": float(hi), "n": int(n)}
 
 
 def save_json(obj, path: str) -> None:

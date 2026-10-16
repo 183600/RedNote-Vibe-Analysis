@@ -1,0 +1,737 @@
+{
+ "detector_ablation": {
+  "body_only": {
+   "auc": 0.9294,
+   "f1": 0.605,
+   "acc": 0.8633,
+   "n_features": 29
+  },
+  "title_only": {
+   "auc": 0.7424,
+   "f1": 0.371,
+   "acc": 0.7578,
+   "n_features": 7
+  },
+  "full": {
+   "auc": 0.9402,
+   "f1": 0.6255,
+   "acc": 0.8734,
+   "n_features": 37
+  }
+ },
+ "title_model": {
+  "features": [
+   "title_len",
+   "title_excl",
+   "title_ques",
+   "title_emoji",
+   "title_pipe",
+   "title_num",
+   "title_bracket"
+  ],
+  "scaler_mean": [
+   20.628475275654466,
+   0.1675742406818643,
+   0.07270175201244673,
+   0.17427112223499966,
+   0.19280592572549551,
+   0.22333085300683217,
+   0.018568626124602583
+  ],
+  "scaler_scale": [
+   13.446130802614947,
+   0.3734877702706756,
+   0.259646311868217,
+   0.3793424550323276,
+   0.3945019654331652,
+   0.4164783104821581,
+   0.1349956749249668
+  ],
+  "coef": [
+   -0.4927568500469865,
+   0.7016871788070824,
+   0.10526846648793475,
+   0.3415333013480591,
+   -0.03159243179122741,
+   -0.2665973647080555,
+   0.0047314131051070345
+  ],
+  "intercept": -0.3349047993277971
+ },
+ "title_model_coef": {
+  "title_len": -0.4928,
+  "title_num": -0.2666,
+  "title_pipe": -0.0316,
+  "title_bracket": 0.0047,
+  "title_ques": 0.1053,
+  "title_emoji": 0.3415,
+  "title_excl": 0.7017
+ },
+ "corpus_title_scores": {
+  "human": {
+   "n": 51878,
+   "mean": 0.4019,
+   "median": 0.3841,
+   "share_ge_0.9": 0.0025
+  },
+  "aigc": {
+   "n": 7254,
+   "mean": 0.5979,
+   "median": 0.6055,
+   "share_ge_0.9": 0.0414
+  },
+  "exploring": {
+   "n": 91517,
+   "mean": 0.4726,
+   "median": 0.4373,
+   "share_ge_0.9": 0.0105
+  }
+ },
+ "model_title_ranking": [
+  {
+   "model": "gpt-o4",
+   "family": "gpt",
+   "n": 415,
+   "title_mean": 0.4459,
+   "title_median": 0.4104
+  },
+  {
+   "model": "gpt-o3",
+   "family": "gpt",
+   "n": 449,
+   "title_mean": 0.502,
+   "title_median": 0.4283
+  },
+  {
+   "model": "qwen2.5",
+   "family": "qwen",
+   "n": 439,
+   "title_mean": 0.5238,
+   "title_median": 0.4647
+  },
+  {
+   "model": "glm-3",
+   "family": "glm",
+   "n": 424,
+   "title_mean": 0.5388,
+   "title_median": 0.4645
+  },
+  {
+   "model": "deepseek-r1-250120",
+   "family": "deepseek",
+   "n": 556,
+   "title_mean": 0.5494,
+   "title_median": 0.543
+  },
+  {
+   "model": "gpt-4.1",
+   "family": "gpt",
+   "n": 443,
+   "title_mean": 0.5605,
+   "title_median": 0.5108
+  },
+  {
+   "model": "gpt-4o",
+   "family": "gpt",
+   "n": 423,
+   "title_mean": 0.5664,
+   "title_median": 0.4554
+  },
+  {
+   "model": "deepseek-r1-250528",
+   "family": "deepseek",
+   "n": 653,
+   "title_mean": 0.5666,
+   "title_median": 0.4809
+  },
+  {
+   "model": "glm-4",
+   "family": "glm",
+   "n": 368,
+   "title_mean": 0.5695,
+   "title_median": 0.5562
+  },
+  {
+   "model": "claude-3-7-sonnet",
+   "family": "anthropic",
+   "n": 351,
+   "title_mean": 0.574,
+   "title_median": 0.5878
+  },
+  {
+   "model": "qwen3",
+   "family": "qwen",
+   "n": 402,
+   "title_mean": 0.5828,
+   "title_median": 0.6067
+  },
+  {
+   "model": "deepseek-v3",
+   "family": "deepseek",
+   "n": 384,
+   "title_mean": 0.6042,
+   "title_median": 0.6248
+  },
+  {
+   "model": "claude-sonnet-4",
+   "family": "anthropic",
+   "n": 385,
+   "title_mean": 0.6333,
+   "title_median": 0.6228
+  },
+  {
+   "model": "qwen2",
+   "family": "qwen",
+   "n": 409,
+   "title_mean": 0.7355,
+   "title_median": 0.809
+  },
+  {
+   "model": "gemini-2.0",
+   "family": "gemini",
+   "n": 462,
+   "title_mean": 0.7576,
+   "title_median": 0.7914
+  },
+  {
+   "model": "gemini-1.5",
+   "family": "gemini",
+   "n": 473,
+   "title_mean": 0.7615,
+   "title_median": 0.7914
+  },
+  {
+   "model": "gemini-2.5",
+   "family": "gemini",
+   "n": 218,
+   "title_mean": 0.794,
+   "title_median": 0.847
+  }
+ ],
+ "monthly": [
+  {
+   "month": "202301",
+   "n": 61,
+   "title_mean": 0.4931,
+   "body_mean": 0.5596,
+   "title_high_share": 0.0
+  },
+  {
+   "month": "202302",
+   "n": 181,
+   "title_mean": 0.5214,
+   "body_mean": 0.4729,
+   "title_high_share": 0.011
+  },
+  {
+   "month": "202303",
+   "n": 210,
+   "title_mean": 0.4789,
+   "body_mean": 0.4902,
+   "title_high_share": 0.0048
+  },
+  {
+   "month": "202304",
+   "n": 159,
+   "title_mean": 0.4769,
+   "body_mean": 0.4666,
+   "title_high_share": 0.0189
+  },
+  {
+   "month": "202305",
+   "n": 216,
+   "title_mean": 0.4733,
+   "body_mean": 0.4385,
+   "title_high_share": 0.0046
+  },
+  {
+   "month": "202306",
+   "n": 261,
+   "title_mean": 0.4528,
+   "body_mean": 0.4846,
+   "title_high_share": 0.0
+  },
+  {
+   "month": "202307",
+   "n": 347,
+   "title_mean": 0.4656,
+   "body_mean": 0.482,
+   "title_high_share": 0.0
+  },
+  {
+   "month": "202308",
+   "n": 404,
+   "title_mean": 0.4832,
+   "body_mean": 0.4332,
+   "title_high_share": 0.0099
+  },
+  {
+   "month": "202309",
+   "n": 331,
+   "title_mean": 0.4757,
+   "body_mean": 0.4475,
+   "title_high_share": 0.0091
+  },
+  {
+   "month": "202310",
+   "n": 339,
+   "title_mean": 0.4771,
+   "body_mean": 0.4359,
+   "title_high_share": 0.0118
+  },
+  {
+   "month": "202311",
+   "n": 368,
+   "title_mean": 0.453,
+   "body_mean": 0.4886,
+   "title_high_share": 0.0109
+  },
+  {
+   "month": "202312",
+   "n": 402,
+   "title_mean": 0.4741,
+   "body_mean": 0.4862,
+   "title_high_share": 0.005
+  },
+  {
+   "month": "202401",
+   "n": 1331,
+   "title_mean": 0.4179,
+   "body_mean": 0.4848,
+   "title_high_share": 0.0038
+  },
+  {
+   "month": "202402",
+   "n": 1083,
+   "title_mean": 0.4335,
+   "body_mean": 0.4768,
+   "title_high_share": 0.0055
+  },
+  {
+   "month": "202403",
+   "n": 2025,
+   "title_mean": 0.434,
+   "body_mean": 0.4805,
+   "title_high_share": 0.0069
+  },
+  {
+   "month": "202404",
+   "n": 2066,
+   "title_mean": 0.4308,
+   "body_mean": 0.4905,
+   "title_high_share": 0.0068
+  },
+  {
+   "month": "202405",
+   "n": 2089,
+   "title_mean": 0.4465,
+   "body_mean": 0.475,
+   "title_high_share": 0.0081
+  },
+  {
+   "month": "202406",
+   "n": 2535,
+   "title_mean": 0.4539,
+   "body_mean": 0.4652,
+   "title_high_share": 0.0047
+  },
+  {
+   "month": "202407",
+   "n": 3256,
+   "title_mean": 0.4824,
+   "body_mean": 0.4498,
+   "title_high_share": 0.0071
+  },
+  {
+   "month": "202408",
+   "n": 3655,
+   "title_mean": 0.4756,
+   "body_mean": 0.4559,
+   "title_high_share": 0.0079
+  },
+  {
+   "month": "202409",
+   "n": 3390,
+   "title_mean": 0.4665,
+   "body_mean": 0.4556,
+   "title_high_share": 0.0091
+  },
+  {
+   "month": "202410",
+   "n": 3296,
+   "title_mean": 0.477,
+   "body_mean": 0.4475,
+   "title_high_share": 0.0088
+  },
+  {
+   "month": "202411",
+   "n": 3432,
+   "title_mean": 0.4707,
+   "body_mean": 0.4619,
+   "title_high_share": 0.0096
+  },
+  {
+   "month": "202412",
+   "n": 3609,
+   "title_mean": 0.4728,
+   "body_mean": 0.4573,
+   "title_high_share": 0.0116
+  },
+  {
+   "month": "202501",
+   "n": 4164,
+   "title_mean": 0.4792,
+   "body_mean": 0.4207,
+   "title_high_share": 0.0118
+  },
+  {
+   "month": "202502",
+   "n": 5428,
+   "title_mean": 0.4851,
+   "body_mean": 0.4854,
+   "title_high_share": 0.0142
+  },
+  {
+   "month": "202503",
+   "n": 8393,
+   "title_mean": 0.4751,
+   "body_mean": 0.4687,
+   "title_high_share": 0.011
+  },
+  {
+   "month": "202504",
+   "n": 10353,
+   "title_mean": 0.4852,
+   "body_mean": 0.4397,
+   "title_high_share": 0.0135
+  },
+  {
+   "month": "202505",
+   "n": 14370,
+   "title_mean": 0.4703,
+   "body_mean": 0.4516,
+   "title_high_share": 0.0108
+  },
+  {
+   "month": "202506",
+   "n": 13727,
+   "title_mean": 0.4823,
+   "body_mean": 0.4578,
+   "title_high_share": 0.012
+  }
+ ],
+ "title_body_spearman": {
+  "rho": 0.0174,
+  "p": 1.498868156229927e-07
+ },
+ "monthly_trend": {
+  "rho": -0.0042,
+  "p": 0.9823138806139919
+ },
+ "half_years": [
+  {
+   "half": "2023H1",
+   "n": 1088,
+   "title_mean": 0.4790979399322411,
+   "body_mean": 0.4761753509880767,
+   "title_share_ge_0.9": 0.006433823529411764,
+   "title_share_ci": [
+    0.0031,
+    0.0132
+   ]
+  },
+  {
+   "half": "2023H2",
+   "n": 2191,
+   "title_mean": 0.4715960015132733,
+   "body_mean": 0.4625309845506436,
+   "title_share_ge_0.9": 0.007759014148790507,
+   "title_share_ci": [
+    0.0048,
+    0.0124
+   ]
+  },
+  {
+   "half": "2024H1",
+   "n": 11129,
+   "title_mean": 0.4382949316608411,
+   "body_mean": 0.47801132530066937,
+   "title_share_ge_0.9": 0.006110162638152575,
+   "title_share_ci": [
+    0.0048,
+    0.0077
+   ]
+  },
+  {
+   "half": "2024H2",
+   "n": 20638,
+   "title_mean": 0.47408427105335615,
+   "body_mean": 0.4547990817828681,
+   "title_share_ge_0.9": 0.009060955518945634,
+   "title_share_ci": [
+    0.0079,
+    0.0104
+   ]
+  },
+  {
+   "half": "2025H1",
+   "n": 56435,
+   "title_mean": 0.4787435612350545,
+   "body_mean": 0.4544146068436133,
+   "title_share_ge_0.9": 0.012013821210241872,
+   "title_share_ci": [
+    0.0111,
+    0.0129
+   ]
+  }
+ ],
+ "engagement": {
+  "title_likes": {
+   "rho": 0.0816,
+   "p": 5.678033372856229e-135
+  },
+  "body_likes": {
+   "rho": -0.1392,
+   "p": 0.0
+  },
+  "title_collections": {
+   "rho": 0.0735,
+   "p": 8.167525761201233e-110
+  },
+  "body_collections": {
+   "rho": -0.1315,
+   "p": 0.0
+  },
+  "title_comments": {
+   "rho": 0.0197,
+   "p": 2.640329007805881e-09
+  },
+  "body_comments": {
+   "rho": -0.0516,
+   "p": 4.698387692754273e-55
+  }
+ },
+ "engagement_within_cells": {
+  "weighted_rho": 0.0061,
+  "neg_share": 0.4823,
+  "n_cells": 141
+ },
+ "engagement_deciles": [
+  {
+   "decile": 1,
+   "n": 9149,
+   "likes_median": 119.0
+  },
+  {
+   "decile": 2,
+   "n": 10136,
+   "likes_median": 150.0
+  },
+  {
+   "decile": 3,
+   "n": 8838,
+   "likes_median": 473.5
+  },
+  {
+   "decile": 4,
+   "n": 8483,
+   "likes_median": 448.0
+  },
+  {
+   "decile": 5,
+   "n": 11254,
+   "likes_median": 393.5
+  },
+  {
+   "decile": 6,
+   "n": 7814,
+   "likes_median": 192.0
+  },
+  {
+   "decile": 7,
+   "n": 8392,
+   "likes_median": 215.0
+  },
+  {
+   "decile": 8,
+   "n": 9134,
+   "likes_median": 477.0
+  },
+  {
+   "decile": 9,
+   "n": 9795,
+   "likes_median": 425.0
+  },
+  {
+   "decile": 10,
+   "n": 8486,
+   "likes_median": 423.0
+  }
+ ],
+ "title_prefix_stats": {
+  "human": {
+   "n_texts": 51271,
+   "coverage_topk": 0.0277,
+   "entropy": 15.035,
+   "unique_ratio": 0.8243
+  },
+  "aigc": {
+   "n_texts": 7253,
+   "coverage_topk": 0.0375,
+   "entropy": 12.465,
+   "unique_ratio": 0.8796
+  },
+  "exploring": {
+   "n_texts": 58607,
+   "coverage_topk": 0.0477,
+   "entropy": 14.719,
+   "unique_ratio": 0.7182
+  }
+ },
+ "ai_specific_templates": [
+  {
+   "word": "姐妹们！",
+   "rate_diff_ppt": 0.817,
+   "aigc_per1k": 8.27,
+   "human_per1k": 0.1
+  },
+  {
+   "word": "夏日必备",
+   "rate_diff_ppt": 0.274,
+   "aigc_per1k": 2.9,
+   "human_per1k": 0.16
+  },
+  {
+   "word": "异地恋的",
+   "rate_diff_ppt": 0.193,
+   "aigc_per1k": 1.93,
+   "human_per1k": 0.0
+  },
+  {
+   "word": "啊啊啊！",
+   "rate_diff_ppt": 0.162,
+   "aigc_per1k": 1.65,
+   "human_per1k": 0.04
+  },
+  {
+   "word": "秋冬必备",
+   "rate_diff_ppt": 0.144,
+   "aigc_per1k": 1.52,
+   "human_per1k": 0.08
+  },
+  {
+   "word": "逃离城市",
+   "rate_diff_ppt": 0.138,
+   "aigc_per1k": 1.52,
+   "human_per1k": 0.14
+  },
+  {
+   "word": "2025",
+   "rate_diff_ppt": 0.138,
+   "aigc_per1k": 1.38,
+   "human_per1k": 0.0
+  },
+  {
+   "word": "OMG！",
+   "rate_diff_ppt": 0.136,
+   "aigc_per1k": 1.38,
+   "human_per1k": 0.02
+  },
+  {
+   "word": "挖到宝藏",
+   "rate_diff_ppt": 0.136,
+   "aigc_per1k": 1.38,
+   "human_per1k": 0.02
+  },
+  {
+   "word": "姐妹们，",
+   "rate_diff_ppt": 0.105,
+   "aigc_per1k": 1.38,
+   "human_per1k": 0.33
+  }
+ ],
+ "human_specific_templates": [
+  {
+   "word": "2022",
+   "rate_diff_ppt": 0.386,
+   "aigc_per1k": 0.55,
+   "human_per1k": 4.41
+  },
+  {
+   "word": "2021",
+   "rate_diff_ppt": 0.314,
+   "aigc_per1k": 0.41,
+   "human_per1k": 3.55
+  },
+  {
+   "word": "好物分享",
+   "rate_diff_ppt": 0.187,
+   "aigc_per1k": 0.0,
+   "human_per1k": 1.87
+  },
+  {
+   "word": "有道词典",
+   "rate_diff_ppt": 0.179,
+   "aigc_per1k": 0.0,
+   "human_per1k": 1.79
+  },
+  {
+   "word": "减肥打卡",
+   "rate_diff_ppt": 0.103,
+   "aigc_per1k": 0.14,
+   "human_per1k": 1.17
+  },
+  {
+   "word": "OOTD",
+   "rate_diff_ppt": 0.086,
+   "aigc_per1k": 3.86,
+   "human_per1k": 4.72
+  },
+  {
+   "word": "朋友圈这",
+   "rate_diff_ppt": 0.078,
+   "aigc_per1k": 0.0,
+   "human_per1k": 0.78
+  },
+  {
+   "word": "广州探店",
+   "rate_diff_ppt": 0.078,
+   "aigc_per1k": 0.14,
+   "human_per1k": 0.92
+  },
+  {
+   "word": "Day1",
+   "rate_diff_ppt": 0.074,
+   "aigc_per1k": 0.41,
+   "human_per1k": 1.15
+  },
+  {
+   "word": "ootd",
+   "rate_diff_ppt": 0.064,
+   "aigc_per1k": 0.14,
+   "human_per1k": 0.78
+  }
+ ],
+ "title_len_median": {
+  "human": {
+   "median": 18.0,
+   "ci_low": 17.0,
+   "ci_high": 18.0,
+   "n": 51878
+  },
+  "aigc": {
+   "median": 18.0,
+   "ci_low": 18.0,
+   "ci_high": 18.0,
+   "n": 7254
+  },
+  "exploring": {
+   "median": 15.0,
+   "ci_low": 15.0,
+   "ci_high": 16.0,
+   "n": 91517
+  }
+ },
+ "title_len_cliffs_delta_aigc_vs_human": -0.0277,
+ "title_len_mannwhitney_p": 0.00012411997872792166
+}

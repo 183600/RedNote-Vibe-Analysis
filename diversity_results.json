@@ -1,0 +1,119 @@
+{
+ "burstiness": {
+  "human": {
+   "n": 42923,
+   "median": 0.6682,
+   "ci": [
+    0.6657,
+    0.6709
+   ]
+  },
+  "aigc": {
+   "n": 6580,
+   "median": 0.5401,
+   "ci": [
+    0.5333,
+    0.5469
+   ]
+  },
+  "exploring": {
+   "n": 37469,
+   "median": 0.5794,
+   "ci": [
+    0.5769,
+    0.5823
+   ]
+  }
+ },
+ "sentence_stats": {
+  "human": {
+   "n_reps": 51672,
+   "sent_len_median": 25.0,
+   "mean_sent_len_median": 46.714285714285715,
+   "sentences_per_note_median": 8.0
+  },
+  "aigc": {
+   "n_reps": 7254,
+   "sent_len_median": 20.0,
+   "mean_sent_len_median": 25.636363636363637,
+   "sentences_per_note_median": 10.0
+  },
+  "exploring": {
+   "n_reps": 60161,
+   "sent_len_median": 18.0,
+   "mean_sent_len_median": 22.125,
+   "sentences_per_note_median": 5.0
+  }
+ },
+ "mtld": {
+  "human": {
+   "n_docs": 11973,
+   "median": 122.25,
+   "ci": [
+    120.7,
+    123.5
+   ]
+  },
+  "aigc": {
+   "n_docs": 6404,
+   "median": 189.88,
+   "ci": [
+    187.24,
+    192.19
+   ]
+  },
+  "exploring": {
+   "n_docs": 5545,
+   "median": 126.73,
+   "ci": [
+    124.82,
+    128.4
+   ]
+  }
+ },
+ "heaps": {
+  "human": {
+   "n_docs": 11973,
+   "n_docs_in_curve": 4552,
+   "n_tokens": 1000000,
+   "beta": 0.6393
+  },
+  "aigc": {
+   "n_docs": 6404,
+   "n_docs_in_curve": 6065,
+   "n_tokens": 1000000,
+   "beta": 0.5834
+  },
+  "exploring": {
+   "n_docs": 5545,
+   "n_docs_in_curve": 4549,
+   "n_tokens": 1000000,
+   "beta": 0.6126
+  }
+ },
+ "comparisons": {
+  "burst_human_vs_aigc": {
+   "cliffs_delta": 0.339,
+   "p": 0.0
+  },
+  "mtld_human_vs_aigc": {
+   "cliffs_delta": -0.507,
+   "p": 0.0
+  },
+  "burst_human_vs_exploring": {
+   "cliffs_delta": 0.239,
+   "p": 0.0
+  },
+  "mtld_human_vs_exploring": {
+   "cliffs_delta": -0.06,
+   "p": 1.6687751050684933e-10
+  }
+ },
+ "sample": {
+  "per_dataset": 12000,
+  "seed": 42,
+  "heaps_token_budget": 1000000,
+  "min_sentences_for_burst": 3,
+  "min_tokens_for_mtld": 50
+ }
+}

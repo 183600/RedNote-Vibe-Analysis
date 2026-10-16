@@ -17,7 +17,11 @@ from analysis_utils import (post_text, content_of, clean_body,
                             to_int, engagement_of, parse_local_time, hour_of,
                             weekday_of, detector_score,
                             cliffs_delta, cliffs_delta_from_u, wilson_ci,
-                            bootstrap_auc, setup_chinese_fonts)
+                            bootstrap_auc, setup_chinese_fonts,
+                            dataset_path, title_of, compact_text,
+                            split_sentences, burstiness, mtld,
+                            prefix_ngram_stats, bootstrap_median_ci,
+                            DATASETS, linear_score)
 
 
 class TestJsonlHelpers(unittest.TestCase):
@@ -173,6 +177,87 @@ class TestDetectorScore(unittest.TestCase):
         z = np.array([(3.0 - 1.0) / 2.0, (6.0 - 2.0) / 4.0])
         expected = 1.0 / (1.0 + np.exp(-(z @ np.array([0.5, -1.0]) + 0.25)))
         self.assertAlmostEqual(float(got), float(expected))
+
+
+class TestDatasetRegistry(unittest.TestCase):
+    def test_dataset_path_known_and_unknown(self):
+        self.assertTrue(dataset_path("human", base="/x/").endswith(DATASETS["human"]))
+        self.assertTrue(dataset_path("exploring", base="").endswith(".jsonl"))
+        with self.assertRaises(ValueError):
+            dataset_path("nope")
+
+    def test_title_of(self):
+        self.assertEqual(title_of({"note_title": "标题"}), "标题")
+        self.assertEqual(title_of({"note_title": ""}), "")
+        self.assertEqual(title_of({}), "")
+
+
+class TestSentenceHelpers(unittest.TestCase):
+    def test_split_sentences_boundaries(self):
+        text = "第一句。第二句！第三句？第四句\n第五句；第六句…第七句"
+        got = split_sentences(text)
+        self.assertEqual(got, ["第一句", "第二句", "第三句", "第四句",
+                               "第五句", "第六句", "第七句"])
+        self.assertEqual(split_sentences(""), [])
+        self.assertEqual(split_sentences("。。。"), [])
+        self.assertEqual(split_sentences(None), [])
+
+    def test_burstiness(self):
+        self.assertAlmostEqual(burstiness([5, 5, 5, 5]), 0.0)
+        cv = burstiness([2, 8])
+        self.assertAlmostEqual(cv, 0.6)
+        self.assertEqual(burstiness([3]), 0.0)
+        self.assertEqual(burstiness([]), 0.0)
+        self.assertEqual(burstiness([0, 0]), 0.0)
+
+    def test_compact_text(self):
+        self.assertEqual(compact_text(" a \n b\tc "), "abc")
+        self.assertEqual(compact_text(None), "")
+
+    def test_mtld_bounds_and_monotonicity(self):
+        repeated = ["的"] * 200
+        diverse = [f"词{i}" for i in range(200)]
+        self.assertGreater(mtld(diverse), mtld(repeated))
+        self.assertGreater(mtld(diverse), 100)
+        self.assertEqual(mtld([]), 0.0)
+        self.assertEqual(mtld(["a"]), 0.0)
+        with self.assertRaises(ValueError):
+            mtld(["a", "b"], threshold=1.0)
+
+    def test_prefix_ngram_stats(self):
+        texts = ["姐妹们冲呀", "姐妹们冲鸭", "完全不同啊"]
+        stats = prefix_ngram_stats(texts, n=4, k=1)
+        self.assertEqual(stats["n_texts"], 3)
+        self.assertAlmostEqual(stats["coverage_topk"], 2 / 3)
+        self.assertEqual(stats["top"][0][0], "姐妹们冲")
+        empty = prefix_ngram_stats(["短"], n=4)
+        self.assertEqual(empty["n_texts"], 0)
+        self.assertEqual(empty["coverage_topk"], 0.0)
+
+
+class TestBootstrapMedianCI(unittest.TestCase):
+    def test_ci_contains_median_and_degenerate_case(self):
+        res = bootstrap_median_ci([1, 2, 3, 4, 5], n_boot=200, seed=1)
+        self.assertEqual(res["median"], 3.0)
+        self.assertLessEqual(res["ci_low"], 3.0)
+        self.assertGreaterEqual(res["ci_high"], 3.0)
+        self.assertEqual(res["n"], 5)
+        empty = bootstrap_median_ci([], n_boot=10)
+        self.assertTrue(np.isnan(empty["median"]))
+        self.assertEqual(empty["n"], 0)
+
+    def test_linear_score_matches_detector_score(self):
+        import pandas as pd
+        model = {
+            "robust_features": ["a"],
+            "robust_scaler_mean": [0.0],
+            "robust_scaler_scale": [1.0],
+            "robust_coef": [2.0],
+            "robust_intercept": 0.0,
+        }
+        df = pd.DataFrame({"a": [1.0]})
+        got = linear_score(df, ["a"], [0.0], [1.0], [2.0], 0.0)
+        self.assertAlmostEqual(float(got[0]), float(detector_score(df, model)[0]))
 
 
 class TestFontSetup(unittest.TestCase):

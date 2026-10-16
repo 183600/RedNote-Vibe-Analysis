@@ -94,15 +94,19 @@ This script will:
 |------|-------------|
 | `training_set_human.jsonl`, `training_set_aigc.jsonl`, `exploring_set.jsonl` | Research datasets (never modify) |
 | `paper_*.py` | Paper pipeline: lexicon → features → model fingerprint → detector → drift → extra figures → engagement → robustness |
-| `analysis_utils.py` | Shared helpers: streaming JSONL reader, record/content/engagement/timestamp helpers, canonical body cleaning (`paper_features` lexicon), Chinese fonts, unified plot style, detector scoring, entropy/coverage, stats (bootstrap CI, Cliff's delta, Wilson CI) |
+| `analysis_utils.py` | Shared helpers: streaming JSONL reader, record/content/engagement/timestamp helpers, canonical body cleaning (`paper_features` lexicon), Chinese fonts, unified plot style, detector scoring, entropy/coverage, lexical-diversity tools (burstiness, MTLD, Heaps β, prefix n-gram stats, bootstrap median CI), stats (bootstrap CI, Cliff's delta, Wilson CI) |
 | `paper_figs/` | Figures produced by the paper pipeline |
 | `deep_dive_analysis.py` | Full-scan deep dive (publish rhythm / lexicon diffusion / sentence rhythm / duplicate structure) |
 | `insights/` + `deep_dive_results.{json,md}` | Figures and result files produced by `deep_dive_analysis.py` |
 | `framing_analysis.py` | Framing analysis: opening/closing template concentration, AI-specific template gradient/diffusion, ending-symbol composition |
 | `insights/framing_*.png` + `framing_results.{json,md}` | Figures and result files produced by `framing_analysis.py` |
+| `title_style_analysis.py` | Title stylometry: title-feature ablation, per-model title human-likeness, title-level engagement & templates |
+| `insights/title_*.png` + `title_style_results.{json,md}` | Figures and result files produced by `title_style_analysis.py` |
+| `diversity_analysis.py` | Sentence burstiness / MTLD / Heaps β analysis (full-scan sentence metrics + per-dataset sampling) |
+| `insights/diversity_*.png` + `diversity_results.{json,md}` | Figures and result files produced by `diversity_analysis.py` |
 | `*.py` (other) | Exploratory fork analyses: word frequency, particles, topics, sentiment, time, domains, user clustering, … |
 | `output/` | Figures from the joint exploratory analysis |
-| `tests/` | Unit tests for `analysis_utils.py` and the framing helpers (`python3 -m unittest discover -s tests`) |
+| `tests/` | Unit tests for `analysis_utils.py`, framing helpers, and the title/diversity pure functions (`python3 -m unittest discover -s tests`) |
 | `ci_gate.py` | CI quality gate (syntax + research-data integrity) |
 
 All analyses are deterministic (fixed random seeds) and can be re-run independently; the paper pipeline order is documented in [paper.md](paper.md), Appendix A.
@@ -200,6 +204,23 @@ Run the full pipeline in order with `python3 run_paper_pipeline.py` (or `--list`
 3. **扩散**：AI 专属开篇使用率 AIGC 16.4% / 探索集 1.3% / 人类集 0.8%，探索集季度趋势不显著（ρ=0.21，p=0.57），说明框架层面的扩散弱于词汇层面；小时分布几乎平坦（极差 0.094）。
 4. **收尾符号**：AIGC 以感叹号（26.8%）、emoji（16.8%）、波浪号（9.4%）收尾的比例远高于人类（5.4%/1.9%/1.9%），探索集（10.4%/6.8%/3.5%）介于两者之间；探索集另有 17.2% 为纯标签帖（人类 0%、AIGC 0.3%）。
 
+### 标题端「AI 味」分析（`title_style_analysis.py`）
+
+对论文特征中的 7 个标题特征做检测器消融、模型像人度、时间动态与互动分析。结果图在 `insights/title_*.png`，数据在 `title_style_results.json` 与 `title_style_results.md`。消融与 `paper_detector.py` 完全同口径（同一 5 折 CV、随机种子）；标题模板统计的人类/探索集按 note_id 去重：
+
+1. **标题单独可分性**：仅 7 个标题特征 5 折 CV AUC=0.742（正文 29 特征 0.929、全部 37 特征 0.940），达到正文模型的 79.9%；标题得分与正文得分秩相关仅 ρ=0.017——标题与正文是两个近乎独立的 AI 风格信号，只看正文会漏掉标题端信息。
+2. **模型像人度（标题端）**：gpt-o4 标题最像人（均值 0.446），gemini-2.5 最不像（0.794）；排序与正文端（GLM-3/Qwen2.5 最像人、Gemini 全系最不像）不同，模型差异在标题端有独立表现。
+3. **标题端无互动惩罚**：标题得分与点赞总体 ρ=+0.082、控制月份×领域后仅 +0.006（正文对照 ρ=-0.139）；「AI 味惩罚」主要由正文承载，标题的营销式写法不直接压低互动。
+4. **标题模板化弱于正文**：AIGC 标题首 4 字 Top-20 覆盖率仅 3.8%（人类 2.8%、探索集 4.8%），远低于正文开篇的 14.8%（熵 12.46 vs 11.86 bit）；AI 专属标题前缀以 `姐妹们！`（+0.82pp）、`夏日必备`、`秋冬必备` 为代表；标题半年度高置信（≥0.9）占比仅 0.6%–1.2%，标题端风格跃升明显弱于正文端。
+
+### 文本多样性与节奏深潜（`diversity_analysis.py`）
+
+全量句法指标（去重口径同上）+ 每子集 12,000 帖固定种子抽样的词汇多样性。结果图在 `insights/diversity_*.png`，数据在 `diversity_results.json` 与 `diversity_results.md`：
+
+1. **句长 burstiness**：人类帖长短句交错显著更强——burstiness 中位数人类 0.668 vs AIGC 0.540 / 探索集 0.579（human vs AIGC Cliff's δ=+0.339，p≈0）；句长分布人类长尾更重（≥180 字截断桶仍有约 6%）。
+2. **词汇多样性（MTLD）**：AIGC 每帖 MTLD 中位数 189.9，显著高于人类 122.2 与探索集 126.7（human vs AIGC δ=-0.507）——单帖内用词更丰富，与 `paper_features` 的独特字/二元组比率方向一致。
+3. **Heaps 定律（统一 100 万 token 预算）**：词汇增长斜率 β 人类 0.639 / 探索集 0.613 / AIGC 0.583——AIGC 跨帖词汇增长最慢；单帖内「词汇量大」与跨帖「模板复用多」并存，与 `framing_analysis` 的模板集中度结论互洽。
+
 ### 生成的可视化图表
 
 | 文件 | 描述 |
@@ -218,6 +239,8 @@ Run the full pipeline in order with `python3 run_paper_pipeline.py` (or `--list`
 | `time_distribution.png` / `month_distribution.png` | 发布时间分布 |
 | `insights/publish_rhythm.png`、`lexicon_diffusion.png`、`sentence_rhythm.png`、`duplicate_content.png` | 深潜分析图表（发布节奏、词表扩散、句子节奏、重复内容） |
 | `insights/framing_formulaicity.png`、`framing_gradient.png` | 框架模板化图表（开篇/收尾集中度、收尾符号构成、P(AI) 梯度、季度扩散） |
+| `insights/title_detector.png`、`title_dynamics.png`、`title_formulaicity.png` | 标题端分析图表（特征权重消融、半年度动态与互动、标题前缀集中度） |
+| `insights/diversity_burstiness.png`、`diversity_lexical.png` | 文本多样性图表（句长分布/burstiness ECDF、MTLD 小提琴图与 Heaps 曲线） |
 | `output/` | 领域、话题、互动等探索性图表合集 |
 | `paper_figs/` | 论文管线图表（检测器、漂移、互动、稳健性） |
 
@@ -238,6 +261,8 @@ Run the full pipeline in order with `python3 run_paper_pipeline.py` (or `--list`
 - `unique_comparison.py` / `internal_detailed_analysis.py` / `internal_diff_analysis.py` - 独特性与内部差异
 - `deep_dive_analysis.py` - 发布节奏 / 词表扩散 / 句子节奏 / 重复内容深潜分析（输出 `insights/`）
 - `framing_analysis.py` - 开篇/收尾框架模板化与 AI 风格关联（输出 `insights/framing_*.png`、`framing_results.json/md`）
+- `title_style_analysis.py` - 标题端 AI 味：标题特征消融、模型标题像人度、标题互动与模板（输出 `insights/title_*.png`、`title_style_results.json/md`）
+- `diversity_analysis.py` - 句长 burstiness / MTLD / Heaps β 多样性与节奏分析（输出 `insights/diversity_*.png`、`diversity_results.json/md`）
 - `user_clustering.py` - 用户风格聚类（输出 `user_clustering_results.md`）
 - `quick_start.py` - BERT 基线训练
 

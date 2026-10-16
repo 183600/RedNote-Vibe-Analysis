@@ -1,0 +1,357 @@
+{
+ "meta": {
+  "source": "paper_exploring_scores.csv.gz",
+  "month_from": "202301",
+  "n_deciles": 10,
+  "min_cell_n": 100,
+  "top_share": 0.1,
+  "note": "收藏/点赞比、评论/点赞比按逐帖 (x+1) 平滑后取中位数"
+ },
+ "decile_table": {
+  "0": {
+   "n": 9151,
+   "p_lo": 0.0,
+   "p_hi": 0.0107,
+   "likes_median": 785.0,
+   "likes_zero_share": 0.0203,
+   "likes_zero_ci": [
+    0.017629293240377077,
+    0.023424568357839973
+   ],
+   "likes_gini": 0.8394,
+   "likes_top10_share": 0.7505,
+   "collections_median": 299.0,
+   "collections_zero_share": 0.0669,
+   "collections_zero_ci": [
+    0.06193915397141971,
+    0.07218021735664343
+   ],
+   "collections_gini": 0.975,
+   "collections_top10_share": 0.9619,
+   "comments_median": 32.0,
+   "comments_zero_share": 0.1146,
+   "comments_zero_ci": [
+    0.10826600394425354,
+    0.12132197713015408
+   ],
+   "comments_gini": 0.9969,
+   "comments_top10_share": 0.9966,
+   "coll_per_like": 0.3875,
+   "comm_per_like": 0.0313
+  },
+  "1": {
+   "n": 9354,
+   "p_lo": 0.0107,
+   "p_hi": 0.0497,
+   "likes_median": 661.0,
+   "likes_zero_share": 0.0287,
+   "likes_zero_ci": [
+    0.025458747976103015,
+    0.03222993955201245
+   ],
+   "likes_gini": 0.8602,
+   "likes_top10_share": 0.7795,
+   "collections_median": 237.0,
+   "collections_zero_share": 0.087,
+   "collections_zero_ci": [
+    0.08147761800929554,
+    0.09290464552463731
+   ],
+   "collections_gini": 0.989,
+   "collections_top10_share": 0.9853,
+   "comments_median": 38.0,
+   "comments_zero_share": 0.1123,
+   "comments_zero_ci": [
+    0.10601263140103653,
+    0.11880861370317639
+   ],
+   "comments_gini": 0.9967,
+   "comments_top10_share": 0.9975,
+   "coll_per_like": 0.3228,
+   "comm_per_like": 0.039
+  },
+  "2": {
+   "n": 8941,
+   "p_lo": 0.0497,
+   "p_hi": 0.1608,
+   "likes_median": 354.0,
+   "likes_zero_share": 0.0276,
+   "likes_zero_ci": [
+    0.024425784946118623,
+    0.03123105306876584
+   ],
+   "likes_gini": 0.8598,
+   "likes_top10_share": 0.7755,
+   "collections_median": 155.0,
+   "collections_zero_share": 0.0985,
+   "collections_zero_ci": [
+    0.09252840048294012,
+    0.10488611829400502
+   ],
+   "collections_gini": 0.9863,
+   "collections_top10_share": 0.9797,
+   "comments_median": 36.0,
+   "comments_zero_share": 0.0971,
+   "comments_zero_ci": [
+    0.0911158122696698,
+    0.10339200327398385
+   ],
+   "comments_gini": 0.9962,
+   "comments_top10_share": 0.996,
+   "coll_per_like": 0.407,
+   "comm_per_like": 0.0784
+  },
+  "3": {
+   "n": 9147,
+   "p_lo": 0.1608,
+   "p_hi": 0.2803,
+   "likes_median": 349.0,
+   "likes_zero_share": 0.0268,
+   "likes_zero_ci": [
+    0.02366937565796537,
+    0.030297420139264918
+   ],
+   "likes_gini": 0.8556,
+   "likes_top10_share": 0.7654,
+   "collections_median": 172.0,
+   "collections_zero_share": 0.0924,
+   "collections_zero_ci": [
+    0.08661577622249,
+    0.09848649896059261
+   ],
+   "collections_gini": 0.9825,
+   "collections_top10_share": 0.9731,
+   "comments_median": 38.0,
+   "comments_zero_share": 0.1023,
+   "comments_zero_ci": [
+    0.09628345993124857,
+    0.10870769629202165
+   ],
+   "comments_gini": 0.9958,
+   "comments_top10_share": 0.9948,
+   "coll_per_like": 0.4199,
+   "comm_per_like": 0.0714
+  },
+  "4": {
+   "n": 9149,
+   "p_lo": 0.2804,
+   "p_hi": 0.4262,
+   "likes_median": 299.0,
+   "likes_zero_share": 0.0315,
+   "likes_zero_ci": [
+    0.028092904699044893,
+    0.035258087849542416
+   ],
+   "likes_gini": 0.8513,
+   "likes_top10_share": 0.7626,
+   "collections_median": 136.0,
+   "collections_zero_share": 0.0994,
+   "collections_zero_ci": [
+    0.0933925303959455,
+    0.10565402581234723
+   ],
+   "collections_gini": 0.9866,
+   "collections_top10_share": 0.9799,
+   "comments_median": 36.0,
+   "comments_zero_share": 0.115,
+   "comments_zero_ci": [
+    0.10860941019534673,
+    0.12168427258836931
+   ],
+   "comments_gini": 0.9962,
+   "comments_top10_share": 0.9954,
+   "coll_per_like": 0.4444,
+   "comm_per_like": 0.0716
+  },
+  "5": {
+   "n": 9147,
+   "p_lo": 0.4262,
+   "p_hi": 0.5769,
+   "likes_median": 338.0,
+   "likes_zero_share": 0.029,
+   "likes_zero_ci": [
+    0.02572673484376782,
+    0.03261124359965754
+   ],
+   "likes_gini": 0.8629,
+   "likes_top10_share": 0.7802,
+   "collections_median": 158.0,
+   "collections_zero_share": 0.0973,
+   "collections_zero_ci": [
+    0.09139406799746247,
+    0.10354336813955908
+   ],
+   "collections_gini": 0.9777,
+   "collections_top10_share": 0.9646,
+   "comments_median": 38.0,
+   "comments_zero_share": 0.1164,
+   "comments_zero_ci": [
+    0.11001891866438551,
+    0.12316636562684297
+   ],
+   "comments_gini": 0.9958,
+   "comments_top10_share": 0.9945,
+   "coll_per_like": 0.4498,
+   "comm_per_like": 0.0697
+  },
+  "6": {
+   "n": 9148,
+   "p_lo": 0.5769,
+   "p_hi": 0.7313,
+   "likes_median": 262.5,
+   "likes_zero_share": 0.0321,
+   "likes_zero_ci": [
+    0.028715804722961022,
+    0.03595332154338521
+   ],
+   "likes_gini": 0.8778,
+   "likes_top10_share": 0.8048,
+   "collections_median": 125.5,
+   "collections_zero_share": 0.1049,
+   "collections_zero_ci": [
+    0.09882547176130489,
+    0.11138813158602577
+   ],
+   "collections_gini": 0.9937,
+   "collections_top10_share": 0.9919,
+   "comments_median": 31.0,
+   "comments_zero_share": 0.1264,
+   "comments_zero_ci": [
+    0.11971403330008838,
+    0.1333324792182227
+   ],
+   "comments_gini": 0.9969,
+   "comments_top10_share": 0.9971,
+   "coll_per_like": 0.4457,
+   "comm_per_like": 0.0713
+  },
+  "7": {
+   "n": 9148,
+   "p_lo": 0.7313,
+   "p_hi": 0.8706,
+   "likes_median": 204.0,
+   "likes_zero_share": 0.0415,
+   "likes_zero_ci": [
+    0.037638987305574426,
+    0.04582417053579382
+   ],
+   "likes_gini": 0.8858,
+   "likes_top10_share": 0.8202,
+   "collections_median": 87.0,
+   "collections_zero_share": 0.1194,
+   "collections_zero_ci": [
+    0.11288547526254081,
+    0.12617478119993994
+   ],
+   "collections_gini": 0.9925,
+   "collections_top10_share": 0.9907,
+   "comments_median": 26.0,
+   "comments_zero_share": 0.146,
+   "comments_zero_ci": [
+    0.13895454564442217,
+    0.15342831203091173
+   ],
+   "comments_gini": 0.9973,
+   "comments_top10_share": 0.9976,
+   "coll_per_like": 0.4118,
+   "comm_per_like": 0.064
+  },
+  "8": {
+   "n": 9148,
+   "p_lo": 0.8707,
+   "p_hi": 0.9688,
+   "likes_median": 158.0,
+   "likes_zero_share": 0.0578,
+   "likes_zero_ci": [
+    0.05322660822834191,
+    0.06279830199300633
+   ],
+   "likes_gini": 0.89,
+   "likes_top10_share": 0.8293,
+   "collections_median": 64.0,
+   "collections_zero_share": 0.1611,
+   "collections_zero_ci": [
+    0.15373658463492373,
+    0.16880413766079433
+   ],
+   "collections_gini": 0.9939,
+   "collections_top10_share": 0.9944,
+   "comments_median": 25.0,
+   "comments_zero_share": 0.1561,
+   "comments_zero_ci": [
+    0.14880649453054148,
+    0.1636816062250485
+   ],
+   "comments_gini": 0.9962,
+   "comments_top10_share": 0.9988,
+   "coll_per_like": 0.3524,
+   "comm_per_like": 0.072
+  },
+  "9": {
+   "n": 9148,
+   "p_lo": 0.9688,
+   "p_hi": 1.0,
+   "likes_median": 106.5,
+   "likes_zero_share": 0.0825,
+   "likes_zero_ci": [
+    0.07706644047756069,
+    0.08834743644093841
+   ],
+   "likes_gini": 0.9034,
+   "likes_top10_share": 0.8502,
+   "collections_median": 37.0,
+   "collections_zero_share": 0.2217,
+   "collections_zero_ci": [
+    0.2132934303502204,
+    0.23031582092877903
+   ],
+   "collections_gini": 0.994,
+   "collections_top10_share": 0.9953,
+   "comments_median": 24.0,
+   "comments_zero_share": 0.1847,
+   "comments_zero_ci": [
+    0.17691991224971132,
+    0.19282442423443413
+   ],
+   "comments_gini": 0.9964,
+   "comments_top10_share": 0.9988,
+   "coll_per_like": 0.2644,
+   "comm_per_like": 0.0652
+  }
+ },
+ "within_cell": {
+  "likes": {
+   "weighted_rho": -0.0907,
+   "neg_cell_share": 0.8227,
+   "n_cells": 141
+  },
+  "collections": {
+   "weighted_rho": -0.0926,
+   "neg_cell_share": 0.8156,
+   "n_cells": 141
+  },
+  "comments": {
+   "weighted_rho": -0.0194,
+   "neg_cell_share": 0.5957,
+   "n_cells": 141
+  }
+ },
+ "decile_trends": {
+  "likes_zero_share": {
+   "rho": 0.9393939393939393,
+   "p": 5.4840529985136686e-05
+  },
+  "likes_gini": {
+   "rho": 0.8787878787878788,
+   "p": 0.0008138621117322101
+  },
+  "coll_per_like": {
+   "rho": -0.04242424242424241,
+   "p": 0.9073638178128159
+  }
+ },
+ "consistency": {
+  "likes_median_max_abs_diff": 0.0,
+  "against": "paper_engagement_results.json decile_table"
+ }
+}

@@ -144,6 +144,14 @@ class TestStatsHelpers(unittest.TestCase):
         self.assertAlmostEqual(delta, 0.0)
         self.assertAlmostEqual(cliffs_delta_from_u(8, 4, 4), 0.0)
 
+    def test_gini_coefficient(self):
+        from analysis_utils import gini_coefficient
+        self.assertAlmostEqual(gini_coefficient([1, 1, 1, 1]), 0.0)
+        self.assertAlmostEqual(gini_coefficient([0, 0, 0, 10]), 0.75)
+        self.assertEqual(gini_coefficient([]), 0.0)
+        self.assertEqual(gini_coefficient([0, 0]), 0.0)
+        self.assertGreater(gini_coefficient([1, 1, 1, 100]), gini_coefficient([1, 2, 3, 4]))
+
     def test_wilson_ci_bounds(self):
         lo, hi = wilson_ci(0, 100)
         self.assertGreaterEqual(lo, 0.0)
@@ -310,10 +318,86 @@ class TestCalibrationHelpers(unittest.TestCase):
         self.assertEqual(len(threshold_metrics(y, p, with_ci=True)[0]["precision_ci"]), 2)
 
 
+class TestWriteCsvGzIfChanged(unittest.TestCase):
+    def test_skips_identical_and_writes_when_changed(self):
+        import os
+        import pandas as pd
+        from analysis_utils import write_csv_gz_if_changed
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "scores.csv.gz")
+            df = pd.DataFrame({"a": [1, 2], "b": ["x", "y"]})
+            self.assertTrue(write_csv_gz_if_changed(df, path))
+            first_bytes = pathlib.Path(path).read_bytes()
+            self.assertFalse(write_csv_gz_if_changed(df.copy(), path))
+            self.assertEqual(pathlib.Path(path).read_bytes(), first_bytes)
+            changed = df.copy()
+            changed.loc[0, "a"] = 9
+            self.assertTrue(write_csv_gz_if_changed(changed, path))
+            back = pd.read_csv(path)
+            self.assertEqual(back["a"].tolist(), [9, 2])
+            self.assertEqual(back["b"].tolist(), ["x", "y"])
+
+
 class TestFontSetup(unittest.TestCase):
     def test_returns_name_or_none_without_crashing(self):
-        name = setup_chinese_fonts()
+        import os
+        old = os.environ.get("REDNOTE_FONT_DOWNLOAD")
+        os.environ["REDNOTE_FONT_DOWNLOAD"] = "0"
+        try:
+            name = setup_chinese_fonts(allow_download=False)
+        finally:
+            if old is None:
+                os.environ.pop("REDNOTE_FONT_DOWNLOAD", None)
+            else:
+                os.environ["REDNOTE_FONT_DOWNLOAD"] = old
         self.assertTrue(name is None or isinstance(name, str))
+
+    def test_discover_cjk_font_name_matching(self):
+        from analysis_utils import discover_cjk_font, _font_search_dirs
+
+        with tempfile.TemporaryDirectory() as tmp:
+            base = pathlib.Path(tmp)
+            only = [str(base)]
+            (base / "DejaVuSans.ttf").write_bytes(b"x")
+            self.assertIsNone(discover_cjk_font(dirs=only))
+            nested = base / "nested"
+            nested.mkdir()
+            expected = nested / "NotoSansSC-Regular.otf"
+            expected.write_bytes(b"x")
+            self.assertEqual(discover_cjk_font(dirs=only), str(expected))
+            (base / "wqy-microhei.ttc").write_bytes(b"x")
+            self.assertEqual(discover_cjk_font(dirs=only),
+                             str(base / "wqy-microhei.ttc"))
+
+    def test_discover_emoji_font_skips_color_fonts(self):
+        from analysis_utils import discover_emoji_font
+
+        with tempfile.TemporaryDirectory() as tmp:
+            base = pathlib.Path(tmp)
+            only = [str(base)]
+            color = base / "NotoColorEmoji.ttf"
+            color.write_bytes(b"x")
+            self.assertIsNone(discover_emoji_font(dirs=only))
+            mono = base / "NotoEmoji-VariableFont_wght.ttf"
+            mono.write_bytes(b"x")
+            self.assertEqual(discover_emoji_font(dirs=only), str(mono))
+
+    def test_font_search_dirs_env_priority(self):
+        import os
+        from analysis_utils import _font_search_dirs
+
+        with tempfile.TemporaryDirectory() as tmp:
+            old = os.environ.get("REDNOTE_FONT_DIR")
+            os.environ["REDNOTE_FONT_DIR"] = tmp
+            try:
+                dirs = _font_search_dirs("extra-dir-not-exists")
+                self.assertEqual(dirs[0], tmp)
+            finally:
+                if old is None:
+                    os.environ.pop("REDNOTE_FONT_DIR", None)
+                else:
+                    os.environ["REDNOTE_FONT_DIR"] = old
 
     def test_init_plot_style_and_save_fig(self):
         import matplotlib

@@ -6,7 +6,12 @@
 2. 领域调整：固定领域权重的月度得分，消除领域构成漂移的影响
 3. 单特征时间曲线：6 个对爬取格式稳健的特征
 4. Spearman 趋势检验
+
+用法：`python3 paper_drift.py`（默认同时刷新派生得分文件
+`paper_exploring_scores.csv.gz`，内容不变时保持原文件字节不动）；
+`python3 paper_drift.py --figs-only` 只重算图表与结果 JSON，不触碰该数据文件。
 """
+import argparse
 import json
 import os
 
@@ -17,7 +22,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from scipy.stats import spearmanr
 
-from analysis_utils import BASE, setup_chinese_fonts, detector_score
+from analysis_utils import (BASE, setup_chinese_fonts, detector_score,
+                            write_csv_gz_if_changed)
 
 FIGS = BASE + "paper_figs/"
 os.makedirs(FIGS, exist_ok=True)
@@ -52,7 +58,7 @@ def domain_adjusted(df, domains, weights):
     return pd.Series(rows).sort_index()
 
 
-def main():
+def main(with_scores: bool = True):
     with open(BASE + "paper_detector_model.json", encoding="utf-8") as f:
         model = json.load(f)
 
@@ -190,12 +196,21 @@ def main():
     print(f"探索集 2023上半年: mean={e23['p_ai'].mean():.4f}, >0.9 {(e23['p_ai']>0.9).mean()*100:.1f}% (n={len(e23)})")
     print(f"探索集 2025上半年: mean={e25['p_ai'].mean():.4f}, >0.9 {(e25['p_ai']>0.9).mean()*100:.1f}% (n={len(e25)})")
 
-    # 保存逐帖得分供互动分析
-    expl[["month", "domain", "likes", "collections", "comments",
-          "p_ai", "p_ai_full", "content_len"]].to_csv(
-        BASE + "paper_exploring_scores.csv.gz", index=False, compression="gzip")
-    print("已保存 paper_exploring_scores.csv.gz")
+    # 保存逐帖得分供互动分析（内容未变化时不写文件，保持研究数据字节不动）
+    if with_scores:
+        scores = expl[["month", "domain", "likes", "collections", "comments",
+                       "p_ai", "p_ai_full", "content_len"]]
+        if write_csv_gz_if_changed(scores, BASE + "paper_exploring_scores.csv.gz"):
+            print("已更新 paper_exploring_scores.csv.gz")
+        else:
+            print("paper_exploring_scores.csv.gz 内容未变化，保持原文件不变")
+    else:
+        print("[figs-only] 跳过 paper_exploring_scores.csv.gz 写入")
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--figs-only", action="store_true",
+                        help="只重算图表与结果 JSON，不写 paper_exploring_scores.csv.gz")
+    args = parser.parse_args()
+    main(with_scores=not args.figs_only)

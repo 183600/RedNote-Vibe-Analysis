@@ -150,6 +150,15 @@
 2. **共享 AI 味词表（25 词）密度**：家族间相差 1.9 倍——Gemini 70.8/万字符最高，GLM 37.2 最低，人类基线仅 14.0；这与 `paper_model_fingerprint.py` 的"Gemini 最不像人、GLM-3 最像人"结论方向一致。
 3. **单模型粒度**：如 gemini-2.0 的"姐妹"、deepseek-v3 的"绝绝子/yyds"、claude-sonnet-4 的"很/真的/但是"、glm-3 的"雪山/本科"，为论文 §5.2 的风格指纹补充了可直接引用的语言学证据。
 
+### 互动结构与「AI 味惩罚」分解（`engagement_structure_analysis.py`）
+
+把 `paper_engagement.py` 的"AI 味惩罚"拆成互动结构：零互动密度、长尾集中度（基尼/前 10% 占比）与互动构成比。结果图在 `insights/engagement_structure.png`，数据在 `engagement_structure_results.json` 与 `engagement_structure_results.md`。口径与 `paper_engagement.py` 一致（2023.01 起、同一十分位切分、月份×领域单元内秩相关），十分位点赞中位数与 `paper_engagement_results.json` 逐位吻合：
+
+1. **惩罚首先体现在"沉默"**：零点赞占比从最像人十分位的 2.0% 升到最像 AI 十分位的 8.3%（零收藏 6.7%→22.2%、零评论 11.5%→18.5%；零点赞占比随十分位的 Spearman ρ=+0.939, p=5.5e-05）。
+2. **点赞长尾更集中**：点赞基尼从 0.839 升到 0.903，前 10% 帖子的点赞占比 75.1%→85.0%；收藏/评论本身接近最大集中（基尼≈0.98–1.00），变化主要发生在点赞端。
+3. **收藏/点赞比倒 U**：中位比从 0.387 爬到第 5 十分位峰值 0.450 后跌到 0.264——最像 AI 的帖子要么无人问津、要么只剩点赞，收藏价值坍缩。
+4. **方向稳健**：控制月份×领域后（141 个单元），点赞/收藏的单元内加权 ρ≈-0.09，82%/82% 的单元为负；评论 ρ=-0.019（60% 为负）——互动惩罚在所有指标上方向一致，点赞与收藏最敏感。
+
 ### 生成的可视化图表
 
 | 文件 | 描述 |
@@ -172,6 +181,7 @@
 | `insights/diversity_burstiness.png`、`diversity_lexical.png` | 文本多样性图表（句长分布/burstiness ECDF、MTLD 小提琴图与 Heaps 曲线） |
 | `insights/detector_calibration.png`、`detector_errors.png`、`detector_uncertainty.png` | 检测器诊断图（可靠性曲线/阈值权衡、长度与领域错误切片、置信度分层时间线） |
 | `insights/family_lexicon.png` | 模型家族词表指纹（词×家族 log-odds 热力图、AI 味词密度） |
+| `insights/engagement_structure.png` | 互动结构分解（零互动密度、基尼集中度、收藏/点赞比与十分位趋势） |
 | `output/` | 领域、话题、互动等探索性图表合集 |
 | `paper_figs/` | 论文管线图表（检测器、漂移、互动、稳健性） |
 
@@ -196,12 +206,15 @@
 - `diversity_analysis.py` - 句长 burstiness / MTLD / Heaps β 多样性与节奏分析（输出 `insights/diversity_*.png`、`diversity_results.json/md`）
 - `detector_diagnostics.py` - 检测器概率校准 / 阈值敏感性 / 错分切片 / 探索集不确定性（输出 `insights/detector_*.png`、`detector_diagnostics_results.json/md`）
 - `family_lexicon_analysis.py` - AIGC 子集内家族/单模型词表指纹（输出 `insights/family_lexicon.png`、`family_lexicon_results.json/md`）
+- `engagement_structure_analysis.py` - 「AI 味惩罚」的互动结构分解：零互动密度 / 基尼集中度 / 互动构成比 / 单元内秩相关（输出 `insights/engagement_structure.png`、`engagement_structure_results.json/md`）
 - `user_clustering.py` - 用户风格聚类（输出 `user_clustering_results.md`）
 - `quick_start.py` - BERT 基线训练
 
-深潜分析套件可一键顺序执行：`python3 run_fork_pipeline.py`（`--list` / `--from N` / `--only 脚本名`，编排 deep_dive / framing / title_style / diversity / detector_diagnostics / family_lexicon / user_clustering 共 7 步，输出统一落在 `insights/`）。
+深潜分析套件可一键顺序执行：`python3 run_fork_pipeline.py`（`--list` / `--from N` / `--only 脚本名`，编排 deep_dive / framing / title_style / diversity / detector_diagnostics / family_lexicon / engagement_structure / user_clustering 共 8 步，输出统一落在 `insights/`）。
 
 运行环境：`pip install -r requirements.txt`；公共工具位于 `analysis_utils.py`（含概率校准与阈值指标工具），单元测试见 `tests/`（`python3 -m unittest discover -s tests`，覆盖 `analysis_utils.py`、`framing_analysis.py` 及标题/多样性分析的纯函数）。
+
+中文字体由 `setup_chinese_fonts()` 自动解析：依次扫描 `REDNOTE_FONT_DIR`、`assets/fonts/`、系统字体目录（Noto Sans CJK/SC、思源黑体、文泉驿等），找不到时回退下载 Noto Sans SC（另含单色 emoji 字体）并缓存到 `~/.cache/rednote-vibe/fonts`；也可用 `REDNOTE_FONT_PATH` 直接指定字体文件，或设 `REDNOTE_FONT_DOWNLOAD=0` 禁用联网下载。写回 CSV 时使用内容比较（`write_csv_gz_if_changed`），内容未变则不触碰文件；`paper_drift.py --figs-only` 可只重绘图表、完全不写 `paper_exploring_scores.csv.gz`。
 
 ## 参考资料
 

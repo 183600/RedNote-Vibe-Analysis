@@ -40,29 +40,248 @@ DATASET_LABELS = {"human": "人类(前LLM)", "aigc": "AIGC(17模型)",
                   "exploring": "探索集(后LLM)"}
 
 _CJK_FALLBACKS = ("Noto Sans CJK SC", "Noto Sans CJK JP", "Noto Sans CJK TC",
-                  "Source Han Sans SC", "WenQuanYi Micro Hei", "SimHei")
+                  "Noto Sans SC", "Noto Sans TC", "Source Han Sans SC",
+                  "Source Han Sans CN", "WenQuanYi Micro Hei", "WenQuanYi Zen Hei",
+                  "SimHei", "Microsoft YaHei", "PingFang SC", "LXGW WenKai")
+
+# 中文字体文件名特征（用于在系统目录中扫描 .ttf/.otf/.ttc）
+_CJK_FONT_FILE_RE = re.compile(
+    r"(noto[-_ ]?sans[-_ ]?(cjk|sc|tc|jp)|noto[-_ ]?serif[-_ ]?(cjk|sc)"
+    r"|source[-_ ]?han|wqy|wenquanyi|simhei|simsun|msyh|microsoft[-_ ]?yahei"
+    r"|pingfang|heiti|songti|kaiti|lxgw)",
+    re.IGNORECASE)
+
+# 备选下载源（OFL 开源字体）；下载后缓存在 ~/.cache/rednote-vibe/fonts/
+_FONT_DOWNLOAD_URLS = (
+    "https://cdn.jsdelivr.net/gh/notofonts/noto-cjk@main/Sans/SubsetOTF/SC/NotoSansSC-Regular.otf",
+    "https://raw.githubusercontent.com/notofonts/noto-cjk/main/Sans/SubsetOTF/SC/NotoSansSC-Regular.otf",
+    "https://cdn.jsdelivr.net/gh/anthonyfok/fonts-wqy-microhei@master/wqy-microhei.ttc",
+    "https://raw.githubusercontent.com/anthonyfok/fonts-wqy-microhei/master/wqy-microhei.ttc",
+)
+# 单色 emoji 字体（matplotlib 不支持彩色 emoji，NotoColorEmoji 会被排除）
+_EMOJI_FONT_DOWNLOAD_URLS = (
+    "https://raw.githubusercontent.com/google/fonts/main/ofl/notoemoji/NotoEmoji%5Bwght%5D.ttf",
+    "https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/notoemoji/NotoEmoji%5Bwght%5D.ttf",
+)
+_EMOJI_FONT_FILE_RE = re.compile(
+    r"(noto[-_ ]?emoji|symbola|opensymbol)", re.IGNORECASE)
+_FONT_CACHE_DIR = os.path.join(os.path.expanduser("~"), ".cache",
+                               "rednote-vibe", "fonts")
+_FONT_EXTS = (".ttf", ".otf", ".ttc", ".otc")
+_FONT_DOWNLOAD_TRIED = False
+_EMOJI_FONT_DOWNLOAD_TRIED = False
 
 
-def setup_chinese_fonts(font_dir: str = "/usr/share/fonts/noto-cjk") -> str | None:
-    """让 matplotlib 能渲染中文；返回注册成功的字体名，找不到时返回 None。"""
+def _font_search_dirs(extra_dir: str | None = None) -> list[str]:
+    """可能包含中文字体的目录（按优先级）：环境变量 > 仓库内 > 缓存 > 系统。"""
+    home = os.path.expanduser("~")
+    dirs = [
+        os.environ.get("REDNOTE_FONT_DIR", ""),
+        BASE + "assets/fonts",
+        BASE + "fonts",
+        _FONT_CACHE_DIR,
+        os.path.join(home, ".fonts"),
+        os.path.join(home, ".local", "share", "fonts"),
+        "/usr/share/fonts/noto-cjk",
+        "/usr/share/fonts/opentype/noto",
+        "/usr/share/fonts/truetype/noto",
+        "/usr/share/fonts/truetype/wqy",
+        "/usr/share/fonts/wenquanyi",
+        "/usr/local/share/fonts",
+        "/Library/Fonts",
+        "/System/Library/Fonts",
+    ]
+    if extra_dir:
+        dirs.insert(0, extra_dir)
+    out = []
+    for d in dirs:
+        if d and os.path.isdir(d) and d not in out:
+            out.append(d)
+    return out
+
+
+def _scan_fonts(dirs, name_re, exclude_re=None) -> str | None:
+    """在目录列表中按文件名特征查找字体文件（每个目录先浅层后递归）。"""
+    for d in dirs:
+        shallow, nested = [], []
+        for root, dirnames, filenames in os.walk(d):
+            dirnames.sort()
+            for fn in sorted(filenames):
+                if not fn.lower().endswith(_FONT_EXTS) or not name_re.search(fn):
+                    continue
+                if exclude_re is not None and exclude_re.search(fn):
+                    continue
+                path = os.path.join(root, fn)
+                (shallow if root == d else nested).append(path)
+        if shallow:
+            return shallow[0]
+        if nested:
+            return nested[0]
+    return None
+
+
+def discover_cjk_font(extra_dir: str | None = None,
+                      dirs: list[str] | None = None) -> str | None:
+    """在常见目录中查找中文字体文件，返回路径；找不到返回 None。
+
+    按目录优先级扫描（每个目录内先浅层后递归），匹配文件名特征
+    （Noto Sans CJK / Source Han / 文泉驿 / SimHei / 雅黑 / 霞鹜文楷 等）。
+    `dirs` 可显式指定搜索目录（测试用），默认走 `_font_search_dirs`。
+    """
+    search = dirs if dirs is not None else _font_search_dirs(extra_dir)
+    return _scan_fonts(search, _CJK_FONT_FILE_RE)
+
+
+def discover_emoji_font(extra_dir: str | None = None,
+                        dirs: list[str] | None = None) -> str | None:
+    """查找单色 emoji 字体（Noto Emoji / Symbola 等）；彩色 emoji 字体跳过。"""
+    search = dirs if dirs is not None else _font_search_dirs(extra_dir)
+    return _scan_fonts(search, _EMOJI_FONT_FILE_RE,
+                       exclude_re=re.compile(r"color", re.IGNORECASE))
+
+
+def _register_font(path: str) -> str | None:
+    """把字体文件注册进 matplotlib，成功时返回字体名。"""
+    import matplotlib.pyplot as plt
+    from matplotlib import font_manager
+
+    try:
+        font_manager.fontManager.addfont(path)
+        name = font_manager.FontProperties(fname=path).get_name()
+    except Exception:
+        return None
+    if not name:
+        return None
+    plt.rcParams["font.family"] = name
+    return name
+
+
+def _download_font_file(urls, timeout: float = 30.0) -> str | None:
+    """按顺序尝试下载字体到缓存目录，返回首个成功的本地路径；失败返回 None。"""
+    import urllib.parse
+    import urllib.request
+
+    os.makedirs(_FONT_CACHE_DIR, exist_ok=True)
+    for url in urls:
+        name = os.path.basename(urllib.parse.unquote(url.split("?")[0]))
+        dest = os.path.join(_FONT_CACHE_DIR, name)
+        try:
+            if not os.path.exists(dest) or os.path.getsize(dest) < 1_000_000:
+                tmp = dest + ".part"
+                with urllib.request.urlopen(url, timeout=timeout) as resp, \
+                        open(tmp, "wb") as f:
+                    while True:
+                        chunk = resp.read(1 << 20)
+                        if not chunk:
+                            break
+                        f.write(chunk)
+                if os.path.getsize(tmp) < 1_000_000:
+                    os.remove(tmp)
+                    continue
+                os.replace(tmp, dest)
+            return dest
+        except Exception:
+            continue
+    return None
+
+
+def _download_cjk_font(timeout: float = 30.0) -> str | None:
+    """下载一个开源中文字体到缓存目录（仅当本机无任何中文字体时）。
+
+    任一环节失败都静默返回 None（离线环境保持与旧版一致的降级行为）；
+    可用环境变量 REDNOTE_FONT_DOWNLOAD=0 显式禁用。
+    """
+    global _FONT_DOWNLOAD_TRIED
+    if _FONT_DOWNLOAD_TRIED:
+        return None
+    if os.environ.get("REDNOTE_FONT_DOWNLOAD", "1") == "0":
+        return None
+    _FONT_DOWNLOAD_TRIED = True
+    path = _download_font_file(_FONT_DOWNLOAD_URLS, timeout)
+    return path if path and _register_font(path) else None
+
+
+def _download_emoji_font(timeout: float = 30.0) -> str | None:
+    """下载单色 Noto Emoji 到缓存目录；失败静默返回 None。"""
+    global _EMOJI_FONT_DOWNLOAD_TRIED
+    if _EMOJI_FONT_DOWNLOAD_TRIED:
+        return None
+    if os.environ.get("REDNOTE_FONT_DOWNLOAD", "1") == "0":
+        return None
+    _EMOJI_FONT_DOWNLOAD_TRIED = True
+    path = _download_font_file(_EMOJI_FONT_DOWNLOAD_URLS, timeout)
+    return path if path and _register_font(path) else None
+
+
+def _apply_emoji_fallback(cjk_name: str, font_dir: str | None,
+                          allow_download: bool) -> str:
+    """在中文主字体后追加单色 emoji 字体（matplotlib 3.6+ 逐字形回退）。
+
+    找不到 emoji 字体时保持单一中文字体，行为与旧版一致。
+    """
+    import matplotlib.pyplot as plt
+
+    path = discover_emoji_font(font_dir)
+    if not path and allow_download:
+        path = _download_emoji_font()
+    if not path:
+        return cjk_name
+    emoji_name = _register_font(path)
+    if not emoji_name:
+        return cjk_name
+    from matplotlib import font_manager
+
+    installed = {f.name for f in font_manager.fontManager.ttflist}
+    families = [cjk_name]
+    if emoji_name in installed and emoji_name != cjk_name:
+        families.append(emoji_name)
+    plt.rcParams["font.family"] = families
+    return cjk_name
+
+
+def setup_chinese_fonts(font_dir: str | None = None,
+                        allow_download: bool = True,
+                        with_emoji: bool = True) -> str | None:
+    """让 matplotlib 能渲染中文（及 emoji）；返回注册成功的字体名，找不到返回 None。
+
+    依次尝试：(1) `REDNOTE_FONT_PATH` 指定的字体文件；(2) 目录扫描
+    （`REDNOTE_FONT_DIR` / 仓库 assets/fonts / 缓存 / 系统字体目录）；
+    (3) matplotlib 已安装字体名；(4) 可选地从网络下载开源字体到用户缓存。
+    成功后再追加单色 emoji 字体回退（可用 `with_emoji=False` 关闭）。
+    任何一步失败都不会抛异常，绘图脚本在无字体环境下仍可运行（中文会显示
+    为占位方框），只是不再静默出图。
+    """
     import matplotlib.pyplot as plt
     from matplotlib import font_manager
 
     plt.rcParams["axes.unicode_minus"] = False
-    if os.path.isdir(font_dir):
-        for f in sorted(os.listdir(font_dir)):
-            if "NotoSansCJK" in f and f.endswith(".ttc"):
-                path = os.path.join(font_dir, f)
-                font_manager.fontManager.addfont(path)
-                name = font_manager.FontProperties(fname=path).get_name()
-                plt.rcParams["font.family"] = name
-                return name
-    installed = {f.name for f in font_manager.fontManager.ttflist}
-    for name in _CJK_FALLBACKS:
-        if name in installed:
-            plt.rcParams["font.family"] = name
-            return name
-    return None
+    name = None
+
+    env_font = os.environ.get("REDNOTE_FONT_PATH", "")
+    if env_font and os.path.isfile(env_font):
+        name = _register_font(env_font)
+
+    if not name:
+        path = discover_cjk_font(font_dir)
+        if path:
+            name = _register_font(path)
+
+    if not name:
+        installed = {f.name for f in font_manager.fontManager.ttflist}
+        for cand in _CJK_FALLBACKS:
+            if cand in installed:
+                plt.rcParams["font.family"] = cand
+                name = cand
+                break
+
+    if not name and allow_download:
+        path = _download_cjk_font()
+        if path:
+            name = _register_font(path)
+
+    if name and with_emoji:
+        _apply_emoji_fallback(name, font_dir, allow_download)
+    return name
 
 
 def init_plot_style() -> str | None:
@@ -507,6 +726,19 @@ def cliffs_delta(a, b) -> tuple[float, float]:
     return cliffs_delta_from_u(u, len(a), len(b)), float(p)
 
 
+def gini_coefficient(values) -> float:
+    """基尼系数（0=完全均等，1=完全集中）；负值按 0 处理，空/全零返回 0。"""
+    arr = np.asarray(list(values), dtype=float)
+    arr = np.clip(arr[~np.isnan(arr)], 0.0, None)
+    total = float(arr.sum())
+    if arr.size == 0 or total <= 0:
+        return 0.0
+    arr.sort()
+    n = arr.size
+    weights = 2.0 * np.arange(1, n + 1) - n - 1
+    return float(weights.dot(arr) / (n * total))
+
+
 def wilson_ci(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
     """二项比例的 Wilson 置信区间。"""
     if n == 0:
@@ -670,3 +902,32 @@ def bootstrap_median_ci(values, n_boot: int = 1000, seed: int = 42,
 def save_json(obj, path: str) -> None:
     with open(path, "w", encoding="utf-8") as f:
         json.dump(obj, f, ensure_ascii=False, indent=1)
+
+
+def write_csv_gz_if_changed(df: pd.DataFrame, path: str) -> bool:
+    """把 DataFrame 写为 gzip CSV；内容与现有文件一致时一个字节都不动。
+
+    研究数据文件（*.csv.gz）由 CI 逐字节校验保护：重跑分析脚本时若派生内容
+    没有变化，就不应该产生无意义的字节churn。这里先把新内容序列化到内存
+    （gzip mtime 固定为 0，输出确定性），解压现有文件逐字节比较；只有内容
+    真正变化时才经临时文件原子替换。返回是否实际写入了文件。
+    """
+    import gzip
+    import io
+
+    csv_bytes = df.to_csv(index=False).encode("utf-8")
+    if os.path.exists(path):
+        try:
+            with gzip.open(path, "rb") as f:
+                if f.read() == csv_bytes:
+                    return False
+        except OSError:
+            pass
+    buf = io.BytesIO()
+    with gzip.GzipFile(fileobj=buf, mode="wb", mtime=0) as gz:
+        gz.write(csv_bytes)
+    tmp = f"{path}.tmp"
+    with open(tmp, "wb") as f:
+        f.write(buf.getvalue())
+    os.replace(tmp, path)
+    return True

@@ -6,7 +6,7 @@
 或全量扫描原始 JSONL，互不写坏对方输出，可以任意单独重跑。
 
 用法：
-  python3 run_fork_pipeline.py                     # 运行全部 7 步
+  python3 run_fork_pipeline.py                     # 运行全部 8 步
   python3 run_fork_pipeline.py --list              # 只打印步骤
   python3 run_fork_pipeline.py --from 3            # 从第 3 步开始
   python3 run_fork_pipeline.py --only detector_diagnostics.py family_lexicon_analysis.py
@@ -31,6 +31,8 @@ STEPS = [
      "概率校准 / 阈值 / 错分切片 / 不确定性 -> detector_diagnostics_results.{json,md} + 3 图"),
     ("family_lexicon_analysis.py",
      "17 个 LLM 的家族/单模型词表指纹 -> family_lexicon_results.{json,md} + 1 图"),
+    ("engagement_structure_analysis.py",
+     "AI 味惩罚的互动结构分解（零互动/基尼/构成比）-> engagement_structure_results.{json,md} + 1 图"),
     ("user_clustering.py",
      "探索集用户风格聚类 -> user_clustering_results.md"),
 ]

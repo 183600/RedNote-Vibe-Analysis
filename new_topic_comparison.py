@@ -186,6 +186,9 @@ RE_DIGITS = re.compile(r"\d+")
 # 连续的非 \w 字符（标点/空白）直接作为分隔符切词，等价于原先「标点→空格再 split」，
 # 但省去一次全量替换与一次 split 的结果组装。
 RE_NONWORD = re.compile(r"[^\w]+")
+RE_WORD2 = re.compile(r"\w{2,}")
+
+_TOKSEP = "\x00"
 
 
 def setup_fonts():
@@ -231,8 +234,9 @@ def load_grouped_with_counts(filepath):
         n_records += 1
         d = item.get("domain")
         if isinstance(d, str) and d in grouped:
-            grouped[d].append(item)
             tokens = clean_tokenize(get_text(item))
+            item["_tokens"] = _TOKSEP.join(tokens)
+            grouped[d].append(item)
             counters[d].update(tokens)
             totals[d] += len(tokens)
     return (grouped, {d: counters[d].most_common(100) for d in DOMAINS},
@@ -250,7 +254,7 @@ def clean_tokenize(text):
     text = RE_TOPIC_TAG.sub(" ", text)
     text = RE_HASHTAG.sub(r"\1", text)
     text = RE_DIGITS.sub("", text)
-    return [w for w in RE_NONWORD.split(text) if len(w) > 1 and w not in STOPWORDS]
+    return [w for w in RE_WORD2.findall(text) if w not in STOPWORDS]
 
 
 def analyze_engagement_patterns(grouped):
@@ -694,7 +698,8 @@ def analyze_keyword_cooccurrence(grouped, word_counters):
 
             co_word_counts = defaultdict(Counter)
             for item in domain_items:
-                words = set(clean_tokenize(get_text(item)))
+                cached = item["_tokens"]
+                words = set(cached.split(_TOKSEP)) if cached else set()
                 hits = words & top_set
                 for w in hits:
                     co_word_counts[w].update(hits - {w})

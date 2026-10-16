@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
+import heapq
 import json
 import re
 from collections import Counter
 
 from analysis_utils import BASE
+
+# 全文件共用一个预编译 CJK 正则
+_CJK_RUN_RE = re.compile(r'[\u4e00-\u9fff]+')
 
 
 exclude = set([u'话题', u'时尚薯', u'生活薯', u'知识薯', u'美食薯', u'校园薯',
@@ -39,7 +43,7 @@ def main():
                 bit = domain_bits.setdefault(domain, 1 << len(domain_bits))
                 text = item.get('note_title', '') + ' ' + (
                     item.get('desc', '') or item.get('note_content', ''))
-                words = re.findall(r'[\u4e00-\u9fff]+', text)
+                words = _CJK_RUN_RE.findall(text)
                 for w in set(words):
                     if len(w) >= 2 and w not in exclude:
                         word_info[w] = _bump(word_info.get(w), bit)
@@ -56,11 +60,13 @@ def main():
     MIN_USERS = 30
     # 等价于原先 Counter.most_common(100)：按计数降序，并列时保持首次出现顺序
     # （info 低 16 位是话题 bitmask，排序时必须右移，否则并列会按 bitmask 值排序）。
-    ranked = sorted(word_info.items(),
-                    key=lambda kv: kv[1] >> _COUNT_SHIFT, reverse=True)
+    # 只取前 100 时用 heapq.nlargest（O(V log 100)），与全量 sorted(...)[:100]
+    # 的结果（含并列顺序）逐项一致，但不必对整个词表做 O(V log V) 排序。
+    ranked = heapq.nlargest(100, word_info.items(),
+                            key=lambda kv: kv[1] >> _COUNT_SHIFT)
 
     results = []
-    for w, info in ranked[:100]:
+    for w, info in ranked:
         count = info >> _COUNT_SHIFT
         if count < MIN_USERS:
             continue

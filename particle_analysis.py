@@ -244,6 +244,7 @@ def load_particle_data(files, particles):
         domains = []
         months = []
         liked_vals = []
+        text_cache = {}
         total = 0
         with open(f, "r", encoding="utf-8") as fh:
             for line in fh:
@@ -260,9 +261,14 @@ def load_particle_data(files, particles):
                 if not text or text_len == 0:
                     ratios_flat.extend([0.0] * k)
                 else:
-                    ratios_flat.extend(
-                        text.count(p) / text_len for p in stored_particles
-                    )
+                    cached = text_cache.get(text)
+                    if cached is None:
+                        cached = array.array(
+                            "d",
+                            (text.count(p) / text_len for p in stored_particles),
+                        )
+                        text_cache[text] = cached
+                    ratios_flat.extend(cached)
 
                 text_lens.append(text_len)
                 dom = item.get("domain", "")
@@ -309,9 +315,6 @@ def analyze_particle_distribution(particle_stats, files, top_particles):
             ratios = _ratios_for(stats_data, p)
             results[f][p] = {
                 "mean": np.mean(ratios) if ratios.size else 0,
-                "std": np.std(ratios) if ratios.size else 0,
-                "median": np.median(ratios) if ratios.size else 0,
-                "total": float(ratios.sum()) if ratios.size else 0,
             }
 
     print("\nMean Ratio of Particles:")

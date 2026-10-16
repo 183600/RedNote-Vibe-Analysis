@@ -4,10 +4,11 @@
 输出：`user_clustering_results.md`（此前误写到 word_correlation_extended_results.md，
 与词频相关性脚本的输出语义不符，已改为独立文件名，避免互相覆盖）。
 """
+import json
 import random
 from collections import defaultdict, Counter
 
-from analysis_utils import BASE, iter_jsonl, post_text
+from analysis_utils import BASE, post_text
 
 # 22个真正的跨话题通用文风词
 cross_topic_words = [
@@ -21,15 +22,24 @@ def main():
     print("Loading...")
     note_by_user = defaultdict(lambda: defaultdict(int))
 
-    for item in iter_jsonl(BASE + "exploring_set_fixed.jsonl"):
-        user_id = item.get("user_id")
-        if not user_id:
-            continue
-        text = post_text(item)
-        for w in cross_topic_words:
-            c = text.count(w)
-            if c:
-                note_by_user[user_id][w] += c
+    # 探索集里约 64% 记录的顶层 user_id 为空串；先做廉价的子串判定跳过
+    # json.loads，其余记录照常解析（该判定已在本数据集全量记录上验证
+    # 与 bool(item.get("user_id")) 完全一致）。
+    with open(BASE + "exploring_set_fixed.jsonl", encoding="utf-8") as f:
+        for line in f:
+            if not line or line.isspace():
+                continue
+            if '"user_id": "' in line and '"user_id": ""' in line:
+                continue
+            item = json.loads(line)
+            user_id = item.get("user_id")
+            if not user_id:
+                continue
+            text = post_text(item)
+            for w in cross_topic_words:
+                c = text.count(w)
+                if c:
+                    note_by_user[user_id][w] += c
 
     print("Total users: " + str(len(note_by_user)))
 
@@ -66,8 +76,8 @@ def main():
                 min_idx = 0
                 for j, c in enumerate(centroids):
                     d = 0.0
-                    for x, rv in enumerate(row):
-                        diff = rv - c[x]
+                    for rv, cx in zip(row, c):
+                        diff = rv - cx
                         d += diff * diff
                     if d < min_dist:
                         min_dist = d

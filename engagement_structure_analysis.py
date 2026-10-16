@@ -48,7 +48,10 @@ METRICS = (("likes", "点赞"), ("collections", "收藏"), ("comments", "评论"
 
 
 def load_scores() -> pd.DataFrame:
-    df = pd.read_csv(BASE + "paper_exploring_scores.csv.gz")
+    # 只读用到列（p_ai_full / content_len 等从未参与分析），避免整表载入
+    df = pd.read_csv(BASE + "paper_exploring_scores.csv.gz",
+                     usecols=["month", "domain", "likes", "collections",
+                              "comments", "p_ai"])
     df["month"] = df["month"].astype(str)
     df = df[df["month"] >= "202301"].copy()
     df["decile"] = pd.qcut(df["p_ai"], N_DECILES, labels=False,
@@ -75,8 +78,9 @@ def decile_table(df: pd.DataFrame) -> pd.DataFrame:
             row[f"{m}_gini"] = gini_coefficient(v)
             k = max(1, int(round(len(v) * TOP_SHARE)))
             tops = np.sort(v)[::-1][:k].sum()
+            total = v.sum()
             row[f"{m}_top{int(TOP_SHARE*100)}_share"] = (
-                float(tops / v.sum()) if v.sum() > 0 else 0.0)
+                float(tops / total) if total > 0 else 0.0)
         row["coll_per_like"] = float(np.median(
             g["collections"] / (g["likes"] + 1)))
         row["comm_per_like"] = float(np.median(
@@ -92,14 +96,15 @@ def within_cell_rho(df: pd.DataFrame) -> dict:
     重复分组三遍。
     """
     out = {}
-    df = df.copy()
+    # 只复制分组与相关计算需要的列（原实现复制整张 9 列大表）
+    work = df[["month", "domain", "p_ai"]].copy()
     log_cols = {}
     for m, _ in METRICS:
         log_cols[m] = f"_log_{m}"
-        df[log_cols[m]] = np.log10(1 + df[m])
+        work[log_cols[m]] = np.log10(1 + df[m])
     rhos = {m: [] for m, _ in METRICS}
     ns = {m: [] for m, _ in METRICS}
-    for _, g in df.groupby(["month", "domain"], sort=True):
+    for _, g in work.groupby(["month", "domain"], sort=True):
         n = len(g)
         if n < MIN_CELL_N:
             continue

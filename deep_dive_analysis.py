@@ -45,8 +45,7 @@ DATASETS = {
     "exploring": BASE + "exploring_set_fixed.jsonl",
 }
 LABELS = {"human": "人类(前LLM)", "aigc": "AIGC(17模型)", "exploring": "探索集(后LLM)"}
-SENT_SPLIT = re.compile(r"[。！？!?；;…]+|\n+")
-WS = re.compile(r"\s+")
+SENT_SEGS = re.compile(r"[^。！？!?；;…\n]+")
 LENGTH_BUCKETS = [(0, 150, "<150字"), (150, 300, "150–300字"),
                   (300, 500, "300–500字"), (500, 800, "500–800字"),
                   (800, 10 ** 9, "≥800字")]
@@ -55,7 +54,7 @@ MIN_MONTH_CHARS = 5000
 
 def body_stats(body: str) -> tuple[int, int, int, float | None, int]:
     """返回（正文长度, AI词次数, 人类连接词次数, 平均句长, 句数）。"""
-    sents = [s for p in SENT_SPLIT.split(body) if (s := p.strip())]
+    sents = [s for p in SENT_SEGS.findall(body) if (s := p.strip())]
     ai = sum(map(body.count, AI_WORDS))
     hum = sum(map(body.count, HUMAN_WORDS))
     if sents:
@@ -77,6 +76,7 @@ def collect(path: str) -> dict:
     content_seen, title_seen, id_seen = Counter(), Counter(), Counter()
     totals = [0, 0, 0]  # 逐记录 [正文字符数, AI词次数, 人类连接词次数]
     notes: dict = {}
+    month_pool: dict = {}
     n = 0
     has_user_field = False
     missing_meta = 0
@@ -103,10 +103,10 @@ def collect(path: str) -> dict:
         totals[0] += body_len
         totals[1] += ai
         totals[2] += hum
-        raw = WS.sub("", content)
+        raw = "".join(content.split())
         if raw:
             content_seen[raw] += 1
-        nt = WS.sub("", rec.get("note_title") or "")
+        nt = "".join((rec.get("note_title") or "").split())
         if nt:
             title_seen[nt] += 1
 
@@ -120,12 +120,19 @@ def collect(path: str) -> dict:
                     and rec.get("domain") not in (None, "", "未知"))
         score = (int(has_meta) + int(bool(likes)) + int(bool(colls))
                  + int(bool(comms)) + int(dt is not None) + int(bool(raw)))
+        if dt is not None:
+            ym = (dt.year, dt.month)
+            month = month_pool.get(ym)
+            if month is None:
+                month = month_pool[ym] = f"{dt.year:04d}{dt.month:02d}"
+        else:
+            month = None
         rep = {
             "raw": raw, "body_len": body_len, "ai": ai, "hum": hum,
             "sent_m": sent_m, "sent_n": sent_n, "likes": likes, "score": score,
             "hour": dt.hour if dt else None,
             "weekday": dt.weekday() if dt else None,
-            "month": dt.strftime("%Y%m") if dt else None,
+            "month": month,
         }
         nid = rec.get("note_id")
         if nid is None:

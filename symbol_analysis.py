@@ -78,7 +78,6 @@ MIN_CELL_N = 100         # 月份×领域单元最少样本
 N_DECILES = 10
 MIN_BODY_LEN = 8         # 清洗后正文短于此长度视为「纯标签/空正文」帖
 ENG_MONTH_FROM = "202301"
-WS = re.compile(r"\s+")
 # 变体选择符（FE0E/FE0F）与零宽连接符（ZWJ）在 paper_features 的 EMOJI
 # 类里会随基字符一起被单独匹配，导致同一个 emoji 计两次；符号分析剔除。
 _EMOJI_SKIP = frozenset("\ufe0e\ufe0f\u200d")
@@ -104,6 +103,7 @@ def scan(path: str, content_len_ref: np.ndarray | None = None) -> dict:
     best: dict = {}
     rows: list = []
     n_raw = mismatch = 0
+    month_pool: dict = {}
     for rec in iter_jsonl(path):
         content = content_of(rec)
         body = clean_body(content)
@@ -114,11 +114,18 @@ def scan(path: str, content_len_ref: np.ndarray | None = None) -> dict:
         has_meta = (bool(rec.get("user_id"))
                     and rec.get("domain") not in (None, "", "未知"))
         meta = (int(has_meta) + int(bool(lk)) + int(bool(cl)) + int(bool(cm))
-                + int(dt is not None) + int(bool(WS.sub("", content))))
+                + int(dt is not None)
+                + int(bool(content) and not content.isspace()))
+        if dt is None:
+            month = ""
+        else:
+            ym = (dt.year, dt.month)
+            month = month_pool.get(ym)
+            if month is None:
+                month = month_pool[ym] = f"{dt.year:04d}{dt.month:02d}"
         row = (n_raw, extract_hashtags(content),
                clean_emojis(EMOJI.findall(body)), XHS_EMO.findall(body),
-               dt.strftime("%Y%m") if dt is not None else "",
-               meta, len(body), lk, cl, cm)
+               month, meta, len(body), lk, cl, cm)
         nid = rec.get("note_id")
         if nid is None:
             rows.append(row)

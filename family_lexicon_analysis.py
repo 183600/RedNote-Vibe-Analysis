@@ -30,7 +30,7 @@ import jieba
 
 from analysis_utils import (BASE, INSIGHTS, init_plot_style, save_fig, save_json,
                             iter_jsonl, post_text, make_pool, close_pool)
-from paper_lexicon import clean, count_clean_words, log_odds
+from paper_lexicon import clean, count_clean_words
 from paper_features import AI_WORDS
 
 FAMILY_NAME = {"gpt": "GPT", "gemini": "Gemini", "deepseek": "DeepSeek",
@@ -103,7 +103,7 @@ def collect_group_stats(records, pool=None, keys: tuple[str, ...] = (
     ai_chars: Counter = Counter()
     n_records = 0
 
-    batch = 256
+    batch = 1024
     kept: list = []
 
     def flush() -> None:
@@ -146,14 +146,59 @@ def collect_group_stats(records, pool=None, keys: tuple[str, ...] = (
     return raw, weighted, ai_hits, ai_chars, n_records
 
 
-def one_vs_rest(counts: dict[str, Counter], target: str,
-                min_count: int) -> dict[str, float]:
-    cnt_a = counts[target]
-    cnt_b: Counter = Counter()
-    for g, c in counts.items():
-        if g != target:
-            cnt_b.update(c)
-    return log_odds(cnt_a, cnt_b, min_count=min_count)
+def one_vs_rest_all(counts: dict[str, Counter],
+                    min_count: int) -> dict[str, dict[str, float]]:
+    """一次算出所有分组的 one-vs-rest log-odds（口径同 paper_lexicon.log_odds）。
+
+    原实现每个分组都要重建「其他组」Counter 并在整张并集词表上做 Python 级
+    math.log 循环（模型分组时数万词 × 17 组）；这里把各分组计数对齐到同一
+    全局词表、用 numpy 向量化求和与过滤，数值与逐词标量计算等价（仅浮点
+    结合顺序在约 1e-12 相对量级上的差异，不影响按两位小数报告的结果）。
+    """
+    groups = list(counts)
+    total: Counter = Counter()
+    for g in groups:
+        total.update(counts[g])
+    vocab = list(total)
+    if not vocab:
+        return {g: {} for g in groups}
+    pos = {w: i for i, w in enumerate(vocab)}
+    n_total = sum(total.values())
+    arrays = {}
+    for g in groups:
+        arr = np.zeros(len(vocab))
+        for w, c in counts[g].items():
+            arr[pos[w]] = c
+        arrays[g] = arr
+    tot = np.zeros(len(vocab))
+    for g in groups:
+        tot += arrays[g]
+
+    alpha0 = 500.0
+    log = np.log
+    sqrt = np.sqrt
+    out: dict[str, dict[str, float]] = {}
+    for g in groups:
+        n_a = sum(counts[g].values())
+        n_b = n_total - n_a
+        n_p = n_a + n_b
+        ca = arrays[g]
+        cb = tot - ca
+        c = ca + cb
+        idx = np.flatnonzero(c >= min_count)
+        if idx.size == 0:
+            out[g] = {}
+            continue
+        aa = ca[idx]
+        bb = cb[idx]
+        aw = alpha0 * (c[idx] / n_p)
+        na0 = n_a + alpha0
+        nb0 = n_b + alpha0
+        la = log((aa + aw) / (na0 - aa - aw))
+        lb = log((bb + aw) / (nb0 - bb - aw))
+        z = (la - lb) / sqrt(1.0 / (aa + aw) + 1.0 / (bb + aw))
+        out[g] = dict(zip([vocab[i] for i in idx], z.tolist()))
+    return out
 
 
 def word_rates(counts: dict[str, Counter], total: dict[str, int],
@@ -225,9 +270,9 @@ def main() -> None:
     fam_total = {g: sum(c.values()) for g, c in fam_cnt.items()}
     print("家族词元数:", {FAMILY_NAME.get(g, g): v for g, v in fam_total.items()})
 
-    fam_z = {FAMILY_NAME.get(g, g): one_vs_rest(fam_wcnt, g, MIN_COUNT_FAMILY)
-             for g in fam_wcnt}
-    model_z = {g: one_vs_rest(model_wcnt, g, MIN_COUNT_MODEL) for g in model_wcnt}
+    fam_z = {FAMILY_NAME.get(g, g): z for g, z in
+             one_vs_rest_all(fam_wcnt, MIN_COUNT_FAMILY).items()}
+    model_z = one_vs_rest_all(model_wcnt, MIN_COUNT_MODEL)
 
     family_top = {
         fam: [{"word": w, "z": round(s, 2),

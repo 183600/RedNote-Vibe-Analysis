@@ -27,6 +27,8 @@
 """
 from __future__ import annotations
 
+import json
+import random
 import re
 
 import jieba
@@ -40,7 +42,7 @@ from scipy.stats import mannwhitneyu
 from analysis_utils import (BASE, INSIGHTS, PALETTE, init_plot_style,
                             save_fig, save_json, bootstrap_median_ci,
                             cliffs_delta_from_u, clean_body, content_of,
-                            engagement_of, iter_jsonl, load_records_with_total,
+                            engagement_of, load_records_with_total,
                             make_pool, close_pool,
                             mtld, parse_local_time, split_sentences, burstiness,
                             DATASET_LABELS)
@@ -123,27 +125,41 @@ def heaps_beta(tokens: np.ndarray, types: np.ndarray,
 # 全量扫描与抽样
 # --------------------------------------------------------------------------
 def scan_sentence_stats(path: str) -> dict:
-    """全量流式扫描：按 note_id 去重后收集每帖句长指标（无 note_id 全部保留）。"""
+    """全量流式扫描：按 note_id 去重后收集每帖句长指标（无 note_id 全部保留）。
+
+    扫描时顺带记录每条记录的字节偏移（`offsets`），供后续按索引抽样时直接
+    seek 定位、免去对同一文件再做两次全量解析。
+    """
     slot_of: dict = {}
     metrics: list[dict] = []
-    for rec in iter_jsonl(path):
-        body = clean_body(content_of(rec))
-        m = doc_metrics(body)
-        likes, colls, comms = engagement_of(rec)
-        dt = parse_local_time(rec.get("local_time"))
-        has_meta = bool(rec.get("user_id")) and rec.get("domain") not in (None, "", "未知")
-        m["score"] = (int(has_meta) + int(bool(likes)) + int(bool(colls))
-                      + int(bool(comms)) + int(dt is not None) + int(bool(body)))
-        nid = rec.get("note_id")
-        if nid is None:
-            metrics.append(m)
-            continue
-        slot = slot_of.get(nid)
-        if slot is None:
-            slot_of[nid] = len(metrics)
-            metrics.append(m)
-        elif m["score"] > metrics[slot]["score"]:
-            metrics[slot] = m
+    offsets: list[int] = []
+    with open(path, "rb") as f:
+        while True:
+            start = f.tell()
+            line = f.readline()
+            if not line:
+                break
+            if line.isspace():
+                continue
+            rec = json.loads(line)
+            offsets.append(start)
+            body = clean_body(content_of(rec))
+            m = doc_metrics(body)
+            likes, colls, comms = engagement_of(rec)
+            dt = parse_local_time(rec.get("local_time"))
+            has_meta = bool(rec.get("user_id")) and rec.get("domain") not in (None, "", "未知")
+            m["score"] = (int(has_meta) + int(bool(likes)) + int(bool(colls))
+                          + int(bool(comms)) + int(dt is not None) + int(bool(body)))
+            nid = rec.get("note_id")
+            if nid is None:
+                metrics.append(m)
+                continue
+            slot = slot_of.get(nid)
+            if slot is None:
+                slot_of[nid] = len(metrics)
+                metrics.append(m)
+            elif m["score"] > metrics[slot]["score"]:
+                metrics[slot] = m
     sent_lens = [l for m in metrics for l in m["sent_lens"]]
     bursts = [m["burst"] for m in metrics if m["burst"] is not None]
     # 平均句长：sum/len 与 np.mean 对整数列表逐位一致，但省掉 15 万次数组构造。
@@ -156,10 +172,32 @@ def scan_sentence_stats(path: str) -> dict:
         "burst": np.asarray(bursts, dtype=float),
         "mean_sent": np.asarray(mean_sents, dtype=float),
         "n_sent": np.asarray(n_sents, dtype=np.int64),
+        "offsets": offsets,
     }
 
 
-def sample_lexical(path: str, pool=None) -> dict:
+def sample_records_at_offsets(path: str, offsets: list[int], sample: int,
+                              seed: int) -> list[dict]:
+    """按 `random.Random(seed).sample(range(n), sample)` 的索引顺序解析抽样记录。
+
+    与 `load_records_with_total(path, sample=..., seed=...)` 的返回列表完全一致
+    （同样的抽样索引、同样的顺序），但借助预记录的字节偏移只解析被抽中的行，
+    跳过了计数与逐行解析两次全文件扫描。
+    """
+    n = len(offsets)
+    if sample is None or n <= sample:
+        idx = range(n)
+    else:
+        idx = random.Random(seed).sample(range(n), sample)
+    out: list[dict] = []
+    with open(path, "rb") as f:
+        for i in idx:
+            f.seek(offsets[i])
+            out.append(json.loads(f.readline()))
+    return out
+
+
+def sample_lexical(path: str, pool=None, offsets=None) -> dict:
     """固定种子抽样并分词，单遍流式计算 MTLD 与 Heaps 曲线。
 
     与"先保留全部抽样帖 token 列表、再统一计算"的旧实现结果完全一致，
@@ -167,8 +205,13 @@ def sample_lexical(path: str, pool=None) -> dict:
     Heaps 曲线在遍历过程中增量累积（含 HEAPS_BUDGET 截断语义）。
     传入 pool 时按批并行分词，逐帖结果与串行完全一致且顺序不变。
     """
-    recs, total = load_records_with_total(path, sample=SAMPLE_PER_DATASET,
-                                          seed=SAMPLE_SEED)
+    if offsets is not None:
+        recs = sample_records_at_offsets(path, offsets,
+                                         SAMPLE_PER_DATASET, SAMPLE_SEED)
+        total = len(offsets)
+    else:
+        recs, total = load_records_with_total(path, sample=SAMPLE_PER_DATASET,
+                                              seed=SAMPLE_SEED)
     seen_ids: set = set()
     bodies: list[str] = []
     for rec in recs:
@@ -304,7 +347,7 @@ def main() -> None:
     pool = make_pool(preload=jieba.initialize)
     try:
         for name, path in DATASET_PATHS.items():
-            smp = sample_lexical(path, pool)
+            smp = sample_lexical(path, pool, offsets=stats[name].pop("offsets"))
             vals = smp["mtld"]
             mtld_dist[name] = vals
             mtld_stats[name] = bootstrap_median_ci(vals, n_boot=BOOT, seed=BOOT_SEED)

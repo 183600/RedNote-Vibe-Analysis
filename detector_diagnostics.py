@@ -138,12 +138,18 @@ def domain_table(df: pd.DataFrame, y, proba, min_n: int = 50) -> list[dict]:
 
 
 def error_profiles(df: pd.DataFrame, y, proba, model: dict,
-                   top_k: int = 10) -> dict:
-    """错分帖 vs 正确分类帖的标准化特征均值差（z 差，正=错分帖该特征更高）。"""
+                   top_k: int = 10, X=None) -> dict:
+    """错分帖 vs 正确分类帖的标准化特征均值差（z 差，正=错分帖该特征更高）。
+
+    传入 `X`（调用方已构建的全特征 fillna 矩阵）时直接复用，避免再次复制
+    整张特征表；X 为 None 时保持旧行为自建矩阵。
+    """
     feats = model["features"]
     mean = np.asarray(model["scaler_mean"], dtype=float)
     scale = np.asarray(model["scaler_scale"], dtype=float)
-    z = (df[feats].fillna(0).values - mean) / scale
+    if X is None:
+        X = df[feats].fillna(0).values
+    z = (X - mean) / scale
 
     out = {}
     for name, cls in (("human_fp_vs_tn", 0), ("aigc_fn_vs_tp", 1)):
@@ -410,9 +416,10 @@ def main() -> None:
     thresholds = threshold_metrics(y, proba, THRESHOLDS)
     deciles = length_decile_table(df, y, proba)
     domains = domain_table(df, y, proba)
-    profiles = error_profiles(df, y, proba, model)
+    profiles = error_profiles(df, y, proba, model, X=X_full)
 
-    scores = pd.read_csv(BASE + "paper_exploring_scores.csv.gz")
+    scores = pd.read_csv(BASE + "paper_exploring_scores.csv.gz",
+                         usecols=["month", "p_ai"])
     scores["month"] = scores["month"].astype(str)
     bands, trends = exploring_bands(scores)
     print("探索集月度置信分层趋势:",

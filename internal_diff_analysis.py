@@ -16,16 +16,6 @@ RE_LINKS = re.compile(r"https?://|www\.")
 RE_LIST = re.compile(r"\n\d+")
 
 
-def iter_records(filepath):
-    """流式读取 JSONL，跳过无法解析的行（与原 load_jsonl 的容错口径一致）。"""
-    with open(filepath, "r", encoding="utf-8") as f:
-        for line in f:
-            try:
-                yield json.loads(line)
-            except Exception:
-                continue
-
-
 def pattern_counts(text):
     return {
         "!": text.count("!") + text.count("！"),
@@ -49,38 +39,54 @@ def sample_indices(total, sample_size, seed=42):
 
 
 def collect(filepath, sample_size=3000):
-    """单遍流式统计（标题/领域）+ 按索引抽样统计正文，避免全量载入记录。"""
+    """单遍流式统计（标题/领域）+ 按行偏移定位抽样记录统计正文。
+
+    第一遍记录每条可解析记录的文件内偏移，第二遍只 seek 到被抽中的行做
+    JSON 解析；不再像旧实现那样把整个文件重新解析一遍（抽样统计口径一致：
+    `sample_indices` 用同一 seed 对同一总数 n 抽样，处理顺序按记录索引升序）。
+    """
     n = 0
     title_lengths = []
     title_patterns = {k: 0 for k in PATTERN_KEYS}
     domains = Counter()
+    offsets = []
 
-    for item in iter_records(filepath):
-        n += 1
-        title = item.get("note_title", "")
-        if title:
-            title = str(title)
-            title_lengths.append(len(title))
-            for k, v in pattern_counts(title).items():
-                title_patterns[k] += v
-        if "domain" in item:
-            domains[item.get("domain", "")] += 1
+    with open(filepath, "rb") as f:
+        while True:
+            start = f.tell()
+            line = f.readline()
+            if not line:
+                break
+            try:
+                item = json.loads(line)
+            except Exception:
+                continue
+            offsets.append(start)
+            n += 1
+            title = item.get("note_title", "")
+            if title:
+                title = str(title)
+                title_lengths.append(len(title))
+                for k, v in pattern_counts(title).items():
+                    title_patterns[k] += v
+            if "domain" in item:
+                domains[item.get("domain", "")] += 1
 
-    wanted = set(sample_indices(n, sample_size))
+    wanted = sorted(set(sample_indices(n, sample_size)))
     lengths = []
     content_patterns = {k: 0 for k in PATTERN_KEYS}
-    for i, item in enumerate(iter_records(filepath)):
-        if i not in wanted:
-            continue
-        text = content_of(item)
-        if not text:
-            continue
-        text = str(text)
-        lengths.append(len(text))
-        for k, v in pattern_counts(text).items():
-            content_patterns[k] += v
-        if len(lengths) == len(wanted):
-            break
+    if wanted:
+        with open(filepath, "rb") as f:
+            for i in wanted:
+                f.seek(offsets[i])
+                item = json.loads(f.readline())
+                text = content_of(item)
+                if not text:
+                    continue
+                text = str(text)
+                lengths.append(len(text))
+                for k, v in pattern_counts(text).items():
+                    content_patterns[k] += v
 
     sample_n = min(sample_size, n)
     content = {

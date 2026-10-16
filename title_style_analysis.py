@@ -24,7 +24,6 @@
 from __future__ import annotations
 
 import os
-import re
 
 # 单线程 BLAS：小矩阵下多线程同步开销大于收益
 os.environ.setdefault("OMP_NUM_THREADS", "1")
@@ -86,9 +85,15 @@ def load_features() -> tuple[pd.DataFrame, pd.DataFrame]:
     return human, aigc
 
 
-def cv_auc(df: pd.DataFrame, feats: list[str], cv: StratifiedKFold):
-    """与 paper_detector.py 完全相同的逻辑回归交叉验证口径。"""
-    X = df[feats].fillna(0).values
+def cv_auc(df: pd.DataFrame, feats: list[str], cv: StratifiedKFold,
+           X=None) -> dict:
+    """与 paper_detector.py 完全相同的逻辑回归交叉验证口径。
+
+    传入 `X`（调用方按 feats 顺序切好的特征矩阵）时直接复用，避免为
+    每个特征子集重复构造整张矩阵；X 为 None 时保持旧行为。
+    """
+    if X is None:
+        X = df[feats].fillna(0).values
     y = (df["dataset"] == "aigc").astype(int).values
     pipe = make_pipeline(StandardScaler(),
                          LogisticRegression(max_iter=2000, class_weight="balanced"))
@@ -101,8 +106,10 @@ def cv_auc(df: pd.DataFrame, feats: list[str], cv: StratifiedKFold):
     }
 
 
-def fit_title_model(df: pd.DataFrame, title_feats: list[str]) -> dict:
-    X = df[title_feats].fillna(0).values
+def fit_title_model(df: pd.DataFrame, title_feats: list[str],
+                    X=None) -> dict:
+    if X is None:
+        X = df[title_feats].fillna(0).values
     y = (df["dataset"] == "aigc").astype(int).values
     scaler = StandardScaler().fit(X)
     lr = LogisticRegression(max_iter=2000, class_weight="balanced")
@@ -116,9 +123,6 @@ def fit_title_model(df: pd.DataFrame, title_feats: list[str]) -> dict:
     }
 
 
-_RE_NONSPACE = re.compile(r"\S")
-
-
 def scan_titles(path: str) -> tuple[list[str], list, np.ndarray]:
     """流式扫描标题；meta 分数用于按 note_id 去重时保留最完整的一条。"""
     titles, ids, metas = [], [], []
@@ -127,9 +131,12 @@ def scan_titles(path: str) -> tuple[list[str], list, np.ndarray]:
         likes, colls, comms = engagement_of(rec)
         dt = parse_local_time(rec.get("local_time"))
         has_meta = bool(rec.get("user_id")) and rec.get("domain") not in (None, "", "未知")
+        content = content_of(rec)
+        if not isinstance(content, str):
+            content = str(content)
         metas.append(int(has_meta) + int(bool(likes)) + int(bool(colls))
                      + int(bool(comms)) + int(dt is not None)
-                     + int(_RE_NONSPACE.search(str(content_of(rec))) is not None))
+                     + int(bool(content.strip())))
         titles.append(title)
         ids.append(rec.get("note_id"))
     return titles, ids, np.asarray(metas, dtype=np.int64)
@@ -256,15 +263,18 @@ def main() -> None:
 
     # ---- 1. 检测器消融（与 paper_detector.py 相同的 CV） ----
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    col_idx = {c: i for i, c in enumerate(feats_all)}
+    X_full = df[feats_all].fillna(0).values
+    X_of = lambda cols: X_full[:, [col_idx[c] for c in cols]]
     ablation = {
-        "body_only": cv_auc(df, body_feats, cv),
-        "title_only": cv_auc(df, title_feats, cv),
-        "full": cv_auc(df, feats_all, cv),
+        "body_only": cv_auc(df, body_feats, cv, X_of(body_feats)),
+        "title_only": cv_auc(df, title_feats, cv, X_of(title_feats)),
+        "full": cv_auc(df, feats_all, cv, X_full),
     }
     print("消融 AUC:", {k: round(v["auc"], 4) for k, v in ablation.items()})
 
     # ---- 2. 标题全量模型与三个子集打分 ----
-    model = fit_title_model(df, title_feats)
+    model = fit_title_model(df, title_feats, X_of(title_feats))
     coefs = pd.Series(model["coef"], index=title_feats).sort_values()
     exploring = pd.read_csv(BASE + "paper_features_exploring.csv.gz")
 

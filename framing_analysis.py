@@ -68,7 +68,6 @@ BOOT = 1000            # 等样本 bootstrap 次数
 BOOT_SEED = 42
 
 MARK = re.compile(r"[#\s\u200b\ufeff]+")
-WS = re.compile(r"\s+")
 XHS_TAIL = re.compile(r"\[[^\[\]]{1,8}R\]$")
 MENTION_TAIL = re.compile(r"@[^\s@]{1,20}$")
 PUNCT_CLASS = {"感叹号": "！!", "问号": "？?", "波浪号": "～~",
@@ -138,12 +137,16 @@ def scan_view(path: str, content_len_ref: np.ndarray | None = None) -> dict:
         has_meta = bool(rec.get("user_id")) and rec.get("domain") not in (None, "", "未知")
         meta.append(int(has_meta) + int(bool(likes)) + int(bool(colls))
                     + int(bool(comms)) + int(dt is not None)
-                    + int(bool(WS.sub("", content))))
+                    + int(bool(content) and not content.isspace()))
         hours.append(dt.hour if dt is not None else -1)
-        month = dt.strftime("%Y%m") if dt is not None else None
-        if month is not None:
-            month = month_pool.setdefault(month, month)
-        months.append(month)
+        if dt is None:
+            months.append(None)
+        else:
+            ym = (dt.year, dt.month)
+            month = month_pool.get(ym)
+            if month is None:
+                month = month_pool[ym] = f"{dt.year:04d}{dt.month:02d}"
+            months.append(month)
         content_lens.append(len(body))
         n_raw += 1
     return {
@@ -388,7 +391,7 @@ def plot_gradient(grad: dict, quarterly: dict, hourly: dict,
 # --------------------------------------------------------------------------
 def main() -> None:
     init_plot_style()
-    scores = pd.read_csv(SCORES_PATH)
+    scores = pd.read_csv(SCORES_PATH, usecols=["p_ai", "month", "content_len"])
     p_ai = scores["p_ai"].to_numpy()
     months_scores = scores["month"].astype(str).to_numpy()
 

@@ -12,6 +12,9 @@ from analysis_utils import BASE
 exclude = set([u"话题", u"时尚薯", u"生活薯", u"知识薯", u"美食薯", u"校园薯",
                u"薯队长", u"薯条小助手", u"小红书创作学院"])
 
+# 全文件共用一个预编译 CJK 正则
+_CJK_RUN_RE = re.compile(r"[\u4e00-\u9fff]+")
+
 def main():
     print("Loading...")
     note_by_user = defaultdict(lambda: defaultdict(int))
@@ -27,7 +30,7 @@ def main():
                     continue
                 text = item.get("note_title", "") + " " + (
                     item.get("desc") or item.get("note_content") or "")
-                words = re.findall(r"[\u4e00-\u9fff]+", text)
+                words = _CJK_RUN_RE.findall(text)
                 for w in set(words):
                     if len(w) >= 2 and w not in exclude:
                         note_by_user[user_id][w] += 1
@@ -70,21 +73,26 @@ def main():
         raise SystemExit(1)
 
     print("Computing...")
+    # 均值/中心化/范数只依赖单列，预先算一次；原先每对词都重复 O(n) 的
+    # 向量运算（中心化与范数各算两遍）。逐对的乘-求和表达式保持不变，
+    # 因此相关系数与原实现逐位一致。
+    centered = np.empty((len(valid), n_users), dtype=np.float64)
+    norms = np.empty(len(valid), dtype=np.float64)
+    for i, j in enumerate(valid):
+        xc = cols[j] - cols[j].mean()
+        centered[i] = xc
+        norms[i] = math.sqrt(float((xc * xc).sum()))
+
     all_results = []
     for j1i in range(len(valid)):
+        xc = centered[j1i]
+        sx = norms[j1i]
         for j2i in range(j1i + 1, len(valid)):
-            j1, j2 = valid[j1i], valid[j2i]
-            x = cols[j1]
-            y = cols[j2]
-            mx = x.mean()
-            my = y.mean()
-            xc = x - mx
-            yc = y - my
-            sx = math.sqrt(float((xc * xc).sum()))
-            sy = math.sqrt(float((yc * yc).sum()))
+            yc = centered[j2i]
+            sy = norms[j2i]
             r = float((xc * yc).sum()) / (sx * sy) if sx != 0 and sy != 0 else 0.0
             if not math.isnan(r):
-                all_results.append((top_words[j1], top_words[j2], r))
+                all_results.append((top_words[valid[j1i]], top_words[valid[j2i]], r))
 
     all_results.sort(key=lambda x: x[2])
 

@@ -232,7 +232,9 @@ def compute_all_particle_ratios(text, particles):
 
 
 def load_particle_data(files, particles):
-    stored_particles = particles[:65]
+    # 去重并保存全部粒子的比率：热力图的 60 个粒子索引最高到 93，
+    # 只存前 65 个会让后半段粒子全部显示为 0（此前的 slicing bug）。
+    stored_particles = list(dict.fromkeys(particles))
 
     particle_stats = {}
     for f in files:
@@ -489,7 +491,12 @@ def analyze_particle_with_engagement(particle_stats, files, top_particles):
             lows = []
             for item in stats_list:
                 ratio = item["ratios"].get(p, 0)
-                liked = item.get("liked_count", 0)
+                liked = item.get("liked_count") or 0
+                if isinstance(liked, str):
+                    try:
+                        liked = int(liked)
+                    except ValueError:
+                        liked = 0
                 if liked > 10:
                     highs.append(ratio)
                 elif liked == 0:

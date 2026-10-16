@@ -9,17 +9,22 @@ import json
 import os
 import random
 from collections.abc import Iterator
+from datetime import datetime
 
 import numpy as np
 import pandas as pd
 
 BASE = os.path.dirname(os.path.abspath(__file__)) + "/"
 FIGS = BASE + "paper_figs/"
+INSIGHTS = BASE + "insights/"
 
 FEATURE_META = ["dataset", "domain", "month", "model_family", "model",
                 "likes", "collections", "comments"]
 
 CONTENT_KEYS = ("note_content", "desc")
+
+# 三个子集统一的绘图配色（Human / AIGC / 后 LLM 探索集）
+PALETTE = {"human": "#4C72B0", "aigc": "#C44E52", "exploring": "#55A868"}
 
 _CJK_FALLBACKS = ("Noto Sans CJK SC", "Noto Sans CJK JP", "Noto Sans CJK TC",
                   "Source Han Sans SC", "WenQuanYi Micro Hei", "SimHei")
@@ -45,6 +50,42 @@ def setup_chinese_fonts(font_dir: str = "/usr/share/fonts/noto-cjk") -> str | No
             plt.rcParams["font.family"] = name
             return name
     return None
+
+
+def init_plot_style() -> str | None:
+    """初始化统一的绘图风格（中文字体 + 一致的 rcParams）；返回字体名。"""
+    import matplotlib.pyplot as plt
+
+    font = setup_chinese_fonts()
+    plt.rcParams.update({
+        "figure.dpi": 110,
+        "savefig.dpi": 150,
+        "axes.titlesize": 11.5,
+        "axes.labelsize": 10,
+        "xtick.labelsize": 9,
+        "ytick.labelsize": 9,
+        "legend.fontsize": 9,
+        "axes.grid": True,
+        "grid.alpha": 0.25,
+        "grid.linewidth": 0.6,
+        "axes.spines.top": False,
+        "axes.spines.right": False,
+        "figure.facecolor": "white",
+        "axes.facecolor": "white",
+    })
+    return font
+
+
+def save_fig(fig, path: str, dpi: int = 150) -> str:
+    """紧凑布局保存图片并关闭；自动创建输出目录，返回路径。"""
+    import matplotlib.pyplot as plt
+
+    parent = os.path.dirname(os.path.abspath(path))
+    os.makedirs(parent, exist_ok=True)
+    fig.tight_layout()
+    fig.savefig(path, dpi=dpi, bbox_inches="tight", facecolor="white")
+    plt.close(fig)
+    return path
 
 
 def iter_jsonl(path: str) -> Iterator[dict]:
@@ -78,6 +119,62 @@ def load_posts(path: str, with_title: bool = True, sample: int | None = None,
     if sample is not None and len(texts) > sample:
         texts = random.Random(seed).sample(texts, sample)
     return texts
+
+
+def load_records(path: str, sample: int | None = None,
+                 seed: int = 42) -> list[dict]:
+    """读取一个 JSONL 数据集为记录列表；可复现地随机抽样（同 load_posts 的抽样口径）。"""
+    recs = list(iter_jsonl(path))
+    if sample is not None and len(recs) > sample:
+        recs = random.Random(seed).sample(recs, sample)
+    return recs
+
+
+def to_int(v, default: int = 0) -> int:
+    """把 '123' / 123 / None 等混用的计数字段安全地转为整数。"""
+    try:
+        return int(v)
+    except (TypeError, ValueError):
+        return default
+
+
+def engagement_of(rec: dict) -> tuple[int, int, int]:
+    """读取一条记录的（点赞, 收藏, 评论），兼容两种字段命名。"""
+    return (
+        to_int(rec.get("liked_count") if rec.get("liked_count") is not None
+               else rec.get("likes")),
+        to_int(rec.get("collected_count") if rec.get("collected_count") is not None
+               else rec.get("collections")),
+        to_int(rec.get("comments_count") if rec.get("comments_count") is not None
+               else rec.get("comments")),
+    )
+
+
+def parse_local_time(value) -> datetime | None:
+    """解析数据集的本地时间字段（'YYYYMMDDHH'，兼容 8 位日期）；失败返回 None。"""
+    s = str(value or "").strip()
+    if not s.isdigit():
+        return None
+    try:
+        if len(s) >= 10:
+            return datetime.strptime(s[:10], "%Y%m%d%H")
+        if len(s) == 8:
+            return datetime.strptime(s, "%Y%m%d")
+    except ValueError:
+        return None
+    return None
+
+
+def hour_of(value) -> int | None:
+    """本地小时（0–23），解析失败返回 None。"""
+    dt = parse_local_time(value)
+    return dt.hour if dt is not None else None
+
+
+def weekday_of(value) -> int | None:
+    """本地星期（0=周一 … 6=周日），解析失败返回 None。"""
+    dt = parse_local_time(value)
+    return dt.weekday() if dt is not None else None
 
 
 def load_features(dataset: str, base: str = BASE) -> pd.DataFrame:

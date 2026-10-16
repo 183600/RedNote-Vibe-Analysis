@@ -229,7 +229,7 @@ print("\n=== 5. Text Complexity ===")
 
 
 def complexity(data, name, use_title=False):
-    chars_list = unique_ratios = sent_lens = []
+    chars_list, unique_ratios, sent_lens = [], [], []
     for item in data:
         if use_title:
             text = item.get("note_title", "")

@@ -94,8 +94,10 @@ This script will:
 |------|-------------|
 | `training_set_human.jsonl`, `training_set_aigc.jsonl`, `exploring_set.jsonl` | Research datasets (never modify) |
 | `paper_*.py` | Paper pipeline: lexicon → features → model fingerprint → detector → drift → extra figures → engagement → robustness |
-| `analysis_utils.py` | Shared helpers: streaming JSONL reader, Chinese fonts, detector scoring, stats (bootstrap CI, Cliff's delta, Wilson CI) |
+| `analysis_utils.py` | Shared helpers: streaming JSONL reader, record/content/engagement/timestamp helpers, Chinese fonts, unified plot style, detector scoring, stats (bootstrap CI, Cliff's delta, Wilson CI) |
 | `paper_figs/` | Figures produced by the paper pipeline |
+| `deep_dive_analysis.py` | Full-scan deep dive (publish rhythm / lexicon diffusion / sentence rhythm / duplicate structure) |
+| `insights/` + `deep_dive_results.{json,md}` | Figures and result files produced by `deep_dive_analysis.py` |
 | `*.py` (other) | Exploratory fork analyses: word frequency, particles, topics, sentiment, time, domains, user clustering, … |
 | `output/` | Figures from the joint exploratory analysis |
 | `tests/` | Unit tests for `analysis_utils.py` (`python3 -m unittest discover -s tests`) |
@@ -178,6 +180,15 @@ Run the full pipeline in order with `python3 run_paper_pipeline.py` (or `--list`
 - **领域差异**：心理类"的"使用率最高（~3%），穿搭最低（~1.3%）
 - **AIGC特点**：与Human相关性高但与exploring差异大，表现出混合特征
 
+### 深潜分析（`deep_dive_analysis.py`）
+
+全量扫描四个新维度：发布节奏 / 词表扩散 / 句子节奏 / 重复内容。结果图在 `insights/`，数据在 `deep_dive_results.json` 与 `deep_dive_results.md`。前三项按 note_id 去重后统计（每篇笔记一次），重复内容保留逐记录口径：
+
+1. **发布节奏**：探索集发布峰值在 18 时（8.66%），18–23 时合计 42.28%，周末占 26.64%；人类集 `local_time` 小时字段恒为占位值 08，小时分布不可用；两集星期分布形态相关 ρ=0.571。
+2. **词表扩散**：受控 AIGC 参考 AI 味词密度 48.0/万字符；人类集干净窗口（≤2022.06）AI 味词使用率随时间显著下降（ρ=-0.851，p=3.9e-06），探索集全窗口平稳（ρ=0.089，p=0.64；2023H1 14.95 → 2025H1 16.34 每万字符）。
+3. **句子节奏**：平均句长中位数 human 46.7 / aigc 25.6 / exploring 22.1；人类 vs AIGC Cliff's δ=-0.522，人类 vs 探索集 δ=-0.632（p≈0）。
+4. **重复内容与数据完整性**：探索集逐记录正文重复占比 68.11%（人类 1.05%、AIGC 0.00%）；91,517 条记录仅 60,161 个唯一 note_id，重复绝大部分是同一笔记「带完整元数据的副本 + 缺 user_id/互动字段的副本」；去重到 note_id 后正文重复率降至 1.52%；另有 63.70% 的记录缺 user_id 或领域为「未知」。
+
 ### 生成的可视化图表
 
 | 文件 | 描述 |
@@ -194,6 +205,7 @@ Run the full pipeline in order with `python3 run_paper_pipeline.py` (or `--list`
 | `emoji_distribution.png` / `punctuation_heatmap.png` | emoji 与标点使用 |
 | `sentiment_comparison.png` / `sentiment_box.png` | 情感对比与分布 |
 | `time_distribution.png` / `month_distribution.png` | 发布时间分布 |
+| `insights/publish_rhythm.png`、`lexicon_diffusion.png`、`sentence_rhythm.png`、`duplicate_content.png` | 深潜分析图表（发布节奏、词表扩散、句子节奏、重复内容） |
 | `output/` | 领域、话题、互动等探索性图表合集 |
 | `paper_figs/` | 论文管线图表（检测器、漂移、互动、稳健性） |
 
@@ -212,7 +224,8 @@ Run the full pipeline in order with `python3 run_paper_pipeline.py` (or `--list`
 - `emoji_analysis.py` / `time_analysis.py` / `extended_analysis.py` - emoji、时间与扩展特征
 - `topic_comparison_analysis.py` / `advanced_topic_comparison.py` / `new_topic_comparison.py` - 话题对比
 - `unique_comparison.py` / `internal_detailed_analysis.py` / `internal_diff_analysis.py` - 独特性与内部差异
-- `user_clustering.py` - 用户风格聚类
+- `deep_dive_analysis.py` - 发布节奏 / 词表扩散 / 句子节奏 / 重复内容深潜分析（输出 `insights/`）
+- `user_clustering.py` - 用户风格聚类（输出 `user_clustering_results.md`）
 - `quick_start.py` - BERT 基线训练
 
 所有脚本使用 `analysis_utils.py` 中的统一数据读取、中文字体与检测器打分工具；其单元测试见 `tests/`。

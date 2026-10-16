@@ -1,8 +1,13 @@
 # -*- coding: utf-8 -*-
-import json
+"""基于 22 个跨话题文风词的探索集用户风格聚类（简易 k-means）。
+
+输出：`user_clustering_results.md`（此前误写到 word_correlation_extended_results.md，
+与词频相关性脚本的输出语义不符，已改为独立文件名，避免互相覆盖）。
+"""
 import re
-import math
 from collections import defaultdict, Counter
+
+from analysis_utils import BASE, iter_jsonl, post_text
 
 # 22个真正的跨话题通用文风词
 cross_topic_words = [
@@ -15,21 +20,15 @@ cross_topic_words = [
 print("Loading...")
 note_by_user = defaultdict(lambda: defaultdict(int))
 
-with open("exploring_set_fixed.jsonl", "rb") as f:
-    for line in f:
-        try:
-            s = line.decode("utf-8").strip()
-            item = json.loads(s)
-            user_id = item.get("user_id")
-            if not user_id:
-                continue
-            text = item.get("note_title", "") + " " + item.get("desc", "")
-            words = re.findall(r"[\u4e00-\u9fff]+", text)
-            for w in words:
-                if w in cross_topic_words:
-                    note_by_user[user_id][w] += 1
-        except:
-            pass
+for item in iter_jsonl(BASE + "exploring_set_fixed.jsonl"):
+    user_id = item.get("user_id")
+    if not user_id:
+        continue
+    text = post_text(item)
+    words = re.findall(r"[\u4e00-\u9fff]+", text)
+    for w in words:
+        if w in cross_topic_words:
+            note_by_user[user_id][w] += 1
 
 print("Total users: " + str(len(note_by_user)))
 
@@ -115,7 +114,7 @@ for cluster_id, size, top_words_cluster in results:
             print("  " + w + ": " + str(round(v, 4)))
 
 # Save to file
-with open("word_correlation_extended_results.md", "wb") as f:
+with open("user_clustering_results.md", "wb") as f:
     f.write((u"# 基于22个跨话题文风词的用户聚类分析\n\n").encode('utf-8'))
     f.write((u"使用22个在所有话题词频都超过0.05%的跨话题词进行用户分类\n\n").encode('utf-8'))
     

@@ -133,6 +133,23 @@
 2. **词汇多样性（MTLD）**：AIGC 每帖 MTLD 中位数 189.9，显著高于人类 122.2 与探索集 126.7（human vs AIGC δ=-0.507）——单帖内用词更丰富，与 `paper_features` 的独特字/二元组比率方向一致。
 3. **Heaps 定律（统一 100 万 token 预算）**：词汇增长斜率 β 人类 0.639 / 探索集 0.613 / AIGC 0.583——AIGC 跨帖词汇增长最慢；单帖内「词汇量大」与跨帖「模板复用多」并存，与 `framing_analysis` 的模板集中度结论互洽。
 
+### 检测器诊断（`detector_diagnostics.py`）
+
+对论文检测器做四项诊断：概率校准、阈值敏感性、错分切片与探索集不确定性。结果图在 `insights/detector_calibration.png`、`detector_errors.png`、`detector_uncertainty.png`，数据在 `detector_diagnostics_results.json` 与 `detector_diagnostics_results.md`。CV 口径与 `paper_detector.py` 完全一致（复算 AUC=0.9402/0.9294，与论文记录逐位一致）：
+
+1. **概率校准**：平衡类权重得分不能直接当概率用——按自然先验（P(AI)=12.3%）做 logit 平移校正后，ECE 从 0.1446 降到 0.0072、Brier 从 0.0911 降到 0.0482，校正后校准良好。
+2. **阈值敏感性**：τ=0.5 时精确率 0.49/召回率 0.86（人类 12.5% 被误标）；τ=0.9 时精确率升至 0.873/召回率 0.56（人类仅 1.1% 被误标）；τ=0.95 精确率 0.940——高置信子集分析用高阈值是安全的。
+3. **错分切片**：错误率随长度单调变化——最短十分位（~208 字）人类假阳性率 28.0%，最长十分位（~950 字）AIGC 假阴性率 38.7%（该十位 AUC 降至 0.898）；领域间差异小得多（人类假阳性率 9.1%–15.6%），说明检测器不是靠领域词作弊。错分画像镜像对称：人类假阳性帖在独特字比率、AI 味词、感叹号上更像 AIGC，AIGC 假阴性帖则反之。
+4. **探索集不确定性**：高置信占比在 31 个月内的月度趋势不显著（ρ=0.295，p=0.12，与论文 §5.4 平台期一致），而"拿不准"（0.4–0.6）占比不升反降（ρ=-0.549，p=0.002）——排除"高置信上升只是检测器越来越含糊"的解释。
+
+### 模型家族词表指纹（`family_lexicon_analysis.py`）
+
+在 AIGC 子集内部做家族/单模型 one-vs-rest 的 informative Dirichlet log-odds（口径同 `paper_lexicon.py`，并额外把各家族领域构成重加权到全语料分布以消除话题混杂）。结果图在 `insights/family_lexicon.png`，数据在 `family_lexicon_results.json` 与 `family_lexicon_results.md`：
+
+1. **家族口癖差异显著**：GPT 偏好"其实/特别/变得"类书面连接词；Gemini 高度偏好"姐妹/感觉/真的/们/冲"的社区话术；DeepSeek 偏好"直接/突然/救命/居然"的情绪化口语；Qwen 偏好"不仅/更加/非常/成为"的正式递进词；GLM 特征词偏叙事化（探索/探秘/探店）；Claude 介于正式与口语之间。
+2. **共享 AI 味词表（25 词）密度**：家族间相差 1.9 倍——Gemini 70.8/万字符最高，GLM 37.2 最低，人类基线仅 14.0；这与 `paper_model_fingerprint.py` 的"Gemini 最不像人、GLM-3 最像人"结论方向一致。
+3. **单模型粒度**：如 gemini-2.0 的"姐妹"、deepseek-v3 的"绝绝子/yyds"、claude-sonnet-4 的"很/真的/但是"、glm-3 的"雪山/本科"，为论文 §5.2 的风格指纹补充了可直接引用的语言学证据。
+
 ### 生成的可视化图表
 
 | 文件 | 描述 |
@@ -153,6 +170,8 @@
 | `insights/framing_formulaicity.png`、`framing_gradient.png` | 框架模板化图表（开篇/收尾集中度、收尾符号构成、P(AI) 梯度、季度扩散） |
 | `insights/title_detector.png`、`title_dynamics.png`、`title_formulaicity.png` | 标题端分析图表（特征权重消融、半年度动态与互动、标题前缀集中度） |
 | `insights/diversity_burstiness.png`、`diversity_lexical.png` | 文本多样性图表（句长分布/burstiness ECDF、MTLD 小提琴图与 Heaps 曲线） |
+| `insights/detector_calibration.png`、`detector_errors.png`、`detector_uncertainty.png` | 检测器诊断图（可靠性曲线/阈值权衡、长度与领域错误切片、置信度分层时间线） |
+| `insights/family_lexicon.png` | 模型家族词表指纹（词×家族 log-odds 热力图、AI 味词密度） |
 | `output/` | 领域、话题、互动等探索性图表合集 |
 | `paper_figs/` | 论文管线图表（检测器、漂移、互动、稳健性） |
 
@@ -175,10 +194,14 @@
 - `framing_analysis.py` - 开篇/收尾框架模板化与 AI 风格关联（输出 `insights/framing_*.png`、`framing_results.json/md`）
 - `title_style_analysis.py` - 标题端 AI 味：标题特征消融、模型标题像人度、标题互动与模板（输出 `insights/title_*.png`、`title_style_results.json/md`）
 - `diversity_analysis.py` - 句长 burstiness / MTLD / Heaps β 多样性与节奏分析（输出 `insights/diversity_*.png`、`diversity_results.json/md`）
+- `detector_diagnostics.py` - 检测器概率校准 / 阈值敏感性 / 错分切片 / 探索集不确定性（输出 `insights/detector_*.png`、`detector_diagnostics_results.json/md`）
+- `family_lexicon_analysis.py` - AIGC 子集内家族/单模型词表指纹（输出 `insights/family_lexicon.png`、`family_lexicon_results.json/md`）
 - `user_clustering.py` - 用户风格聚类（输出 `user_clustering_results.md`）
 - `quick_start.py` - BERT 基线训练
 
-运行环境：`pip install -r requirements.txt`；公共工具位于 `analysis_utils.py`，单元测试见 `tests/`（`python3 -m unittest discover -s tests`，覆盖 `analysis_utils.py`、`framing_analysis.py` 及标题/多样性分析的纯函数）。
+深潜分析套件可一键顺序执行：`python3 run_fork_pipeline.py`（`--list` / `--from N` / `--only 脚本名`，编排 deep_dive / framing / title_style / diversity / detector_diagnostics / family_lexicon / user_clustering 共 7 步，输出统一落在 `insights/`）。
+
+运行环境：`pip install -r requirements.txt`；公共工具位于 `analysis_utils.py`（含概率校准与阈值指标工具），单元测试见 `tests/`（`python3 -m unittest discover -s tests`，覆盖 `analysis_utils.py`、`framing_analysis.py` 及标题/多样性分析的纯函数）。
 
 ## 参考资料
 

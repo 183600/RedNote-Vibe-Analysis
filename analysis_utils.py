@@ -518,6 +518,92 @@ def bootstrap_auc(y, proba, n_boot: int = 1000, seed: int = 42) -> dict:
     }
 
 
+def threshold_metrics(y, proba, thresholds=(0.3, 0.5, 0.7, 0.9, 0.95),
+                      with_ci: bool = True) -> list[dict]:
+    """一组阈值下二分类器的精确率/召回率/F1/阳性占比。
+
+    y=1 为正类（如 AIGC），proba 为正类概率。`flagged_neg_share` 是负类
+    （人类）被标为正类的比例（假阳性率），`flagged_pos_share` 即召回率。
+    """
+    from sklearn.metrics import f1_score
+
+    y = np.asarray(y, dtype=int)
+    proba = np.asarray(proba, dtype=float)
+    n_pos = int((y == 1).sum())
+    n_neg = int((y == 0).sum())
+    rows = []
+    for t in thresholds:
+        pred = (proba >= t).astype(int)
+        tp = int(((pred == 1) & (y == 1)).sum())
+        fp = int(((pred == 1) & (y == 0)).sum())
+        fn = int(((pred == 0) & (y == 1)).sum())
+        precision = tp / (tp + fp) if tp + fp else 0.0
+        recall = tp / n_pos if n_pos else 0.0
+        row = {
+            "threshold": float(t),
+            "precision": round(precision, 4),
+            "recall": round(recall, 4),
+            "f1": round(float(f1_score(y, pred, zero_division=0)), 4),
+            "flagged_neg_share": round(fp / n_neg, 4) if n_neg else 0.0,
+            "flagged_pos_share": round(recall, 4),
+        }
+        if with_ci:
+            row["precision_ci"] = [round(v, 4) for v in wilson_ci(tp, tp + fp)]
+        rows.append(row)
+    return rows
+
+
+def prior_corrected_proba(proba, n_neg: int, n_pos: int) -> np.ndarray:
+    """把 `class_weight="balanced"` 训练出的概率校正回原始类先验。
+
+    平衡权重等价于在 logit 上平移 log(n_neg/n_pos)（见 King & Zeng, 2001），
+    校正后 P̂ 可直接当作自然分布下的概率使用（用于校准/阈值分析）。
+    """
+    p = np.clip(np.asarray(proba, dtype=float), 1e-12, 1 - 1e-12)
+    shift = np.log(float(n_neg) / float(n_pos)) if n_pos > 0 and n_neg > 0 else 0.0
+    logit = np.log(p / (1.0 - p)) - shift
+    return 1.0 / (1.0 + np.exp(-logit))
+
+
+def reliability_bins(proba, y, bins: int = 10) -> dict:
+    """把预测概率分箱，返回可靠性图所需的逐箱统计。
+
+    返回 dict：bin_lo/bin_hi（等宽箱边界）、mean_pred、mean_true、count。
+    空箱的 mean_pred/mean_true 为 NaN（由调用方忽略）。
+    """
+    p = np.asarray(proba, dtype=float)
+    labels = np.asarray(y, dtype=float)
+    if p.size == 0 or p.size != labels.size:
+        raise ValueError("proba and y must be non-empty and have equal length")
+    edges = np.linspace(0.0, 1.0, bins + 1)
+    idx = np.clip(np.digitize(p, edges[1:-1], right=False), 0, bins - 1)
+    mean_pred = np.full(bins, np.nan)
+    mean_true = np.full(bins, np.nan)
+    count = np.zeros(bins, dtype=int)
+    for b in range(bins):
+        m = idx == b
+        count[b] = int(m.sum())
+        if count[b]:
+            mean_pred[b] = float(p[m].mean())
+            mean_true[b] = float(labels[m].mean())
+    return {"bin_lo": edges[:-1].tolist(), "bin_hi": edges[1:].tolist(),
+            "mean_pred": mean_pred.tolist(), "mean_true": mean_true.tolist(),
+            "count": count.tolist()}
+
+
+def expected_calibration_error(proba, y, bins: int = 10) -> float:
+    """Expected Calibration Error（等宽分箱，|平均预测-实际频率| 的样本加权）。"""
+    r = reliability_bins(proba, y, bins)
+    count = np.asarray(r["count"], dtype=float)
+    n = count.sum()
+    if n <= 0:
+        return 0.0
+    pred = np.asarray(r["mean_pred"], dtype=float)
+    true = np.asarray(r["mean_true"], dtype=float)
+    valid = count > 0
+    return float((count[valid] / n * np.abs(pred[valid] - true[valid])).sum())
+
+
 def bootstrap_median_ci(values, n_boot: int = 1000, seed: int = 42,
                         alpha: float = 0.05) -> dict:
     """对一维样本做 bootstrap，返回中位数及其 (1-alpha) 置信区间。

@@ -21,7 +21,8 @@ from analysis_utils import (post_text, content_of, clean_body,
                             dataset_path, title_of, compact_text,
                             split_sentences, burstiness, mtld,
                             prefix_ngram_stats, bootstrap_median_ci,
-                            DATASETS, linear_score)
+                            DATASETS, linear_score, prior_corrected_proba,
+                            reliability_bins, expected_calibration_error)
 
 
 class TestJsonlHelpers(unittest.TestCase):
@@ -258,6 +259,55 @@ class TestBootstrapMedianCI(unittest.TestCase):
         df = pd.DataFrame({"a": [1.0]})
         got = linear_score(df, ["a"], [0.0], [1.0], [2.0], 0.0)
         self.assertAlmostEqual(float(got[0]), float(detector_score(df, model)[0]))
+
+
+class TestCalibrationHelpers(unittest.TestCase):
+    def test_prior_corrected_proba_shifts_down_for_imbalanced_negatives(self):
+        p = np.array([0.5])
+        corr = prior_corrected_proba(p, n_neg=900, n_pos=100)
+        self.assertAlmostEqual(float(corr[0]), 0.1, places=6)
+        # 先验均衡时不应改变数值
+        same = prior_corrected_proba(p, n_neg=100, n_pos=100)
+        self.assertAlmostEqual(float(same[0]), 0.5, places=9)
+
+    def test_reliability_bins_counts_and_means(self):
+        y = np.array([0, 0, 1, 1])
+        p = np.array([0.05, 0.15, 0.85, 0.95])
+        r = reliability_bins(p, y, bins=10)
+        self.assertEqual(sum(r["count"]), 4)
+        self.assertEqual(r["count"][0], 1)
+        self.assertEqual(r["count"][1], 1)
+        self.assertEqual(r["count"][8], 1)
+        self.assertEqual(r["count"][9], 1)
+        self.assertAlmostEqual(r["mean_true"][8], 1.0)
+        self.assertAlmostEqual(r["mean_true"][9], 1.0)
+        self.assertTrue(np.isnan(r["mean_pred"][4]))
+
+    def test_ece_perfect_calibration_and_extreme_miscalibration(self):
+        y = np.array([0, 0, 0, 0, 1, 1, 1, 1])
+        p_perfect = np.array([0.1, 0.1, 0.1, 0.1, 0.9, 0.9, 0.9, 0.9])
+        self.assertLess(expected_calibration_error(p_perfect, y), 0.11)
+        p_wrong = 1.0 - p_perfect
+        self.assertGreater(expected_calibration_error(p_wrong, y), 0.7)
+
+    def test_reliability_bins_validates_input(self):
+        with self.assertRaises(ValueError):
+            reliability_bins([], [], bins=10)
+        with self.assertRaises(ValueError):
+            reliability_bins([0.5], [0, 1], bins=10)
+
+    def test_threshold_metrics(self):
+        from analysis_utils import threshold_metrics
+        y = np.array([0, 0, 1, 1])
+        p = np.array([0.2, 0.6, 0.8, 0.4])
+        rows = threshold_metrics(y, p, thresholds=(0.5, 0.9), with_ci=False)
+        self.assertEqual(rows[0]["threshold"], 0.5)
+        self.assertAlmostEqual(rows[0]["precision"], 0.5)
+        self.assertAlmostEqual(rows[0]["recall"], 0.5)
+        self.assertAlmostEqual(rows[0]["flagged_neg_share"], 0.5)
+        self.assertAlmostEqual(rows[1]["precision"], 0.0)
+        self.assertAlmostEqual(rows[1]["recall"], 0.0)
+        self.assertEqual(len(threshold_metrics(y, p, with_ci=True)[0]["precision_ci"]), 2)
 
 
 class TestFontSetup(unittest.TestCase):

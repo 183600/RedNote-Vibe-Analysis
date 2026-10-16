@@ -238,20 +238,13 @@ def plot_top_words(freqs, files, use_title, output_dir):
     return filename
 
 
-def plot_length_distribution(texts_data, files, use_title, output_dir):
+def plot_length_distribution(lengths_by_file, files, use_title, output_dir):
     label = "title" if use_title else "content"
 
     fig, axes = plt.subplots(1, 3, figsize=(15, 5))
 
     for idx, f in enumerate(files):
-        lengths = []
-        for item in texts_data[f]:
-            if use_title:
-                text = item.get("note_title", "")
-            else:
-                text = item.get("desc", "") or item.get("note_content", "")
-            if text:
-                lengths.append(len(text))
+        lengths = lengths_by_file[f]
 
         if lengths:
             axes[idx].hist(
@@ -316,6 +309,9 @@ def main():
         print(f"  {f}: {stats[f]['total']} records")
 
     results = {"content": {}, "title": {}}
+    corr_matrices = {}
+    generated = []
+    os.makedirs("output", exist_ok=True)
 
     for use_title in [False, True]:
         label = "title" if use_title else "content"
@@ -330,12 +326,22 @@ def main():
             top10 = ", ".join([w for w, c in freq.most_common(10)])
             print(f"  {f}: {top10}")
 
+        generated.append(plot_top_words(freqs, files, use_title, "output"))
+
         print(f"\n{label.capitalize()} length stats:")
+        lengths_by_file = {
+            f: stats[f]["lengths_title" if use_title else "lengths_desc"]
+            for f in files
+        }
         for f in files:
-            lengths = stats[f]["lengths_title" if use_title else "lengths_desc"]
+            lengths = lengths_by_file[f]
             print(
                 f"  {f}: mean={np.mean(lengths):.1f}, median={np.median(lengths):.1f}"
             )
+
+        generated.append(
+            plot_length_distribution(lengths_by_file, files, use_title, "output")
+        )
 
         corr_matrix = np.zeros((3, 3))
         for i in range(3):
@@ -347,19 +353,22 @@ def main():
                 f1 = file_names[i]
                 f2 = file_names[j]
                 results[label][f"{f1}_vs_{f2}"] = corr
+                generated.append(
+                    plot_scatter(vec1, vec2, corr, files[i], files[j], label,
+                                 "output")
+                )
                 print(f"\nCorrelation ({label}): {f1} vs {f2} = {corr:.4f}")
 
         print(f"\nCorrelation Matrix ({label}):")
         print(corr_matrix)
+        corr_matrices[label] = corr_matrix
+
+    generated.append(plot_correlation_heatmaps(corr_matrices, "output"))
 
     print("\n=== Analysis Complete ===")
     print("Generated files:")
-    print("- content_top_words.png")
-    print("- title_top_words.png")
-    print("- content_length_distribution.png")
-    print("- title_length_distribution.png")
-    print("- 6 scatter plots (3 content + 3 title)")
-    print("- correlation_heatmaps.png")
+    for path in generated:
+        print("- " + path)
 
 
 if __name__ == "__main__":

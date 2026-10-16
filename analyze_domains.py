@@ -102,11 +102,14 @@ def main():
     
         f.write((u"\n## 结论\n\n").encode('utf-8'))
         n_all6 = len(in_all_6)
-        n_7 = dist.get(7, 0)
+        n_dom = len(domain_counts)
+        n_all = dist.get(n_dom, 0)
+        n_mode = max(dist, key=lambda x: dist[x]) if dist else 0
+        n_mode_cnt = dist.get(n_mode, 0)
         n_5 = dist.get(5, 0)
         n_few = sum(c for n, c in dist.items() if n <= 4)
         f.write((u"1. 100个词中有 " + str(n_all6) + u" 个词真正在6个主要话题（情感、穿搭、心理、健康、职场、旅行）都出现\n").encode('utf-8'))
-        f.write((u"2. 大部分词（" + str(n_7) + u"个）覆盖7个话题（包括\"未知\"分类）\n").encode('utf-8'))
+        f.write((u"2. 话题覆盖数的众数是 " + str(n_mode) + u" 个话题（" + str(n_mode_cnt) + u" 个词）；覆盖全部 " + str(n_dom) + u" 个话题（含\"未知\"分类）的词有 " + str(n_all) + u" 个\n").encode('utf-8'))
         f.write((u"3. 有 " + str(n_5) + u" 个词只出现在5个话题，" + str(n_few) + u"个词出现在4个及以下话题，不能算真正的跨话题词\n").encode('utf-8'))
         f.write((u"4. \"未知\"分类包含大量笔记，是分类系统未命名的内容\n").encode('utf-8'))
 

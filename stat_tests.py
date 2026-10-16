@@ -266,8 +266,9 @@ def main():
     def cohens_d(x, y):
         nx, ny = len(x), len(y)
         dof = nx + ny - 2
+        # 合并方差用样本方差（ddof=1）；np.std 默认总体方差会低估 d
         return (np.mean(x) - np.mean(y)) / np.sqrt(
-            ((nx - 1) * np.std(x) ** 2 + (ny - 1) * np.std(y) ** 2) / dof
+            ((nx - 1) * np.var(x, ddof=1) + (ny - 1) * np.var(y, ddof=1)) / dof
         )
 
 

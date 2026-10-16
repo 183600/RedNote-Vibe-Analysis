@@ -48,7 +48,7 @@ from sklearn.preprocessing import StandardScaler
 
 from analysis_utils import (BASE, INSIGHTS, init_plot_style, save_fig, save_json,
                             expected_calibration_error, prior_corrected_proba,
-                            reliability_bins, detector_score, load_detector_model,
+                            reliability_bins, load_detector_model,
                             threshold_metrics)
 from paper_detector import LABELS
 
@@ -351,19 +351,22 @@ def plot_uncertainty(ecdf: dict, bands: pd.DataFrame, trends: dict) -> None:
     save_fig(fig, INSIGHTS + "detector_uncertainty.png")
 
 
-def ecdf_curves(df: pd.DataFrame, scores: pd.DataFrame, model: dict) -> dict:
-    """人类集 / AIGC 集 / 探索集两端半年的稳健得分 ECDF（复用已加载的标注数据）。"""
+def ecdf_curves(df: pd.DataFrame, scores: pd.DataFrame,
+                oof_robust: np.ndarray) -> dict:
+    """人类集 / AIGC 集 / 探索集两端半年的稳健得分 ECDF。
+
+    人类/AIGC 用 5 折交叉验证的 out-of-fold 稳健得分，与探索集（外样本）
+    同口径；若用全量模型的训练集内得分，两条曲线会偏乐观、不可比。
+    """
     def curve(values):
         xs = np.sort(np.asarray(values, dtype=float))
         ys = np.arange(1, len(xs) + 1) / len(xs)
         return [0.0] + xs.tolist(), [0.0] + ys.tolist()
 
     is_human = (df["dataset"] == "human").values
-    # 整表打一次分再按行拆分，避免对两个子表分别做一次标准化矩阵运算
-    score = detector_score(df, model, robust=True)
     out = {}
-    out["人类（前LLM）"] = (*curve(score[is_human]), COLORS["human"], "-")
-    out["AIGC"] = (*curve(score[~is_human]), COLORS["aigc"], "-")
+    out["人类（前LLM）"] = (*curve(oof_robust[is_human]), COLORS["human"], "-")
+    out["AIGC"] = (*curve(oof_robust[~is_human]), COLORS["aigc"], "-")
     e23 = scores[(scores["month"] >= "202301") & (scores["month"] <= "202306")]["p_ai"]
     e25 = scores[scores["month"] >= "202501"]["p_ai"]
     out["探索集 2023H1"] = (*curve(e23), COLORS["exploring"], "--")
@@ -415,7 +418,7 @@ def main() -> None:
     print("探索集月度置信分层趋势:",
           {k: (v["rho"], round(v["p"], 3)) for k, v in trends.items()})
 
-    ecdf = ecdf_curves(df, scores, model)
+    ecdf = ecdf_curves(df, scores, proba_r)
 
     plot_calibration(raw_bins, corr_bins, y, proba_corr, thresholds)
     plot_errors(deciles, domains, profiles)

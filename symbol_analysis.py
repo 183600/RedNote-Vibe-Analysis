@@ -155,6 +155,8 @@ def bin_share(counts: np.ndarray) -> dict:
     """每帖标签数落入 0 / 1 / 2 / 3–4 / 5–9 / 10+ 的篇数占比（%）。"""
     idx = np.searchsorted(np.asarray(BIN_EDGES), counts, side="right")
     total = counts.size
+    if total == 0:
+        return {lab: 0.0 for lab in BIN_LABELS}
     return {lab: float((idx == i).sum() / total * 100)
             for i, lab in enumerate(BIN_LABELS)}
 

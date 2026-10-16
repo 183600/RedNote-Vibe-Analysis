@@ -9,8 +9,8 @@ from collections import Counter
 PATTERN_KEYS = ("!", "?", "...", "#", "@", "numbers", "links",
                 "first_person", "list")
 
-RE_HASHTAG = re.compile(r"#\S+")
-RE_MENTION = re.compile(r"@\S+")
+RE_HASHTAG = re.compile(r"#[^\s#]+")
+RE_MENTION = re.compile(r"@[^\s@]+")
 RE_NUMBERS = re.compile(r"\d+")
 RE_LINKS = re.compile(r"https?://|www\.")
 RE_LIST = re.compile(r"\n\d+")

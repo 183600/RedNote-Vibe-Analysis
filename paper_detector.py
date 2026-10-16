@@ -10,6 +10,11 @@
 import json
 import os
 
+# 单线程 BLAS：此类小矩阵下多线程同步开销大于收益（4 进程并行时避免超订）
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
+os.environ.setdefault("MKL_NUM_THREADS", "1")
+
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -22,7 +27,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import make_pipeline
 from sklearn.metrics import roc_auc_score, f1_score, accuracy_score
 
-from analysis_utils import BASE, setup_chinese_fonts, cliffs_delta_from_u
+from analysis_utils import (BASE, setup_chinese_fonts, cliffs_delta_from_u,
+                            make_pool, close_pool)
 
 FIGS = BASE + "paper_figs/"
 os.makedirs(FIGS, exist_ok=True)
@@ -30,6 +36,24 @@ setup_chinese_fonts()
 
 META = ["dataset", "domain", "month", "model_family", "model",
         "likes", "collections", "comments"]
+
+# 家族 5 折 CV 的共享只读上下文（fork 前填充，worker 直接复用，避免重复传参）
+_FAM_CTX: dict = {}
+
+
+def _family_fit(fam: str) -> tuple[str, float]:
+    """单个家族 vs 人类的 5 折 CV AUC（口径与串行主循环完全一致）。"""
+    human = _FAM_CTX["human"]
+    aigc = _FAM_CTX["aigc"]
+    feats = _FAM_CTX["feats"]
+    pipe = _FAM_CTX["pipe"]
+    cv = _FAM_CTX["cv"]
+    g = aigc[aigc["model_family"] == fam]
+    sub = pd.concat([human, g], ignore_index=True)
+    Xs = sub[feats].fillna(0).values
+    ys = (sub["dataset"] == "aigc").astype(int).values
+    ps = cross_val_predict(pipe, Xs, ys, cv=cv, method="predict_proba")[:, 1]
+    return fam, float(roc_auc_score(ys, ps))
 
 LABELS = {
     "content_len": "正文长度", "n_lines": "行数", "avg_line_len": "平均行长",
@@ -98,14 +122,19 @@ def main():
     fig.savefig(FIGS + "detector_coefficients.png", dpi=150)
     plt.close(fig)
 
-    # ---- 3. 各家族检测难度 ----
+    # ---- 3. 各家族检测难度（相互独立，多进程并行，结果与串行一致）----
     fam_auc = {}
-    for fam, g in aigc.groupby("model_family"):
-        sub = pd.concat([human, g], ignore_index=True)
-        Xs = sub[feats].fillna(0).values
-        ys = (sub["dataset"] == "aigc").astype(int).values
-        ps = cross_val_predict(pipe, Xs, ys, cv=cv, method="predict_proba")[:, 1]
-        fam_auc[FAMILY_NAME[fam]] = round(float(roc_auc_score(ys, ps)), 4)
+    families = sorted(aigc["model_family"].unique())
+    _FAM_CTX.update(human=human, aigc=aigc, feats=feats, pipe=pipe, cv=cv)
+    pool = make_pool()
+    try:
+        rows = (pool.map(_family_fit, families) if pool is not None
+                else [_family_fit(f) for f in families])
+    finally:
+        close_pool(pool)
+        _FAM_CTX.clear()
+    for fam, fam_val in rows:
+        fam_auc[FAMILY_NAME[fam]] = round(fam_val, 4)
     print("各家族 vs 人类 检测AUC:", fam_auc)
 
     fig, ax = plt.subplots(figsize=(7, 4.2))
@@ -126,10 +155,12 @@ def main():
                  "title_excl", "title_emoji", "n_hashtags", "tilde100",
                  "list_line_ratio", "colon_line_ratio"]
     tests = []
-    h_idx = df["dataset"] == "human"
+    h_idx = (df["dataset"] == "human").to_numpy()
+    a_idx = ~h_idx
     for f in key_feats:
-        a = df.loc[~h_idx, f].values
-        h = df.loc[h_idx, f].values
+        col = df[f].to_numpy()
+        a = col[a_idx]
+        h = col[h_idx]
         u, p = mannwhitneyu(a, h, alternative="two-sided")
         delta = cliffs_delta_from_u(u, len(a), len(h))
         tests.append({

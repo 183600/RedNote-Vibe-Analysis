@@ -14,6 +14,13 @@
 只使用既有派生特征（paper_features_*.csv.gz）与已保存的检测器参数，
 除新增图表/JSON 外不改动任何产物。
 """
+import os
+
+# 单线程 BLAS：小矩阵下多线程同步开销大于收益
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
+os.environ.setdefault("MKL_NUM_THREADS", "1")
+
 import numpy as np
 import pandas as pd
 import matplotlib

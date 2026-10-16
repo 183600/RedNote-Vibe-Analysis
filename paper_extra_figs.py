@@ -73,8 +73,9 @@ ax = axes[1]
 x_e = np.arange(len(ms_e))
 ax.plot(x_e, ms_e["mean"].values, "o-", color="#C44E52", ms=3.5, lw=1.3,
         label="原始月度均值")
-adj_idx = [list(ms_e.index).index(m) for m in adj if m in set(ms_e.index)]
-ax.plot(adj_idx, [adj[m] for m in adj if m in set(ms_e.index)],
+month_pos = {m: i for i, m in enumerate(ms_e.index)}
+adj_pairs = [(month_pos[m], adj[m]) for m in adj if m in month_pos]
+ax.plot([i for i, _ in adj_pairs], [v for _, v in adj_pairs],
         "s--", color="#55A868", ms=3.5, lw=1.2, label="领域调整后")
 ax.axhline(base_clean, color="gray", ls="--", lw=0.9, label=f"前LLM干净基线 {base_clean:.2f}")
 ax.set_xticks(x_e[::3])
@@ -91,9 +92,12 @@ plt.close(fig)
 clean = human[human["month"] <= "202206"]
 late = human[human["month"] >= "202207"]
 e = expl[expl["month"] >= "202301"]
+fresh_post = e[e["likes"] < 100]["p_ai"]
+hot_pre = clean[clean["likes"] > 1000]["p_ai"]
+hot_post = e[e["likes"] >= 1000]["p_ai"]
 groups = {
-    "新帖/低互动层": (late["p_ai"], e[e["likes"] < 100]["p_ai"]),
-    "热帖层": (clean[clean["likes"] > 1000]["p_ai"], e[e["likes"] >= 1000]["p_ai"]),
+    "新帖/低互动层": (late["p_ai"], fresh_post),
+    "热帖层": (hot_pre, hot_post),
 }
 fig, axes = plt.subplots(1, 2, figsize=(11, 4.2))
 for i, metric in enumerate(["mean", "hi"]):
@@ -153,13 +157,13 @@ drift["sampling_discontinuity"] = {
 }
 drift["did"] = {
     "fresh_stratum": {"pre": round(float(late["p_ai"].mean()), 3),
-                      "post": round(float(e[e["likes"] < 100]["p_ai"].mean()), 3),
+                      "post": round(float(fresh_post.mean()), 3),
                       "pre_hi": round(float((late["p_ai"] > 0.9).mean()), 4),
-                      "post_hi": round(float((e[e["likes"] < 100]["p_ai"] > 0.9).mean()), 4)},
-    "hot_stratum": {"pre": round(float(clean[clean["likes"] > 1000]["p_ai"].mean()), 3),
-                    "post": round(float(e[e["likes"] >= 1000]["p_ai"].mean()), 3),
-                    "pre_hi": round(float((clean[clean["likes"] > 1000]["p_ai"] > 0.9).mean()), 4),
-                    "post_hi": round(float((e[e["likes"] >= 1000]["p_ai"] > 0.9).mean()), 4)},
+                      "post_hi": round(float((fresh_post > 0.9).mean()), 4)},
+    "hot_stratum": {"pre": round(float(hot_pre.mean()), 3),
+                    "post": round(float(hot_post.mean()), 3),
+                    "pre_hi": round(float((hot_pre > 0.9).mean()), 4),
+                    "post_hi": round(float((hot_post > 0.9).mean()), 4)},
 }
 with open(BASE + "paper_drift_results.json", "w", encoding="utf-8") as f:
     json.dump(drift, f, ensure_ascii=False, indent=1)

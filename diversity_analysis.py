@@ -41,6 +41,7 @@ from analysis_utils import (BASE, INSIGHTS, PALETTE, init_plot_style,
                             save_fig, save_json, bootstrap_median_ci,
                             cliffs_delta_from_u, clean_body, content_of,
                             engagement_of, iter_jsonl, load_records_with_total,
+                            make_pool, close_pool,
                             mtld, parse_local_time, split_sentences, burstiness,
                             DATASET_LABELS)
 
@@ -156,22 +157,57 @@ def scan_sentence_stats(path: str) -> dict:
     }
 
 
-def sample_tokens(path: str) -> dict:
-    """固定种子抽样并分词：返回每帖 token 列表集合与总记录数。"""
+def sample_lexical(path: str, pool=None) -> dict:
+    """固定种子抽样并分词，单遍流式计算 MTLD 与 Heaps 曲线。
+
+    与"先保留全部抽样帖 token 列表、再统一计算"的旧实现结果完全一致，
+    但逐帖算完即释放 token，内存占用从 O(抽样帖数) 降为 O(批次)；
+    Heaps 曲线在遍历过程中增量累积（含 HEAPS_BUDGET 截断语义）。
+    传入 pool 时按批并行分词，逐帖结果与串行完全一致且顺序不变。
+    """
     recs, total = load_records_with_total(path, sample=SAMPLE_PER_DATASET,
                                           seed=SAMPLE_SEED)
     seen_ids: set = set()
-    docs: list[list[str]] = []
+    bodies: list[str] = []
     for rec in recs:
         nid = rec.get("note_id")
         if nid is not None:
             if nid in seen_ids:
                 continue
             seen_ids.add(nid)
-        toks = tokenize(clean_body(content_of(rec)))
-        if len(toks) >= MIN_TOKENS_MTLD:
-            docs.append(toks)
-    return {"docs": docs, "total_records": total, "n_docs": len(docs)}
+        bodies.append(clean_body(content_of(rec)))
+
+    mtld_values: list[float] = []
+    seen: set[str] = set()
+    heap_tokens: list[int] = []
+    heap_types: list[int] = []
+    n_tokens = 0
+    batch = 512
+    for start in range(0, len(bodies), batch):
+        chunk = bodies[start:start + batch]
+        tok_lists = (pool.map(tokenize, chunk) if pool is not None
+                     else [tokenize(t) for t in chunk])
+        for toks in tok_lists:
+            if len(toks) < MIN_TOKENS_MTLD:
+                continue
+            mtld_values.append(mtld(toks))
+            if n_tokens < HEAPS_BUDGET:
+                for tok in toks:
+                    if n_tokens >= HEAPS_BUDGET:
+                        break
+                    seen.add(tok)
+                    n_tokens += 1
+                heap_tokens.append(n_tokens)
+                heap_types.append(len(seen))
+    return {
+        "mtld": np.asarray(mtld_values, dtype=float),
+        "tokens": np.asarray(heap_tokens, dtype=float),
+        "types": np.asarray(heap_types, dtype=float),
+        "total_records": total,
+        "n_docs": len(mtld_values),
+        "n_docs_in_curve": len(heap_tokens),
+        "n_tokens": n_tokens,
+    }
 
 
 # --------------------------------------------------------------------------
@@ -263,18 +299,22 @@ def main() -> None:
               f"{bursts[name]['median']:.3f}")
 
     mtld_dist, mtld_stats, heaps = {}, {}, {}
-    for name, path in DATASET_PATHS.items():
-        smp = sample_tokens(path)
-        vals = np.asarray([mtld(t) for t in smp["docs"]])
-        mtld_dist[name] = vals
-        mtld_stats[name] = bootstrap_median_ci(vals, n_boot=BOOT, seed=BOOT_SEED)
-        tokens, types = heaps_curve(smp["docs"], max_tokens=HEAPS_BUDGET)
-        heaps[name] = {"curve": (tokens, types), "beta": heaps_beta(tokens, types),
-                       "n_docs": smp["n_docs"],
-                       "n_docs_in_curve": int(len(tokens)),
-                       "n_tokens": int(tokens[-1])}
-        print(f"{name}: MTLD 中位数 {mtld_stats[name]['median']:.1f}, "
-              f"Heaps β={heaps[name]['beta']:.3f}")
+    pool = make_pool(preload=jieba.initialize)
+    try:
+        for name, path in DATASET_PATHS.items():
+            smp = sample_lexical(path, pool)
+            vals = smp["mtld"]
+            mtld_dist[name] = vals
+            mtld_stats[name] = bootstrap_median_ci(vals, n_boot=BOOT, seed=BOOT_SEED)
+            tokens, types = smp["tokens"], smp["types"]
+            heaps[name] = {"curve": (tokens, types), "beta": heaps_beta(tokens, types),
+                           "n_docs": smp["n_docs"],
+                           "n_docs_in_curve": smp["n_docs_in_curve"],
+                           "n_tokens": smp["n_tokens"]}
+            print(f"{name}: MTLD 中位数 {mtld_stats[name]['median']:.1f}, "
+                  f"Heaps β={heaps[name]['beta']:.3f}")
+    finally:
+        close_pool(pool)
 
     # 差异检验（human vs 其他）
     def compare(a, b) -> dict:

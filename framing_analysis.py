@@ -115,6 +115,7 @@ def scan_view(path: str, content_len_ref: np.ndarray | None = None) -> dict:
     """单次流式扫描：收集首/尾框架片段、note_id、元数据完整度、时间与收尾类别。"""
     heads, tails, ids, months = [], [], [], []
     meta, hours, content_lens, ending_classes = [], [], [], []
+    month_pool: dict = {}   # 共享同月字符串对象（月份只有几十种）
     n_raw = n_short = mismatch = 0
     for rec in iter_jsonl(path):
         content = content_of(rec)
@@ -138,7 +139,10 @@ def scan_view(path: str, content_len_ref: np.ndarray | None = None) -> dict:
                     + int(bool(comms)) + int(dt is not None)
                     + int(bool(WS.sub("", content))))
         hours.append(dt.hour if dt is not None else -1)
-        months.append(dt.strftime("%Y%m") if dt is not None else None)
+        month = dt.strftime("%Y%m") if dt is not None else None
+        if month is not None:
+            month = month_pool.setdefault(month, month)
+        months.append(month)
         content_lens.append(len(body))
         n_raw += 1
     return {

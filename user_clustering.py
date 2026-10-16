@@ -56,15 +56,19 @@ def main():
 
     def simple_kmeans(data, k, max_iter=20):
         n = len(data)
+        dim = len(data[0]) if n else 0
         centroids = [data[int(n * i / k)] for i in range(k)]
     
         for _ in range(max_iter):
             clusters = [[] for _ in range(k)]
-            for i in range(n):
+            for i, row in enumerate(data):
                 min_dist = float('inf')
                 min_idx = 0
                 for j, c in enumerate(centroids):
-                    d = sum((data[i][x] - c[x]) ** 2 for x in range(len(data[i])))
+                    d = 0.0
+                    for x, rv in enumerate(row):
+                        diff = rv - c[x]
+                        d += diff * diff
                     if d < min_dist:
                         min_dist = d
                         min_idx = j
@@ -73,11 +77,12 @@ def main():
             new_centroids = []
             for cl in clusters:
                 if cl:
-                    new_c = [0.0] * len(data[0])
+                    new_c = [0.0] * dim
                     for i in cl:
-                        for x in range(len(data[0])):
-                            new_c[x] += data[i][x]
-                    for x in range(len(data[0])):
+                        row = data[i]
+                        for x in range(dim):
+                            new_c[x] += row[x]
+                    for x in range(dim):
                         new_c[x] /= len(cl)
                     new_centroids.append(new_c)
                 else:
@@ -95,14 +100,16 @@ def main():
     labels, centroids = simple_kmeans(matrix, k)
 
     # Analyze clusters
+    word_idx = {w: i for i, w in enumerate(cross_topic_words)}
     results = []
     for cluster_id in range(k):
         indices = [i for i, l in enumerate(labels) if l == cluster_id]
     
         word_avg = defaultdict(float)
         for w in cross_topic_words:
+            col = word_idx[w]
             for idx in indices:
-                word_avg[w] += matrix[idx][cross_topic_words.index(w)]
+                word_avg[w] += matrix[idx][col]
             if len(indices) > 0:
                 word_avg[w] /= len(indices)
     

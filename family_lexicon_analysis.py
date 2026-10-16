@@ -26,8 +26,10 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+import jieba
+
 from analysis_utils import (BASE, INSIGHTS, init_plot_style, save_fig, save_json,
-                            load_records, post_text)
+                            load_records, post_text, make_pool, close_pool)
 from paper_lexicon import clean, count_clean_words, log_odds
 from paper_features import AI_WORDS
 
@@ -74,7 +76,14 @@ def _finalize_weighting(cell: dict[tuple[str, str], Counter],
     return raw, weighted
 
 
-def collect_group_stats(records: list[dict], keys: tuple[str, ...] = (
+def _doc_meta(cleaned: str) -> tuple[int, int, Counter]:
+    """worker：清洗后文本 →（字符数, AI 味词命中数, 词频）。"""
+    return (len(cleaned),
+            sum(cleaned.count(w) for w in AI_WORDS),
+            count_clean_words(cleaned))
+
+
+def collect_group_stats(records: list[dict], pool=None, keys: tuple[str, ...] = (
         "model_family", "model")) -> tuple[
         dict[str, dict[str, Counter]], dict[str, dict[str, Counter]],
         Counter, Counter]:
@@ -83,6 +92,7 @@ def collect_group_stats(records: list[dict], keys: tuple[str, ...] = (
     返回 (raw, weighted, ai_hits, ai_chars)：raw/weighted 按分组键索引到
     {组: Counter}（口径与原先逐维度独立扫描完全一致）；ai_hits/ai_chars
     按 `model_family` 累计共享 AI 味词表命中数与清洗后字符数。
+    传入 pool 时按批并行分词，逐帖结果与串行完全一致。
     """
     cell: dict[str, dict[tuple[str, str], Counter]] = {key: {} for key in keys}
     cell_n: dict[str, Counter] = {key: Counter() for key in keys}
@@ -91,28 +101,33 @@ def collect_group_stats(records: list[dict], keys: tuple[str, ...] = (
     ai_hits: Counter = Counter()
     ai_chars: Counter = Counter()
 
-    for rec in records:
-        by_key = {key: (rec.get(key) or "") for key in keys}
-        if not any(by_key.values()):
-            continue
-        cleaned = clean(post_text(rec))
-        fam = by_key.get("model_family") or ""
-        if fam:
-            ai_chars[fam] += len(cleaned)
-            ai_hits[fam] += sum(cleaned.count(w) for w in AI_WORDS)
-        tokens = count_clean_words(cleaned)
-        d = rec.get("domain") or "未知"
-        for key in keys:
-            g = by_key[key]
-            if not g:
-                continue
-            k = (g, d)
-            if k not in cell[key]:
-                cell[key][k] = Counter()
-            cell[key][k].update(tokens)
-            cell_n[key][k] += 1
-            group_n[key][g] += 1
-            dom_n[key][d] += 1
+    batch = 256
+    for start in range(0, len(records), batch):
+        kept = []
+        for rec in records[start:start + batch]:
+            by_key = {key: (rec.get(key) or "") for key in keys}
+            if any(by_key.values()):
+                kept.append((rec, by_key))
+        docs = [clean(post_text(rec)) for rec, _ in kept]
+        metas = (pool.map(_doc_meta, docs) if pool is not None
+                 else [_doc_meta(t) for t in docs])
+        for (rec, by_key), (clen, ai, tokens) in zip(kept, metas):
+            fam = by_key.get("model_family") or ""
+            if fam:
+                ai_chars[fam] += clen
+                ai_hits[fam] += ai
+            d = rec.get("domain") or "未知"
+            for key in keys:
+                g = by_key[key]
+                if not g:
+                    continue
+                k = (g, d)
+                if k not in cell[key]:
+                    cell[key][k] = Counter()
+                cell[key][k].update(tokens)
+                cell_n[key][k] += 1
+                group_n[key][g] += 1
+                dom_n[key][d] += 1
 
     raw, weighted = {}, {}
     for key in keys:
@@ -191,7 +206,11 @@ def main() -> None:
     records = load_records(BASE + "training_set_aigc.jsonl")
     print(f"AIGC 记录数: {len(records)}")
 
-    raw, weighted, ai_hits, ai_chars = collect_group_stats(records)
+    pool = make_pool(preload=jieba.initialize)
+    try:
+        raw, weighted, ai_hits, ai_chars = collect_group_stats(records, pool)
+    finally:
+        close_pool(pool)
     fam_cnt, fam_wcnt = raw["model_family"], weighted["model_family"]
     model_cnt, model_wcnt = raw["model"], weighted["model"]
     fam_total = {g: sum(c.values()) for g, c in fam_cnt.items()}

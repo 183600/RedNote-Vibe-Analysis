@@ -11,7 +11,7 @@ from collections import Counter
 
 import jieba
 
-from analysis_utils import BASE, load_posts
+from analysis_utils import BASE, load_posts, make_pool, close_pool
 
 HUATI = re.compile(r"\[话题\]")
 HASHTAG = re.compile(r"#[^#\s]{1,30}")
@@ -50,6 +50,25 @@ def count_words(texts):
     return cnt
 
 
+def _count_chunk(texts):
+    """worker：批量清洗+分词并合并为一个 Counter（计数与顺序无关）。"""
+    cnt = Counter()
+    for t in texts:
+        cnt.update(count_clean_words(clean(t)))
+    return cnt
+
+
+def count_words_parallel(texts, pool=None, chunk: int = 400):
+    """与 count_words 结果完全相同；pool 非空时按块并行。"""
+    if pool is None:
+        return count_words(texts)
+    cnt = Counter()
+    for c in pool.map(_count_chunk,
+                      [texts[i:i + chunk] for i in range(0, len(texts), chunk)]):
+        cnt.update(c)
+    return cnt
+
+
 def log_odds(cnt_a, cnt_b, min_count=30):
     """Monroe et al. (2008) informative Dirichlet prior log-odds, z-score."""
     n_a = sum(cnt_a.values())
@@ -82,8 +101,12 @@ def main():
     print(f"human sample={len(human)}, aigc={len(aigc)}")
 
     print("分词统计 ...")
-    cnt_h = count_words(human)
-    cnt_a = count_words(aigc)
+    pool = make_pool(preload=jieba.initialize)
+    try:
+        cnt_h = count_words_parallel(human, pool)
+        cnt_a = count_words_parallel(aigc, pool)
+    finally:
+        close_pool(pool)
     n_h = sum(cnt_h.values())
     n_a = sum(cnt_a.values())
     print(f"tokens: human={n_h}, aigc={n_a}")

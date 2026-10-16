@@ -26,6 +26,12 @@ AUC/F1/ACC、特征权重与高置信占比，但没有回答四个诊断性问�
 from __future__ import annotations
 
 import json
+import os
+
+# 单线程 BLAS：小矩阵下多线程同步开销大于收益
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
+os.environ.setdefault("MKL_NUM_THREADS", "1")
 
 import numpy as np
 import pandas as pd

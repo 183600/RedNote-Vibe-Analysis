@@ -23,6 +23,13 @@
 """
 from __future__ import annotations
 
+import os
+
+# 单线程 BLAS：小矩阵下多线程同步开销大于收益
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
+os.environ.setdefault("MKL_NUM_THREADS", "1")
+
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -361,15 +368,14 @@ def main() -> None:
     decile.attrs["body_rho"] = eng["body_likes"]["rho"]
 
     # ---- 5. 全量标题扫描：模板集中度与专属前缀 ----
-    title_views = {}
+    # 逐子集扫描后立即计数并释放标题列表，不再同时持有三个子集的全量标题。
+    counts = {}
     for name, path in SCORES_INPUTS.items():
         titles, ids, metas = scan_titles(path)
-        keep = dedup_indices(ids, metas) if name != "aigc" else list(range(len(titles)))
-        title_views[name] = [titles[i] for i in keep]
-        print(f"{name}: {len(titles)} 条标题，去重后 {len(title_views[name])}")
-
-    counts = {k: prefix_ngram_counts(v, TITLE_PREFIX_LEN)
-              for k, v in title_views.items()}
+        keep = dedup_indices(ids, metas) if name != "aigc" else range(len(titles))
+        counts[name] = prefix_ngram_counts((titles[i] for i in keep),
+                                           TITLE_PREFIX_LEN)
+        print(f"{name}: {len(titles)} 条标题，去重后 {len(keep)}")
     tpl_stats = {}
     for k, c in counts.items():
         total = sum(c.values())

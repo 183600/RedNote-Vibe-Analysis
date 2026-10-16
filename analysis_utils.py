@@ -101,6 +101,35 @@ def save_fig(fig, path: str, dpi: int = 150) -> str:
     return path
 
 
+def make_pool(max_workers: int = 4, preload=None):
+    """按需创建 fork 进程池（Linux）；异常/单核环境返回 None 走串行回退。
+
+    preload 在 fork 之前执行（例如 jieba.initialize），让子进程继承已加载
+    的只读状态，避免每个 worker 重复初始化。
+    """
+    try:
+        import multiprocessing as mp
+
+        try:
+            ctx = mp.get_context("fork")
+        except ValueError:
+            return None
+        n = min(max_workers, mp.cpu_count() or 1)
+        if n <= 1:
+            return None
+        if preload is not None:
+            preload()
+        return ctx.Pool(n)
+    except Exception:
+        return None
+
+
+def close_pool(pool) -> None:
+    if pool is not None:
+        pool.close()
+        pool.join()
+
+
 def iter_jsonl(path: str) -> Iterator[dict]:
     """流式读取 JSONL，逐行解析，避免把大文件一次性载入内存。
 

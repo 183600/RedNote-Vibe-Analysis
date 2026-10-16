@@ -166,6 +166,53 @@ def post_text(rec: dict, with_title: bool = True,
     return content
 
 
+def content_of(rec: dict) -> str:
+    """统一取正文：兼容 note_content / desc 两种字段（任一非空即可）。"""
+    return rec.get("note_content") or rec.get("desc") or ""
+
+
+def clean_body(content: str | None) -> str:
+    """与 paper_features.py 相同的正文清洗口径。
+
+    删除 `[话题]` 字面标记（导出残留）、把 `#话题` 标签替换为空格并去掉首尾空白。
+    复用 `paper_features` 中的同一组正则，保证所有分析跨脚本口径一致。
+    """
+    from paper_features import HASHTAG, HUATI
+
+    body = HUATI.sub("", content or "")
+    return HASHTAG.sub(" ", body).strip()
+
+
+def shannon_entropy(counts, miller_madow: bool = False) -> float:
+    """离散分布的香农熵（bit）。miller_madow=True 时加小样本校正。
+
+    经验熵随样本量增大而系统性偏高（能观测到更多稀有变体），跨不同样本量的
+    比较应使用 Miller–Madow 校正：H_MM = H + (K-1)/(2N ln2)。
+    """
+    arr = np.asarray(list(counts.values()) if isinstance(counts, dict)
+                     else list(counts), dtype=float)
+    arr = arr[arr > 0]
+    n = float(arr.sum())
+    if n <= 0:
+        return 0.0
+    p = arr / n
+    h = float(-(p * np.log2(p)).sum())
+    if miller_madow and n > 1:
+        h += (len(arr) - 1) / (2.0 * n * np.log(2.0))
+    return h
+
+
+def topk_coverage(counts, k: int) -> float:
+    """前 k 个最高频项覆盖的计数占比（0~1）；衡量分布集中度/模板化程度。"""
+    arr = np.asarray(list(counts.values()) if isinstance(counts, dict)
+                     else list(counts), dtype=float)
+    arr = arr[arr > 0]
+    n = float(arr.sum())
+    if n <= 0 or k <= 0:
+        return 0.0
+    return float(np.sort(arr)[::-1][:k].sum() / n)
+
+
 def load_posts(path: str, with_title: bool = True, sample: int | None = None,
                seed: int = 42) -> list[str]:
     """读取一个 JSONL 数据集为文本列表；可复现地随机抽样（流式，仅解析抽中记录）。"""

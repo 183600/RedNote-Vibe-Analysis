@@ -11,7 +11,9 @@ import numpy as np
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
-from analysis_utils import (post_text, iter_jsonl, load_posts, load_records,
+from analysis_utils import (post_text, content_of, clean_body,
+                            shannon_entropy, topk_coverage,
+                            iter_jsonl, load_posts, load_records,
                             to_int, engagement_of, parse_local_time, hour_of,
                             weekday_of, detector_score,
                             cliffs_delta, cliffs_delta_from_u, wilson_ci,
@@ -92,6 +94,36 @@ class TestRecordHelpers(unittest.TestCase):
         self.assertEqual(weekday_of("2022091308"), 1)  # 2022-09-13 是周二
         self.assertIsNone(hour_of(None))
         self.assertIsNone(weekday_of(""))
+
+
+class TestTextHelpers(unittest.TestCase):
+    def test_content_of_field_fallbacks(self):
+        self.assertEqual(content_of({"note_content": "a"}), "a")
+        self.assertEqual(content_of({"desc": "b"}), "b")
+        self.assertEqual(content_of({"note_content": "", "desc": "b"}), "b")
+        self.assertEqual(content_of({}), "")
+
+    def test_clean_body_matches_paper_features_pipeline(self):
+        raw = "[话题]前文#标签甲# 中间[话题]后文 #标签乙#"
+        body = clean_body(raw)
+        self.assertNotIn("[话题]", body)
+        self.assertNotIn("#标签甲", body)
+        self.assertNotIn("#标签乙", body)
+        self.assertIn("前文", body)
+        self.assertIn("后文", body)
+        self.assertEqual(clean_body(None), "")
+
+    def test_shannon_entropy_known_values(self):
+        self.assertAlmostEqual(shannon_entropy([1, 1]), 1.0)
+        self.assertAlmostEqual(shannon_entropy({"a": 3}), 0.0)
+        self.assertEqual(shannon_entropy([]), 0.0)
+        h = shannon_entropy([5, 1, 1], miller_madow=True)
+        self.assertGreater(h, shannon_entropy([5, 1, 1]))
+
+    def test_topk_coverage(self):
+        self.assertAlmostEqual(topk_coverage([5, 3, 2], k=1), 0.5)
+        self.assertAlmostEqual(topk_coverage([5, 3, 2], k=3), 1.0)
+        self.assertEqual(topk_coverage([], k=5), 0.0)
 
 
 class TestStatsHelpers(unittest.TestCase):

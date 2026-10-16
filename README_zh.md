@@ -107,6 +107,15 @@
 3. **句子节奏**：平均句长中位数 human 46.7 / aigc 25.6 / exploring 22.1；人类 vs AIGC Cliff's δ=-0.522，人类 vs 探索集 δ=-0.632（p≈0）。
 4. **重复内容与数据完整性**：探索集逐记录正文重复占比 68.11%（人类 1.05%、AIGC 0.00%）；91,517 条记录仅 60,161 个唯一 note_id，重复绝大部分是同一笔记「带完整元数据的副本 + 缺 user_id/互动字段的副本」；去重到 note_id 后正文重复率降至 1.52%；另有 63.70% 的记录缺 user_id 或领域为「未知」。
 
+### 框架模板化分析（`framing_analysis.py`）
+
+全量扫描三个新维度：开篇/收尾模板集中度、AI 专属模板梯度与扩散、收尾符号构成。结果图在 `insights/framing_*.png`，数据在 `framing_results.json` 与 `framing_results.md`。探索集按 note_id 去重，p_ai 与 `paper_exploring_scores.csv.gz` 按行序对齐（content_len 逐条校验，mismatch=0）：
+
+1. **开篇公式化**：AIGC 首 4 字 Top-20 覆盖率为 14.8%（人类 3.1%、探索集 3.2%），开篇熵 11.86 bit（人类 15.55、探索集 15.37）；收尾的集中度差异则很小（4.7% vs 6.0%/7.3%）。
+2. **梯度**：探索集内 P(AI) 十分位与 AI 专属开篇命中率显著上升（0.6%→2.3%，Cliff's δ=0.22），与人类专属开篇命中率显著下降（1.8%→0.3%，δ=-0.23）。
+3. **扩散**：AI 专属开篇使用率 AIGC 16.4% / 探索集 1.3% / 人类集 0.8%，探索集季度趋势不显著（ρ=0.21，p=0.57），说明框架层面的扩散弱于词汇层面；小时分布几乎平坦（极差 0.094）。
+4. **收尾符号**：AIGC 以感叹号（26.8%）、emoji（16.8%）、波浪号（9.4%）收尾的比例远高于人类（5.4%/1.9%/1.9%），探索集（10.4%/6.8%/3.5%）介于两者之间；探索集另有 17.2% 为纯标签帖（人类 0%、AIGC 0.3%）。
+
 ### 生成的可视化图表
 
 | 文件 | 描述 |
@@ -124,6 +133,7 @@
 | `sentiment_comparison.png` / `sentiment_box.png` | 情感对比与分布 |
 | `time_distribution.png` / `month_distribution.png` | 发布时间分布 |
 | `insights/publish_rhythm.png`、`lexicon_diffusion.png`、`sentence_rhythm.png`、`duplicate_content.png` | 深潜分析图表（发布节奏、词表扩散、句子节奏、重复内容） |
+| `insights/framing_formulaicity.png`、`framing_gradient.png` | 框架模板化图表（开篇/收尾集中度、收尾符号构成、P(AI) 梯度、季度扩散） |
 | `output/` | 领域、话题、互动等探索性图表合集 |
 | `paper_figs/` | 论文管线图表（检测器、漂移、互动、稳健性） |
 
@@ -143,10 +153,11 @@
 - `topic_comparison_analysis.py` / `advanced_topic_comparison.py` / `new_topic_comparison.py` - 话题对比
 - `unique_comparison.py` / `internal_detailed_analysis.py` / `internal_diff_analysis.py` - 独特性与内部差异
 - `deep_dive_analysis.py` - 发布节奏 / 词表扩散 / 句子节奏 / 重复内容深潜分析（输出 `insights/`）
+- `framing_analysis.py` - 开篇/收尾框架模板化与 AI 风格关联（输出 `insights/framing_*.png`、`framing_results.json/md`）
 - `user_clustering.py` - 用户风格聚类（输出 `user_clustering_results.md`）
 - `quick_start.py` - BERT 基线训练
 
-运行环境：`pip install -r requirements.txt`；公共工具位于 `analysis_utils.py`，单元测试见 `tests/`（`python3 -m unittest discover -s tests`）。
+运行环境：`pip install -r requirements.txt`；公共工具位于 `analysis_utils.py`，单元测试见 `tests/`（`python3 -m unittest discover -s tests`，覆盖 `analysis_utils.py` 与 `framing_analysis.py` 的纯函数）。
 
 ## 参考资料
 

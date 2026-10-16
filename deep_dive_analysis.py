@@ -36,8 +36,8 @@ from scipy.stats import mannwhitneyu, spearmanr
 
 from analysis_utils import (BASE, INSIGHTS, PALETTE, init_plot_style, save_fig,
                             cliffs_delta_from_u, engagement_of, iter_jsonl,
-                            parse_local_time)
-from paper_features import AI_WORDS, HUMAN_WORDS, HUATI, HASHTAG
+                            parse_local_time, clean_body, content_of)
+from paper_features import AI_WORDS, HUMAN_WORDS
 
 DATASETS = {
     "human": BASE + "training_set_human_fixed.jsonl",
@@ -51,18 +51,6 @@ LENGTH_BUCKETS = [(0, 150, "<150字"), (150, 300, "150–300字"),
                   (300, 500, "300–500字"), (500, 800, "500–800字"),
                   (800, 10 ** 9, "≥800字")]
 MIN_MONTH_CHARS = 5000
-
-
-def clean_body(content: str) -> str:
-    """与 paper_features.py 相同的正文清洗：去 [话题]、剥离 #标签、去首尾空白。"""
-    body = HUATI.sub("", content or "")
-    body = HASHTAG.sub(" ", body)
-    return body.strip()
-
-
-def content_of(rec: dict) -> str:
-    """统一取正文：兼容 note_content / desc 两种字段（任一非空即可）。"""
-    return rec.get("note_content") or rec.get("desc") or ""
 
 
 def body_stats(body: str) -> tuple[int, int, int, float | None, int]:
@@ -316,7 +304,7 @@ def plot_lexicon_diffusion(stats: dict, out: dict) -> None:
     aigc_body = 0
     aigc_ai, aigc_hum = 0, 0
     for rec in iter_jsonl(DATASETS["aigc"]):
-        body = clean_body(rec.get("note_content") or "")
+        body = clean_body(content_of(rec))
         aigc_body += len(body)
         aigc_ai += sum(body.count(w) for w in AI_WORDS)
         aigc_hum += sum(body.count(w) for w in HUMAN_WORDS)

@@ -16,6 +16,8 @@ from analysis_utils import BASE, load_posts
 HUATI = re.compile(r"\[话题\]")
 HASHTAG = re.compile(r"#[^#\s]{1,30}")
 XHS_EMO = re.compile(r"\[[^\[\]]{1,8}R\]")
+HAN_WORD = re.compile(r"[一-鿿]")
+PINYIN_WORD = re.compile(r"[a-zA-Z]{2,10}")
 
 
 def clean(text):
@@ -32,8 +34,8 @@ def count_words(texts):
             w = w.strip()
             if not w:
                 continue
-            # 只保留含中文的词或常见拼音化网络词
-            if re.search(r"[一-鿿]", w) or re.fullmatch(r"[a-zA-Z]{2,10}", w):
+            # 只保留含中文的词或常见拼音化网络词（预编译正则，避免逐词查找缓存）
+            if HAN_WORD.search(w) or PINYIN_WORD.fullmatch(w):
                 cnt[w] += 1
     return cnt
 

@@ -206,13 +206,16 @@ def plot_top_words_comparison(freqs, files, output_prefix):
     print("Saved: " + output_prefix + "_top_words.png")
 
 
-def analyze_unique_words(freqs, files):
+def analyze_unique_words(freqs, files, word_sets=None):
+    if word_sets is None:
+        word_sets = [set(freq.keys()) for freq in freqs]
     results = {}
 
     for i, (f1, freq1) in enumerate(zip(files, freqs)):
-        keys1 = set(freq1.keys())
-        for f2, freq2 in zip(files[i + 1 :], freqs[i + 1 :]):
-            keys2 = set(freq2.keys())
+        keys1 = word_sets[i]
+        for j, (f2, freq2) in enumerate(zip(files[i + 1 :], freqs[i + 1 :]),
+                                          start=i + 1):
+            keys2 = word_sets[j]
 
             unique1_top = [
                 (w, freq1[w])

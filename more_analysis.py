@@ -231,14 +231,16 @@ def extract_hashtags(text):
     return re.findall(r"#(\w+)", str(text))
 
 
-def analyze_unique_words(freqs, files):
+def analyze_unique_words(freqs, files, word_sets=None):
+    if word_sets is None:
+        word_sets = [set(freq.keys()) for freq in freqs]
     results = {}
     for i in range(len(files)):
-        keys_i = set(freqs[i].keys())
+        keys_i = word_sets[i]
         for j in range(i + 1, len(files)):
             f1, f2 = files[i], files[j]
             freq1, freq2 = freqs[i], freqs[j]
-            keys_j = set(freq2.keys())
+            keys_j = word_sets[j]
             sorted1 = [
                 (w, freq1[w])
                 for w in heapq.nlargest(30, keys_i - keys_j, key=freq1.__getitem__)
@@ -251,7 +253,7 @@ def analyze_unique_words(freqs, files):
             key2 = f2 + "_unique_in_" + f1
             results[key1] = sorted1
             results[key2] = sorted2
-    common = set.intersection(*[set(f.keys()) for f in freqs])
+    common = set.intersection(*word_sets)
     results["common_words"] = [
         (w, sum(f.get(w, 0) for f in freqs))
         for w in heapq.nlargest(
@@ -261,12 +263,12 @@ def analyze_unique_words(freqs, files):
     return results
 
 
-def analyze_vocabulary_overlap(freqs, files):
+def analyze_vocabulary_overlap(freqs, files, word_sets=None):
+    if word_sets is None:
+        word_sets = [set(freq.keys()) for freq in freqs]
     results = {}
-    all_sets = []
-    for f, freq in zip(files, freqs):
-        word_set = set(freq.keys())
-        all_sets.append(word_set)
+    all_sets = word_sets
+    for f, word_set in zip(files, all_sets):
         results[f + "_total_words"] = len(word_set)
     for i in range(len(files)):
         for j in range(i + 1, len(files)):
@@ -360,8 +362,9 @@ def main():
     print("=" * 70)
 
     freqs = [stats[f]["freq_desc"] for f in files]
+    desc_word_sets = [set(freq.keys()) for freq in freqs]
 
-    overlap_results = analyze_vocabulary_overlap(freqs, file_names)
+    overlap_results = analyze_vocabulary_overlap(freqs, file_names, desc_word_sets)
 
     print("\n--- Vocabulary Statistics (Content) ---")
     for key, value in overlap_results.items():
@@ -372,8 +375,9 @@ def main():
     print("=" * 70)
 
     freqs_title = [stats[f]["freq_title"] for f in files]
+    title_word_sets = [set(freq.keys()) for freq in freqs_title]
 
-    overlap_results_title = analyze_vocabulary_overlap(freqs_title, file_names)
+    overlap_results_title = analyze_vocabulary_overlap(freqs_title, file_names, title_word_sets)
 
     print("\n--- Vocabulary Statistics (Title) ---")
     for key, value in overlap_results_title.items():
@@ -383,7 +387,7 @@ def main():
     print("5. UNIQUE WORDS ANALYSIS (Content)")
     print("=" * 70)
 
-    unique_results = analyze_unique_words(freqs, file_names)
+    unique_results = analyze_unique_words(freqs, file_names, desc_word_sets)
 
     print("\n--- Unique Words (Content) ---")
     for key, words in unique_results.items():
@@ -401,7 +405,7 @@ def main():
     print("5b. UNIQUE WORDS ANALYSIS (Title)")
     print("=" * 70)
 
-    unique_results_title = analyze_unique_words(freqs_title, file_names)
+    unique_results_title = analyze_unique_words(freqs_title, file_names, title_word_sets)
 
     print("\n--- Unique Words (Title) ---")
     for key, words in unique_results_title.items():

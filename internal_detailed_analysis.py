@@ -8,8 +8,6 @@
 import json
 import re
 from collections import Counter, defaultdict
-from datetime import datetime
-import math
 
 RE_CJK = re.compile(r"[\u4e00-\u9fff]+")
 RE_SENT_SPLIT = re.compile(r"[。！？\n]")
@@ -21,9 +19,24 @@ RE_EMOJI = re.compile(
 )
 RE_DIGIT = re.compile(r"\d")
 
+_DATA_KEYS = (
+    "note_title",
+    "domain",
+    "local_time",
+    "user_id",
+    "time",
+    "liked_count",
+    "collected_count",
+    "comments_count",
+)
 
-def load_jsonl(path):
-    data = []
+
+def iter_records(path):
+    """流式读取并只保留下游用到的字段，避免把整份数据集常驻内存。
+
+    口径与原 load_jsonl 完全一致：跳过空行与解析失败的行；正文统一放在
+    note_content（若源记录有）或 desc 字段。
+    """
     with open(path, "r", encoding="utf-8") as f:
         for line in f:
             if not line.strip():
@@ -37,20 +50,10 @@ def load_jsonl(path):
                 rec["note_content"] = item["note_content"]
             else:
                 rec["desc"] = item.get("desc", "")
-            for key in (
-                "note_title",
-                "domain",
-                "local_time",
-                "user_id",
-                "time",
-                "liked_count",
-                "collected_count",
-                "comments_count",
-            ):
+            for key in _DATA_KEYS:
                 if key in item:
                     rec[key] = item[key]
-            data.append(rec)
-    return data
+            yield rec
 
 
 def extract_chinese(text):
@@ -65,15 +68,6 @@ def get_text(item):
         return item.get("note_content", "")
     return item.get("desc", "")
 
-
-print("Loading data...")
-human_data = load_jsonl("training_set_human.jsonl")
-aigc_data = load_jsonl("training_set_aigc.jsonl")
-exploring_data = load_jsonl("exploring_set.jsonl")
-
-print(
-    f"Human: {len(human_data)}, AIGC: {len(aigc_data)}, Exploring: {len(exploring_data)}"
-)
 
 positive_words = [
     "喜欢",
@@ -123,44 +117,207 @@ negative_words = [
     "后悔",
 ]
 
-# ==================== 1. 内部领域分布 ====================
-print("\n=== 1. Internal Domain Distribution ===")
 
+def scan(path):
+    """单次流式扫描数据集，一次性累计 13 个分析维度所需的全部中间量。
 
-def analyze_domain(data, name):
+    每个维度都沿用原先独立遍历时的同一套累加口径，因此各输出数值不变，
+    但解析与遍历只做一遍，且不再把全量记录留在内存中。
+    """
+    n = 0
     domains = Counter()
-    for item in data:
+    # 情感（正文 / 标题）
+    pos_c = neg_c = pos_t = neg_t = 0
+    # 互动
+    likes_sum = collects_sum = comments_sum = 0
+    # 结构（正文 / 标题）
+    para_c = list_c = bullet_c = emoji_c = hashtag_c = 0
+    para_t = list_t = bullet_t = emoji_t = hashtag_t = 0
+    # 复杂度（正文 / 标题）
+    chars_sum_c = chars_cnt_c = ratio_sum_c = sent_sum_c = sent_cnt_c = 0
+    chars_sum_t = chars_cnt_t = ratio_sum_t = sent_sum_t = sent_cnt_t = 0
+    # 标题风格
+    title_q = title_ex = title_num = title_emo = title_empty = 0
+    # 词表多样性（汉字串集合）
+    ttr_total = 0
+    seen_runs = set()
+    # 元数据
+    meta_user = meta_time = meta_lt = meta_like = meta_collect = meta_comment = 0
+    # 领域-情感
+    domain_sent = defaultdict(lambda: [0, 0])
+    # 一致性
+    empty_desc = empty_title = short = 0
+    titles_c = Counter()
+    # 时间分布
+    months = Counter()
+    # 标点（正文 / 标题）
+    punct_c = {"!": 0, "?": 0, "...": 0}
+    punct_t = {"!": 0, "?": 0, "...": 0}
+    # 领域-长度（保留首次出现顺序）
+    domain_len_sum = defaultdict(int)
+    domain_len_cnt = defaultdict(int)
+
+    for item in iter_records(path):
+        n += 1
+        title = item.get("note_title", "")
+        content = get_text(item)
+        combined = content + " " + title
+
+        # 1. 领域分布
+        domains[item.get("domain", "Unknown")] += 1
+
+        # 2. 情感
+        pos_c += sum(map(combined.__contains__, positive_words))
+        neg_c += sum(map(combined.__contains__, negative_words))
+        pos_t += sum(map(title.__contains__, positive_words))
+        neg_t += sum(map(title.__contains__, negative_words))
+
+        # 3. 互动
+        likes_sum += item.get("liked_count", 0)
+        collects_sum += item.get("collected_count", 0)
+        comments_sum += item.get("comments_count", 0)
+
+        # 4. 结构（正文）
+        para_c += sum(1 for p in combined.split("\n") if p.strip())
+        list_c += len(RE_LIST_ITEM.findall(combined))
+        bullet_c += len(RE_BULLET.findall(combined))
+        emoji_c += len(RE_EMOJI.findall(combined))
+        hashtag_c += len(RE_HASHTAG_CJK.findall(combined))
+        # 4b. 结构（标题）
+        para_t += sum(1 for p in title.split("\n") if p.strip())
+        list_t += len(RE_LIST_ITEM.findall(title))
+        bullet_t += len(RE_BULLET.findall(title))
+        emoji_t += len(RE_EMOJI.findall(title))
+        hashtag_t += len(RE_HASHTAG_CJK.findall(title))
+
+        # 5. 复杂度（正文）
+        chars = extract_chinese(content)
+        if chars:
+            total = sum(map(len, chars))
+            unique = len(set("".join(chars)))
+            chars_sum_c += total
+            chars_cnt_c += 1
+            ratio_sum_c += unique / total if total > 0 else 0
+        for s in RE_SENT_SPLIT.split(content):
+            s = s.strip()
+            if s:
+                sent_sum_c += len(s)
+                sent_cnt_c += 1
+        # 5b. 复杂度（标题）
+        chars = extract_chinese(title)
+        if chars:
+            total = sum(map(len, chars))
+            unique = len(set("".join(chars)))
+            chars_sum_t += total
+            chars_cnt_t += 1
+            ratio_sum_t += unique / total if total > 0 else 0
+        for s in RE_SENT_SPLIT.split(title):
+            s = s.strip()
+            if s:
+                sent_sum_t += len(s)
+                sent_cnt_t += 1
+
+        # 6. 标题风格
+        if not title:
+            title_empty += 1
+        else:
+            if "?" in title or "？" in title:
+                title_q += 1
+            if "!" in title or "！" in title:
+                title_ex += 1
+            if RE_DIGIT.search(title):
+                title_num += 1
+            if RE_EMOJI.search(title):
+                title_emo += 1
+
+        # 7. 词表多样性（汉字串）
+        words = extract_chinese(content)
+        ttr_total += len(words)
+        seen_runs.update(words)
+
+        # 8. 元数据
+        if "user_id" in item:
+            meta_user += 1
+        if "time" in item:
+            meta_time += 1
+        if "local_time" in item:
+            meta_lt += 1
+        if "liked_count" in item:
+            meta_like += 1
+        if "collected_count" in item:
+            meta_collect += 1
+        if "comments_count" in item:
+            meta_comment += 1
+
+        # 9. 领域-情感
+        slot = domain_sent[item.get("domain", "Unknown")]
+        slot[0] += sum(map(content.__contains__, positive_words))
+        slot[1] += sum(map(content.__contains__, negative_words))
+
+        # 10. 一致性
+        stripped = content.strip()
+        if not stripped:
+            empty_desc += 1
+        if not title:
+            empty_title += 1
+        if content and len(stripped) < 20:
+            short += 1
+        titles_c[title] += 1
+
+        # 11. 时间分布
+        lt = item.get("local_time", "")
+        if lt and len(lt) >= 6:
+            months[lt[:6]] += 1
+
+        # 12. 标点
+        punct_c["!"] += content.count("!") + content.count("！")
+        punct_c["?"] += content.count("?") + content.count("？")
+        punct_c["..."] += content.count("...")
+        punct_t["!"] += title.count("!") + title.count("！")
+        punct_t["?"] += title.count("?") + title.count("？")
+        punct_t["..."] += title.count("...")
+
+        # 13. 领域-长度
         d = item.get("domain", "Unknown")
-        domains[d] += 1
+        domain_len_sum[d] += len(content)
+        domain_len_cnt[d] += 1
+
+    return {
+        "n": n,
+        "domains": domains,
+        "sent": (pos_c, neg_c, pos_t, neg_t),
+        "engagement": (likes_sum, collects_sum, comments_sum),
+        "structure_content": (para_c, list_c, bullet_c, emoji_c, hashtag_c),
+        "structure_title": (para_t, list_t, bullet_t, emoji_t, hashtag_t),
+        "complexity_content": (chars_sum_c, chars_cnt_c, ratio_sum_c,
+                               sent_sum_c, sent_cnt_c),
+        "complexity_title": (chars_sum_t, chars_cnt_t, ratio_sum_t,
+                             sent_sum_t, sent_cnt_t),
+        "title_style": (title_q, title_ex, title_num, title_emo, title_empty),
+        "ttr": (ttr_total, len(seen_runs)),
+        "metadata": (meta_user, meta_time, meta_lt, meta_like, meta_collect,
+                     meta_comment),
+        "domain_sent": domain_sent,
+        "consistency": (empty_desc, empty_title, short,
+                        sum(1 for c in titles_c.values() if c > 1)),
+        "months": months,
+        "punct_content": punct_c,
+        "punct_title": punct_t,
+        "domain_len_sum": domain_len_sum,
+        "domain_len_cnt": domain_len_cnt,
+    }
+
+
+def analyze_domain(result, name):
+    domains = result["domains"]
     total = sum(domains.values())
     print(f"\n{name}:")
     for domain, count in domains.most_common(12):
         print(f"  {domain}: {count} ({count / total * 100:.1f}%)")
 
 
-analyze_domain(human_data, "Human")
-analyze_domain(aigc_data, "AIGC")
-analyze_domain(exploring_data, "Exploring")
-
-# ==================== 2. 情感分析 ====================
-print("\n=== 2. Sentiment Analysis ===")
-
-
-_sentiment_cache = {}
-
-
-def sentiment(data, name, use_title=False):
-    if name not in _sentiment_cache:
-        pos_c = neg_c = pos_t = neg_t = 0
-        for item in data:
-            title = item.get("note_title", "")
-            text = get_text(item) + " " + title
-            pos_c += sum(map(text.__contains__, positive_words))
-            neg_c += sum(map(text.__contains__, negative_words))
-            pos_t += sum(map(title.__contains__, positive_words))
-            neg_t += sum(map(title.__contains__, negative_words))
-        _sentiment_cache[name] = (pos_c, neg_c, pos_t, neg_t)
-    pos_c, neg_c, pos_t, neg_t = _sentiment_cache[name]
+def sentiment(result, name, use_title=False):
+    pos_c, neg_c, pos_t, neg_t = result["sent"]
     pos, neg = (pos_t, neg_t) if use_title else (pos_c, neg_c)
     label = "Title" if use_title else "Content"
     print(
@@ -168,302 +325,194 @@ def sentiment(data, name, use_title=False):
     )
 
 
-print("\n=== 2. Sentiment Analysis (Content) ===")
-sentiment(human_data, "Human", False)
-sentiment(aigc_data, "AIGC", False)
-sentiment(exploring_data, "Exploring", False)
-
-print("\n=== 2b. Sentiment Analysis (Title) ===")
-sentiment(human_data, "Human", True)
-sentiment(aigc_data, "AIGC", True)
-sentiment(exploring_data, "Exploring", True)
-
-# ==================== 3. Engagement ====================
-print("\n=== 3. Engagement Stats ===")
-
-
-def engagement(data, name):
-    likes = [item.get("liked_count", 0) for item in data]
-    collects = [item.get("collected_count", 0) for item in data]
-    comments = [item.get("comments_count", 0) for item in data]
+def engagement(result, name):
+    likes_sum, collects_sum, comments_sum = result["engagement"]
+    n = result["n"]
     print(
-        f"\n{name}: Likes={sum(likes) / len(likes):.1f}, Collects={sum(collects) / len(collects):.1f}, Comments={sum(comments) / len(comments):.1f}"
+        f"\n{name}: Likes={likes_sum / n:.1f}, Collects={collects_sum / n:.1f}, Comments={comments_sum / n:.1f}"
     )
 
 
-engagement(human_data, "Human")
-engagement(aigc_data, "AIGC")
-engagement(exploring_data, "Exploring")
-
-# ==================== 4. Structure ====================
-print("\n=== 4. Content Structure ===")
-
-
-def structure(data, name, use_title=False):
-    para = lists = bullet = emoji = hashtag = 0
-    for item in data:
-        if use_title:
-            text = item.get("note_title", "")
-        else:
-            text = get_text(item) + " " + item.get("note_title", "")
-        paras = [p for p in text.split("\n") if p.strip()]
-        para += len(paras)
-        lists += len(RE_LIST_ITEM.findall(text))
-        bullet += len(RE_BULLET.findall(text))
-        emoji += len(RE_EMOJI.findall(text))
-        hashtag += len(RE_HASHTAG_CJK.findall(text))
-    n = len(data)
+def structure(result, name, use_title=False):
+    if use_title:
+        para, lists, bullet, emoji, hashtag = result["structure_title"]
+    else:
+        para, lists, bullet, emoji, hashtag = result["structure_content"]
+    n = result["n"]
     label = "Title" if use_title else "Content"
     print(
         f"\n{name} ({label}): Para={para / n:.1f}, List={lists / n:.1f}, Emoji={emoji / n:.1f}, Tag={hashtag / n:.1f}"
     )
 
 
-print("\n=== 4. Content Structure (Content) ===")
-structure(human_data, "Human", False)
-structure(aigc_data, "AIGC", False)
-structure(exploring_data, "Exploring", False)
+def complexity(result, name, use_title=False):
+    if use_title:
+        chars_sum, chars_cnt, ratio_sum, sent_sum, sent_cnt = \
+            result["complexity_title"]
+    else:
+        chars_sum, chars_cnt, ratio_sum, sent_sum, sent_cnt = \
+            result["complexity_content"]
 
-print("\n=== 4b. Content Structure (Title) ===")
-structure(human_data, "Human", True)
-structure(aigc_data, "AIGC", True)
-structure(exploring_data, "Exploring", True)
-
-# ==================== 5. Complexity ====================
-print("\n=== 5. Text Complexity ===")
-
-
-def complexity(data, name, use_title=False):
-    chars_list, unique_ratios, sent_lens = [], [], []
-    for item in data:
-        if use_title:
-            text = item.get("note_title", "")
-        else:
-            text = get_text(item)
-        chars = extract_chinese(text)
-        if chars:
-            total = sum(map(len, chars))
-            unique = len(set("".join(chars)))
-            chars_list.append(total)
-            unique_ratios.append(unique / total if total > 0 else 0)
-        sents = RE_SENT_SPLIT.split(text)
-        for s in sents:
-            s = s.strip()
-            if s:
-                sent_lens.append(len(s))
-
-    avg_chars = sum(chars_list) / len(chars_list) if chars_list else 0
-    avg_ratio = sum(unique_ratios) / len(unique_ratios) if unique_ratios else 0
-    avg_sent = sum(sent_lens) / len(sent_lens) if sent_lens else 0
+    avg_chars = chars_sum / chars_cnt if chars_cnt else 0
+    avg_ratio = ratio_sum / chars_cnt if chars_cnt else 0
+    avg_sent = sent_sum / sent_cnt if sent_cnt else 0
     label = "Title" if use_title else "Content"
     print(
         f"\n{name} ({label}): AvgChars={avg_chars:.0f}, UniqueRatio={avg_ratio:.3f}, AvgSentLen={avg_sent:.0f}"
     )
 
 
-print("\n=== 5. Text Complexity (Content) ===")
-complexity(human_data, "Human", False)
-complexity(aigc_data, "AIGC", False)
-complexity(exploring_data, "Exploring", False)
-
-print("\n=== 5b. Text Complexity (Title) ===")
-complexity(human_data, "Human", True)
-complexity(aigc_data, "AIGC", True)
-complexity(exploring_data, "Exploring", True)
-
-# ==================== 6. Title Style ====================
-print("\n=== 6. Title Style ===")
-
-
-def title_style(data, name):
-    q = ex = num = emo = empty = 0
-    for item in data:
-        title = item.get("note_title", "")
-        if not title:
-            empty += 1
-            continue
-        if "?" in title or "？" in title:
-            q += 1
-        if "!" in title or "！" in title:
-            ex += 1
-        if RE_DIGIT.search(title):
-            num += 1
-        if RE_EMOJI.search(title):
-            emo += 1
-    n = len(data)
+def title_style(result, name):
+    q, ex, num, emo, empty = result["title_style"]
+    n = result["n"]
     print(
         f"\n{name}: Question={q / n * 100:.1f}%, Exclaim={ex / n * 100:.1f}%, Number={num / n * 100:.1f}%, Emoji={emo / n * 100:.1f}%, Empty={empty / n * 100:.1f}%"
     )
 
 
-title_style(human_data, "Human")
-title_style(aigc_data, "AIGC")
-title_style(exploring_data, "Exploring")
-
-# ==================== 7. TTR ====================
-print("\n=== 7. Vocabulary Diversity (TTR) ===")
-
-
-def vocab_ttr(data, name):
-    all_words = []
-    for item in data:
-        desc = get_text(item)
-        words = extract_chinese(desc)
-        all_words.extend(words)
-    unique = len(set(all_words))
-    total = len(all_words)
+def vocab_ttr(result, name):
+    total, unique = result["ttr"]
     ttr = unique / total if total > 0 else 0
     print(f"\n{name}: Total={total}, Unique={unique}, TTR={ttr:.4f}")
 
 
-vocab_ttr(human_data, "Human")
-vocab_ttr(aigc_data, "AIGC")
-vocab_ttr(exploring_data, "Exploring")
-
-# ==================== 8. Metadata ====================
-print("\n=== 8. Metadata Fields ===")
-
-
-def metadata(data, name):
-    user = sum(1 for item in data if "user_id" in item)
-    tm = sum(1 for item in data if "time" in item)
-    lt = sum(1 for item in data if "local_time" in item)
-    like = sum(1 for item in data if "liked_count" in item)
-    collect = sum(1 for item in data if "collected_count" in item)
-    comment = sum(1 for item in data if "comments_count" in item)
-    n = len(data)
+def metadata(result, name):
+    (user, tm, lt, like, collect, comment) = result["metadata"]
+    n = result["n"]
     print(
         f"\n{name}: user_id={user / n * 100:.1f}%, time={tm / n * 100:.1f}%, local_time={lt / n * 100:.1f}%, likes={like / n * 100:.1f}%"
     )
 
 
-metadata(human_data, "Human")
-metadata(aigc_data, "AIGC")
-metadata(exploring_data, "Exploring")
-
-# ==================== 9. Domain-Style Correlation ====================
-print("\n=== 9. Domain-Style Correlation ===")
-
-
-def domain_style(data, name):
-    domain_sent = defaultdict(lambda: [0, 0])
-    for item in data:
-        domain = item.get("domain", "Unknown")
-        text = get_text(item)
-        pos = sum(map(text.__contains__, positive_words))
-        neg = sum(map(text.__contains__, negative_words))
-        domain_sent[domain][0] += pos
-        domain_sent[domain][1] += neg
-
+def domain_style(result, name):
     print(f"\n{name}:")
-    for d, (p, n) in list(domain_sent.items())[:5]:
+    for d, (p, n) in list(result["domain_sent"].items())[:5]:
         ratio = p / n if n > 0 else p
         print(f"  {d}: pos={p}, neg={n}, ratio={ratio:.2f}")
 
 
-domain_style(human_data, "Human")
-domain_style(aigc_data, "AIGC")
-domain_style(exploring_data, "Exploring")
-
-# ==================== 10. Consistency ====================
-print("\n=== 10. Data Consistency ===")
-
-
-def consistency(data, name):
-    empty_desc = empty_title = short = 0
-    titles = [item.get("note_title", "") for item in data]
-    for item in data:
-        text = get_text(item)
-        title = item.get("note_title", "")
-        stripped = text.strip()
-        if not stripped:
-            empty_desc += 1
-        if not title:
-            empty_title += 1
-        if text and len(stripped) < 20:
-            short += 1
-    dup = sum(1 for t, c in Counter(titles).items() if c > 1)
-    n = len(data)
+def consistency(result, name):
+    empty_desc, empty_title, short, dup = result["consistency"]
+    n = result["n"]
     print(
         f"\n{name}: EmptyDesc={empty_desc / n * 100:.1f}%, EmptyTitle={empty_title / n * 100:.1f}%, Short<20={short / n * 100:.1f}%, DuplicateTitle={dup}"
     )
 
 
-consistency(human_data, "Human")
-consistency(aigc_data, "AIGC")
-consistency(exploring_data, "Exploring")
-
-# ==================== 11. Time Distribution ====================
-print("\n=== 11. Time Distribution ===")
-
-
-def time_dist(data, name):
-    months = Counter()
-    for item in data:
-        lt = item.get("local_time", "")
-        if lt and len(lt) >= 6:
-            months[lt[:6]] += 1
+def time_dist(result, name):
     print(f"\n{name}:")
-    for m, c in months.most_common(8):
+    for m, c in result["months"].most_common(8):
         print(f"  {m}: {c}")
 
 
-time_dist(human_data, "Human")
-time_dist(aigc_data, "AIGC")
-time_dist(exploring_data, "Exploring")
-
-# ==================== 12. Character patterns ====================
-print("\n=== 12. Character Patterns ===")
-
-
-def char_patterns(data, name, use_title=False):
-    punct = {"!": 0, "?": 0, "...": 0}
-    for item in data:
-        if use_title:
-            text = item.get("note_title", "")
-        else:
-            text = get_text(item)
-        punct["!"] += text.count("!") + text.count("！")
-        punct["?"] += text.count("?") + text.count("？")
-        punct["..."] += text.count("...")
-    n = len(data)
+def char_patterns(result, name, use_title=False):
+    punct = result["punct_title"] if use_title else result["punct_content"]
+    n = result["n"]
     label = "Title" if use_title else "Content"
     print(
         f"\n{name} ({label}): Exclaim={punct['!'] / n:.2f}, Question={punct['?'] / n:.2f}, Ellipsis={punct['...'] / n:.2f}"
     )
 
 
-print("\n=== 12. Character Patterns (Content) ===")
-char_patterns(human_data, "Human", False)
-char_patterns(aigc_data, "AIGC", False)
-char_patterns(exploring_data, "Exploring", False)
-
-print("\n=== 12b. Character Patterns (Title) ===")
-char_patterns(human_data, "Human", True)
-char_patterns(aigc_data, "AIGC", True)
-char_patterns(exploring_data, "Exploring", True)
-
-# ==================== 13. Domain vs Length ====================
-print("\n=== 13. Domain vs Content Length ===")
-
-
-def domain_len(data, name):
-    domain_lens = defaultdict(list)
-    for item in data:
-        d = item.get("domain", "Unknown")
-        text = get_text(item)
-        domain_lens[d].append(len(text))
-
+def domain_len(result, name):
+    domain_lens = {
+        d: (result["domain_len_sum"][d], result["domain_len_cnt"][d])
+        for d in result["domain_len_sum"]
+    }
     print(f"\n{name}:")
-    for d, lens in sorted(
-        domain_lens.items(), key=lambda x: sum(x[1]) / len(x[1]), reverse=True
+    for d, (total, cnt) in sorted(
+        domain_lens.items(), key=lambda x: x[1][0] / x[1][1], reverse=True
     )[:5]:
-        avg = sum(lens) / len(lens)
+        avg = total / cnt
         print(f"  {d}: avg_len={avg:.0f}")
 
 
-domain_len(human_data, "Human")
-domain_len(aigc_data, "AIGC")
-domain_len(exploring_data, "Exploring")
+def main():
+    print("Loading data...")
+    stats = {
+        "Human": scan("training_set_human.jsonl"),
+        "AIGC": scan("training_set_aigc.jsonl"),
+        "Exploring": scan("exploring_set.jsonl"),
+    }
 
-print("\n=== Analysis Complete ===")
+    print(
+        f"Human: {stats['Human']['n']}, AIGC: {stats['AIGC']['n']}, Exploring: {stats['Exploring']['n']}"
+    )
+
+    print("\n=== 1. Internal Domain Distribution ===")
+    for name, result in stats.items():
+        analyze_domain(result, name)
+
+    print("\n=== 2. Sentiment Analysis ===")
+    print("\n=== 2. Sentiment Analysis (Content) ===")
+    for name, result in stats.items():
+        sentiment(result, name, False)
+
+    print("\n=== 2b. Sentiment Analysis (Title) ===")
+    for name, result in stats.items():
+        sentiment(result, name, True)
+
+    print("\n=== 3. Engagement Stats ===")
+    for name, result in stats.items():
+        engagement(result, name)
+
+    print("\n=== 4. Content Structure ===")
+    print("\n=== 4. Content Structure (Content) ===")
+    for name, result in stats.items():
+        structure(result, name, False)
+
+    print("\n=== 4b. Content Structure (Title) ===")
+    for name, result in stats.items():
+        structure(result, name, True)
+
+    print("\n=== 5. Text Complexity ===")
+    print("\n=== 5. Text Complexity (Content) ===")
+    for name, result in stats.items():
+        complexity(result, name, False)
+
+    print("\n=== 5b. Text Complexity (Title) ===")
+    for name, result in stats.items():
+        complexity(result, name, True)
+
+    print("\n=== 6. Title Style ===")
+    for name, result in stats.items():
+        title_style(result, name)
+
+    print("\n=== 7. Vocabulary Diversity (TTR) ===")
+    for name, result in stats.items():
+        vocab_ttr(result, name)
+
+    print("\n=== 8. Metadata Fields ===")
+    for name, result in stats.items():
+        metadata(result, name)
+
+    print("\n=== 9. Domain-Style Correlation ===")
+    for name, result in stats.items():
+        domain_style(result, name)
+
+    print("\n=== 10. Data Consistency ===")
+    for name, result in stats.items():
+        consistency(result, name)
+
+    print("\n=== 11. Time Distribution ===")
+    for name, result in stats.items():
+        time_dist(result, name)
+
+    print("\n=== 12. Character Patterns ===")
+    print("\n=== 12. Character Patterns (Content) ===")
+    for name, result in stats.items():
+        char_patterns(result, name, False)
+
+    print("\n=== 12b. Character Patterns (Title) ===")
+    for name, result in stats.items():
+        char_patterns(result, name, True)
+
+    print("\n=== 13. Domain vs Content Length ===")
+    for name, result in stats.items():
+        domain_len(result, name)
+
+    print("\n=== Analysis Complete ===")
+
+
+if __name__ == "__main__":
+    main()

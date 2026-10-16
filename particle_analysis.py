@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import array
 import json
 import re
 import numpy as np
@@ -13,8 +14,12 @@ from scipy import stats
 import os
 
 font_dir = "/usr/share/fonts/noto-cjk"
-noto_files = sorted(
-    [f for f in os.listdir(font_dir) if "NotoSansCJK" in f and f.endswith(".ttc")]
+noto_files = (
+    sorted(
+        [f for f in os.listdir(font_dir) if "NotoSansCJK" in f and f.endswith(".ttc")]
+    )
+    if os.path.isdir(font_dir)
+    else []
 )
 if noto_files:
     font_path = os.path.join(font_dir, noto_files[0])
@@ -27,7 +32,7 @@ else:
         "SimHei",
         "Microsoft YaHei",
     ]:
-        if any(fallback in f.get_name() for f in font_manager.fontManager.ttflist):
+        if any(fallback in getattr(f, "name", "") for f in font_manager.fontManager.ttflist):
             plt.rcParams["font.family"] = fallback
             break
 plt.rcParams["axes.unicode_minus"] = False
@@ -231,16 +236,33 @@ def compute_all_particle_ratios(text, particles):
     return result
 
 
+def _group_indices(labels):
+    """把记录按标签分组为索引列表（保持组内原记录顺序）。"""
+    groups = defaultdict(list)
+    for i, lab in enumerate(labels):
+        groups[lab].append(i)
+    return groups
+
+
 def load_particle_data(files, particles):
     # 去重后仅保留下游真正访问的粒子：分布/相关分析取前 30/20/10 个，
     # 热力图取 key_particles[:60]，其最大索引落在去重序列的第 65 个之前。
     # 存前 65 个即覆盖全部访问点（此前需存全量，为修复热力图后半段为 0 的
-    # slicing bug；65 已覆盖其索引上限），同时显著减少逐记录 dict 的内存。
+    # slicing bug；65 已覆盖其索引上限）。
+    #
+    # 存储改为按记录连续排布的 float64 数组（array('d') + frombuffer 零拷贝），
+    # 不再为每条记录构造 dict，内存从逐记录 dict 的数倍降为 ~8 字节/粒子。
     stored_particles = list(dict.fromkeys(particles))[:65]
+    k = len(stored_particles)
+    particle_index = {p: i for i, p in enumerate(stored_particles)}
 
     particle_stats = {}
     for f in files:
-        stats_list = []
+        ratios_flat = array.array("d")
+        text_lens = array.array("q")
+        domains = []
+        local_times = []
+        liked_vals = []
         total = 0
         with open(f, "r", encoding="utf-8") as fh:
             for line in fh:
@@ -252,25 +274,47 @@ def load_particle_data(files, particles):
                 title = item.get("note_title", "")
                 desc = item.get("desc", "") or item.get("note_content", "")
                 text = title + " " + (desc if desc else "")
+                text_len = len(text)
 
-                if not text or len(text) == 0:
-                    ratios = {p: 0 for p in stored_particles}
+                if not text or text_len == 0:
+                    ratios_flat.extend([0.0] * k)
                 else:
-                    text_len = len(text)
-                    ratios = {p: text.count(p) / text_len for p in stored_particles}
+                    ratios_flat.extend(
+                        text.count(p) / text_len for p in stored_particles
+                    )
 
-                stats_list.append(
-                    {
-                        "text_len": len(text),
-                        "ratios": ratios,
-                        "domain": item.get("domain", ""),
-                        "local_time": item.get("local_time", ""),
-                        "liked_count": item.get("liked_count", 0),
-                    }
-                )
-        particle_stats[f] = stats_list
+                text_lens.append(text_len)
+                domains.append(item.get("domain", ""))
+                local_times.append(item.get("local_time", ""))
+                liked = item.get("liked_count", 0)
+                if isinstance(liked, str):
+                    try:
+                        liked = int(liked)
+                    except ValueError:
+                        liked = 0
+                liked_vals.append(liked or 0)
+        ratios = np.frombuffer(ratios_flat, dtype=np.float64).reshape(total, k)
+        particle_stats[f] = {
+            "n": total,
+            "ratios": ratios,
+            "zeros": np.zeros(total),
+            "particle_index": particle_index,
+            "stored_particles": stored_particles,
+            "text_len": np.frombuffer(text_lens, dtype=np.int64),
+            "domain": domains,
+            "local_time": local_times,
+            "liked": np.asarray(liked_vals, dtype=np.int64),
+        }
         print("Loaded {}: {} records".format(f, total))
     return particle_stats
+
+
+def _ratios_for(stats, particle):
+    """取某粒子在各记录上的 ratio 列；未存储的粒子与旧口径一致按 0 处理。"""
+    idx = stats["particle_index"].get(particle)
+    if idx is None:
+        return stats["zeros"]
+    return stats["ratios"][:, idx]
 
 
 def analyze_particle_distribution(particle_stats, files, top_particles):
@@ -280,20 +324,15 @@ def analyze_particle_distribution(particle_stats, files, top_particles):
 
     results = {}
     for f in files:
-        stats_list = particle_stats[f]
-        all_ratios = defaultdict(list)
-        for item in stats_list:
-            for p in top_particles[:30]:
-                all_ratios[p].append(item["ratios"].get(p, 0))
-
+        stats_data = particle_stats[f]
         results[f] = {}
         for p in top_particles[:30]:
-            ratios = all_ratios[p]
+            ratios = _ratios_for(stats_data, p)
             results[f][p] = {
-                "mean": np.mean(ratios) if ratios else 0,
-                "std": np.std(ratios) if ratios else 0,
-                "median": np.median(ratios) if ratios else 0,
-                "total": sum(ratios) if ratios else 0,
+                "mean": np.mean(ratios) if ratios.size else 0,
+                "std": np.std(ratios) if ratios.size else 0,
+                "median": np.median(ratios) if ratios.size else 0,
+                "total": float(ratios.sum()) if ratios.size else 0,
             }
 
     print("\nMean Ratio of Particles:")
@@ -317,22 +356,16 @@ def analyze_particle_by_domain(particle_stats, files, top_particles):
     print("Particle Distribution by Domain")
     print("=" * 80)
 
-    domain_results = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
-
     for f in files:
-        stats_list = particle_stats[f]
-        for item in stats_list:
-            domain = item.get("domain", "unknown")
-            for p in top_particles[:10]:
-                domain_results[f][domain][p].append(item["ratios"].get(p, 0))
-
-    for f in files:
+        stats_data = particle_stats[f]
+        domain_index = _group_indices(stats_data["domain"])
         print("\n{}:".format(f))
-        for domain in sorted(domain_results[f].keys()):
+        for domain in sorted(domain_index.keys()):
+            idxs = domain_index[domain]
             print("  {}:".format(domain))
             for p in top_particles[:10]:
-                ratios = domain_results[f][domain][p]
-                if ratios:
+                ratios = _ratios_for(stats_data, p)[idxs]
+                if ratios.size:
                     mean_val = np.mean(ratios)
                     print("    {}: {} (n={})".format(p, mean_val, len(ratios)))
 
@@ -342,25 +375,21 @@ def analyze_particle_by_time(particle_stats, files, top_particles):
     print("Particle Distribution over Time")
     print("=" * 80)
 
-    time_results = defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
-
     for f in files:
-        stats_list = particle_stats[f]
-        for item in stats_list:
-            local_time = item.get("local_time", "")
+        stats_data = particle_stats[f]
+        months = []
+        for local_time in stats_data["local_time"]:
             if len(local_time) >= 6:
-                month = local_time[:6]
+                months.append(local_time[:6])
             else:
-                month = "unknown"
-            for p in ["的", "了", "是", "在"]:
-                time_results[f][month][p].append(item["ratios"].get(p, 0))
-
-    for f in files:
+                months.append("unknown")
+        month_index = _group_indices(months)
         print("\n{}:".format(f))
-        for month in sorted(time_results[f].keys())[:12]:
+        for month in sorted(month_index.keys())[:12]:
+            idxs = month_index[month]
             for p in ["的", "了", "是", "在"]:
-                ratios = time_results[f][month][p]
-                if ratios:
+                ratios = _ratios_for(stats_data, p)[idxs]
+                if ratios.size:
                     mean_val = np.mean(ratios)
                     print("  {} - {}: {}".format(month, p, mean_val))
 
@@ -376,11 +405,8 @@ def analyze_particle_correlation(particle_stats, files, top_particles):
             for j in range(i + 1, len(files)):
                 f1 = files[i]
                 f2 = files[j]
-                stats1 = particle_stats[f1]
-                stats2 = particle_stats[f2]
-
-                ratios1 = [item["ratios"].get(p, 0) for item in stats1]
-                ratios2 = [item["ratios"].get(p, 0) for item in stats2]
+                ratios1 = _ratios_for(particle_stats[f1], p)
+                ratios2 = _ratios_for(particle_stats[f2], p)
 
                 min_len = min(len(ratios1), len(ratios2))
                 if min_len > 10:
@@ -417,9 +443,8 @@ def plot_particle_comparison(particle_stats, files, top_particles):
     for idx, p in enumerate(particles_to_plot[:4]):
         ax = axes[idx // 2, idx % 2]
         for f in files:
-            stats_list = particle_stats[f]
-            ratios = [item["ratios"].get(p, 0) for item in stats_list]
-            if ratios:
+            ratios = _ratios_for(particle_stats[f], p)
+            if ratios.size:
                 ax.hist(
                     ratios, bins=30, alpha=0.5, label=label_map[f], color=color_map[f]
                 )
@@ -441,9 +466,8 @@ def plot_particle_comparison(particle_stats, files, top_particles):
         means = []
         labels = []
         for f in files:
-            stats_list = particle_stats[f]
-            ratios = [item["ratios"].get(p, 0) for item in stats_list]
-            means.append(np.mean(ratios) if ratios else 0)
+            ratios = _ratios_for(particle_stats[f], p)
+            means.append(np.mean(ratios) if ratios.size else 0)
             labels.append(label_map[f])
 
         ax.bar(labels, means, color=[color_map[f] for f in files])
@@ -462,22 +486,17 @@ def analyze_content_length_with_particles(particle_stats, files, top_particles):
     print("=" * 80)
 
     for f in files:
-        stats_list = particle_stats[f]
-        lengths = []
-        particle_counts = {p: [] for p in top_particles[:10]}
-
-        for item in stats_list:
-            text_len = item.get("text_len", 0)
-            if text_len > 0:
-                lengths.append(text_len)
-                for p in top_particles[:10]:
-                    particle_counts[p].append(item["ratios"].get(p, 0) * text_len)
+        stats_data = particle_stats[f]
+        text_len = stats_data["text_len"]
+        mask = text_len > 0
+        lengths = text_len[mask]
 
         print("\n{}:".format(f))
         print("  Average text length: {}".format(np.mean(lengths)))
         for p in top_particles[:10]:
-            if lengths:
-                avg_count = np.mean(particle_counts[p])
+            if lengths.size:
+                ratios = _ratios_for(stats_data, p)[mask]
+                avg_count = np.mean(ratios * lengths)
                 print("  Average '{}' count per text: {}".format(p, avg_count))
 
 
@@ -487,24 +506,16 @@ def analyze_particle_with_engagement(particle_stats, files, top_particles):
     print("=" * 80)
 
     for f in files:
-        stats_list = particle_stats[f]
+        stats_data = particle_stats[f]
+        liked = stats_data["liked"]
+        high_mask = liked > 10
+        low_mask = liked == 0
         for p in ["的", "了", "是", "在"]:
-            highs = []
-            lows = []
-            for item in stats_list:
-                ratio = item["ratios"].get(p, 0)
-                liked = item.get("liked_count") or 0
-                if isinstance(liked, str):
-                    try:
-                        liked = int(liked)
-                    except ValueError:
-                        liked = 0
-                if liked > 10:
-                    highs.append(ratio)
-                elif liked == 0:
-                    lows.append(ratio)
+            ratios = _ratios_for(stats_data, p)
+            highs = ratios[high_mask]
+            lows = ratios[low_mask]
 
-            if highs and lows:
+            if highs.size and lows.size:
                 high_mean = np.mean(highs)
                 low_mean = np.mean(lows)
                 print(
@@ -532,8 +543,8 @@ def compute_detailed_correlation(particle_stats, files, top_particles):
             print("\n{} vs {}:".format(f1, f2))
 
             for p in particles_to_use:
-                ratios1 = [item["ratios"].get(p, 0) for item in stats1]
-                ratios2 = [item["ratios"].get(p, 0) for item in stats2]
+                ratios1 = _ratios_for(stats1, p)
+                ratios2 = _ratios_for(stats2, p)
 
                 min_len = min(len(ratios1), len(ratios2))
                 if min_len > 10:
@@ -541,19 +552,23 @@ def compute_detailed_correlation(particle_stats, files, top_particles):
                     print("  {}: corr={}, p-value={}".format(p, corr, pval))
 
 
-def _mean_ratios(stats_list, key_particles, chunk_size=20000):
+def _mean_ratios(stats_data, key_particles, chunk_size=20000):
     """分块累加每个 particle 的平均 ratio，避免一次性构造大矩阵。"""
     k = len(key_particles)
-    n = len(stats_list)
+    n = stats_data["n"]
     if n == 0:
         return np.zeros(k)
     total = np.zeros(k)
+    col_idx = [stats_data["particle_index"].get(p) for p in key_particles]
+    ratios = stats_data["ratios"]
     for start in range(0, n, chunk_size):
-        block = stats_list[start:start + chunk_size]
-        arr = np.array(
-            [item["ratios"].get(p, 0) for item in block for p in key_particles],
-            dtype=float,
-        ).reshape(len(block), k)
+        block = ratios[start:start + chunk_size]
+        arr = np.empty((block.shape[0], k), dtype=float)
+        for j, ix in enumerate(col_idx):
+            if ix is None:
+                arr[:, j] = 0.0
+            else:
+                arr[:, j] = block[:, ix]
         total += arr.sum(axis=0)
     return total / n
 
@@ -725,20 +740,15 @@ def analyze_particle_pairs(particle_stats, files, top_particles):
 
     for f in files:
         print("\n{}:".format(f))
-        stats_list = particle_stats[f]
+        stats_data = particle_stats[f]
+        text_len = stats_data["text_len"]
+        safe_len = np.where(text_len == 0, 1, text_len)
 
         for p1, p2 in target_pairs:
-            counts1 = []
-            counts2 = []
-            for item in stats_list:
-                text_len = item.get("text_len", 0) or 1
-                if text_len > 0:
-                    r1 = item["ratios"].get(p1, 0) * text_len
-                    r2 = item["ratios"].get(p2, 0) * text_len
-                    counts1.append(r1)
-                    counts2.append(r2)
+            counts1 = _ratios_for(stats_data, p1) * safe_len
+            counts2 = _ratios_for(stats_data, p2) * safe_len
 
-            if counts1 and counts2 and len(counts1) > 10:
+            if counts1.size and counts2.size and len(counts1) > 10:
                 corr, pval = stats.pearsonr(counts1, counts2)
                 print(
                     "  '{}' vs '{}': corr={:.4f}, p={:.2e}".format(p1, p2, corr, pval)

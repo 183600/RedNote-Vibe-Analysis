@@ -89,11 +89,14 @@ def save_fig(fig, path: str, dpi: int = 150) -> str:
 
 
 def iter_jsonl(path: str) -> Iterator[dict]:
-    """流式读取 JSONL，逐行解析，避免把大文件一次性载入内存。"""
+    """流式读取 JSONL，逐行解析，避免把大文件一次性载入内存。
+
+    `json.loads` 本身接受首尾空白，因此不再对每行做一次多余的 strip 拷贝，
+    只用 `isspace()` 判断空行（行为与原先的 `line.strip()` 判断一致）。
+    """
     with open(path, encoding="utf-8") as f:
         for line in f:
-            line = line.strip()
-            if not line:
+            if not line or line.isspace():
                 continue
             yield json.loads(line)
 
@@ -102,7 +105,7 @@ def iter_jsonl_relaxed(path: str) -> Iterator[dict]:
     """流式读取 JSONL，跳过空行与无法解析的行（历史探索脚本的容错口径）。"""
     with open(path, encoding="utf-8") as f:
         for line in f:
-            if not line.strip():
+            if not line or line.isspace():
                 continue
             try:
                 yield json.loads(line)
@@ -122,7 +125,7 @@ def iter_jsonl_codecs(path: str) -> Iterator[dict]:
     with codecs.open(path, "r", encoding="utf-8") as f:
         for line in f:
             try:
-                yield json.loads(line.strip())
+                yield json.loads(line)
             except Exception:
                 continue
 
@@ -183,15 +186,28 @@ def clean_body(content: str | None) -> str:
     return HASHTAG.sub(" ", body).strip()
 
 
+def _positive_counts(counts) -> np.ndarray:
+    """提取正计数并转为 float64 数组。
+
+    与旧的 `np.asarray(list(counts), dtype=float)` 结果完全一致，但当输入已是
+    numpy 计数数组（如 bootstrap 中的 `np.bincount` 结果）时，直接从数组上过滤
+    并原地转换，避免每轮把整条数组转成 Python list 再转回数组的开销。
+    """
+    if isinstance(counts, np.ndarray):
+        arr = counts[counts > 0]
+        return arr if arr.dtype == np.float64 else arr.astype(np.float64)
+    values = list(counts.values()) if isinstance(counts, dict) else list(counts)
+    arr = np.asarray(values, dtype=float)
+    return arr[arr > 0]
+
+
 def shannon_entropy(counts, miller_madow: bool = False) -> float:
     """离散分布的香农熵（bit）。miller_madow=True 时加小样本校正。
 
     经验熵随样本量增大而系统性偏高（能观测到更多稀有变体），跨不同样本量的
     比较应使用 Miller–Madow 校正：H_MM = H + (K-1)/(2N ln2)。
     """
-    arr = np.asarray(list(counts.values()) if isinstance(counts, dict)
-                     else list(counts), dtype=float)
-    arr = arr[arr > 0]
+    arr = _positive_counts(counts)
     n = float(arr.sum())
     if n <= 0:
         return 0.0
@@ -204,9 +220,7 @@ def shannon_entropy(counts, miller_madow: bool = False) -> float:
 
 def topk_coverage(counts, k: int) -> float:
     """前 k 个最高频项覆盖的计数占比（0~1）；衡量分布集中度/模板化程度。"""
-    arr = np.asarray(list(counts.values()) if isinstance(counts, dict)
-                     else list(counts), dtype=float)
-    arr = arr[arr > 0]
+    arr = _positive_counts(counts)
     n = float(arr.sum())
     if n <= 0 or k <= 0:
         return 0.0

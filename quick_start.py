@@ -20,16 +20,23 @@ from datasets import Dataset
 def load_data():
     """Load data"""
     print("Loading data...")
-    
+
+    # 下游 prepare_dataset 只读取 note_content / desc；加载时按白名单投影，
+    # 避免把整条记录（标题、话题、互动数据等大量未使用字段）全部驻留内存。
+    used_keys = ('note_content', 'desc')
+
     def load_jsonl(file_path):
         data = []
         if os.path.exists(file_path):
             with open(file_path, 'r', encoding='utf-8') as f:
                 for line in f:
-                    try:
-                        data.append(json.loads(line))
-                    except:
+                    if not line or line.isspace():
                         continue
+                    try:
+                        item = json.loads(line)
+                    except Exception:
+                        continue
+                    data.append({k: item[k] for k in used_keys if k in item})
         return data
     
     # Get data paths (data may live in ./datasets/ or at the repo root)

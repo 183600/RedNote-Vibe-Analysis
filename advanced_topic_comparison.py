@@ -215,14 +215,23 @@ def setup_fonts():
     plt.rcParams["axes.unicode_minus"] = False
 
 
+# 下游分析只读取这些字段；加载时按白名单投影，避免整条记录（含 note_id /
+# user_id / time 等未使用字段）长期驻留内存。容错口径与原实现一致。
+_ITEM_KEYS = ("note_title", "note_content", "desc", "domain",
+              "liked_count", "collected_count", "comments_count")
+
+
 def load_jsonl(filepath):
     data = []
     with open(filepath, "r", encoding="utf-8") as f:
         for line in f:
-            try:
-                data.append(json.loads(line.strip()))
-            except:
+            if not line or line.isspace():
                 continue
+            try:
+                item = json.loads(line)
+            except Exception:
+                continue
+            data.append({k: item[k] for k in _ITEM_KEYS if k in item})
     return data
 
 

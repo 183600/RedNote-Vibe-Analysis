@@ -16,6 +16,9 @@ import os
 init_plot_style()
 
 RE_XHS_EMO = re.compile(r"\[[^\[\]]{1,8}R\]")
+# 热循环内使用的正则统一预编译（等价于原来的 re.sub 字面量）。
+RE_NONWORD = re.compile(r"[^\w\s]")
+RE_DIGITS = re.compile(r"\d+")
 
 STOPWORDS = set(
     [
@@ -110,8 +113,8 @@ def tokenize(text):
     if not text:
         return []
     text = RE_XHS_EMO.sub(" ", clean_body(str(text)))
-    text = re.sub(r"[^\w\s]", " ", text)
-    text = re.sub(r"\d+", "", text)
+    text = RE_NONWORD.sub(" ", text)
+    text = RE_DIGITS.sub("", text)
     words = text.lower().split()
     return [w for w in words if len(w) > 1 and w not in STOPWORDS]
 
@@ -123,7 +126,7 @@ def stream_word_freq(filepath):
     with open(filepath, "r", encoding="utf-8") as f:
         for line in f:
             try:
-                item = json.loads(line.strip())
+                item = json.loads(line)
             except Exception:
                 continue
             total += 1

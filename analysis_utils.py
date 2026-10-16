@@ -545,11 +545,11 @@ def split_sentences(text: str | None) -> list[str]:
     """把正文切成句子（按中英文句末标点/换行/分号），去除空片段与首尾空白。
 
     正则与 `deep_dive_analysis.py` 的 SENT_SPLIT 完全一致（连续标点视为一个边界），
-    保证「平均句长」等指标跨脚本可比。每个片段只做一次 strip（先在生成器里
-    strip，再用结果本身做非空判断）。
+    保证「平均句长」等指标跨脚本可比。用 `map(str.strip, parts)` 一次性剥离首尾
+    空白（C 层调用），再用结果本身做非空判断，与逐片段 strip 的结果完全一致。
     """
     parts = _SENTENCE_SPLIT_RE.split(str(text or ""))
-    return [s for s in (p.strip() for p in parts) if s]
+    return [s for s in map(str.strip, parts) if s]
 
 
 def burstiness(lengths) -> float:
@@ -730,15 +730,21 @@ def to_int(v, default: int = 0) -> int:
 
 
 def engagement_of(rec: dict) -> tuple[int, int, int]:
-    """读取一条记录的（点赞, 收藏, 评论），兼容两种字段命名。"""
-    return (
-        to_int(rec.get("liked_count") if rec.get("liked_count") is not None
-               else rec.get("likes")),
-        to_int(rec.get("collected_count") if rec.get("collected_count") is not None
-               else rec.get("collections")),
-        to_int(rec.get("comments_count") if rec.get("comments_count") is not None
-               else rec.get("comments")),
-    )
+    """读取一条记录的（点赞, 收藏, 评论），兼容两种字段命名。
+
+    每个字段只做一次 `rec.get`（命中旧字段名时不再重复查字典），
+    与旧实现的取值口径完全一致（新字段值为 None 时回退旧字段名）。
+    """
+    liked = rec.get("liked_count")
+    if liked is None:
+        liked = rec.get("likes")
+    collected = rec.get("collected_count")
+    if collected is None:
+        collected = rec.get("collections")
+    comments = rec.get("comments_count")
+    if comments is None:
+        comments = rec.get("comments")
+    return to_int(liked), to_int(collected), to_int(comments)
 
 
 @lru_cache(maxsize=16384)

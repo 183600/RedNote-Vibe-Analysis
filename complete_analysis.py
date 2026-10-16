@@ -127,7 +127,7 @@ def stream_stats(filepath):
     with open(filepath, "r", encoding="utf-8") as f:
         for line in f:
             try:
-                item = json.loads(line.strip())
+                item = json.loads(line)
             except Exception:
                 continue
             total += 1

@@ -172,9 +172,11 @@ def scan(path):
         # 1. 领域分布
         domains[item.get("domain", "Unknown")] += 1
 
-        # 2. 情感
-        pos_c += sum(map(content.__contains__, positive_words))
-        neg_c += sum(map(content.__contains__, negative_words))
+        # 2. 情感（正文 / 标题）
+        pos_i = sum(map(content.__contains__, positive_words))
+        neg_i = sum(map(content.__contains__, negative_words))
+        pos_c += pos_i
+        neg_c += neg_i
         pos_t += sum(map(title.__contains__, positive_words))
         neg_t += sum(map(title.__contains__, negative_words))
 
@@ -255,10 +257,10 @@ def scan(path):
         if "comments_count" in item:
             meta_comment += 1
 
-        # 9. 领域-情感
+        # 9. 领域-情感（复用第 2 步已算好的本条正文情感计数）
         slot = domain_sent[item.get("domain", "Unknown")]
-        slot[0] += sum(map(content.__contains__, positive_words))
-        slot[1] += sum(map(content.__contains__, negative_words))
+        slot[0] += pos_i
+        slot[1] += neg_i
 
         # 10. 一致性
         stripped = content.strip()

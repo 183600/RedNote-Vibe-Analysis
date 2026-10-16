@@ -20,7 +20,7 @@ def main():
     with open(BASE + "exploring_set_fixed.jsonl", "rb") as f:
         for line in f:
             try:
-                s = line.decode("utf-8").strip()
+                s = line.decode("utf-8")
                 item = json.loads(s)
                 user_id = item.get("user_id")
                 if not user_id:

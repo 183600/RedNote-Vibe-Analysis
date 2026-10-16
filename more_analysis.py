@@ -9,6 +9,8 @@ from collections import Counter
 RE_DIGITS = re.compile(r"\d+")
 # 连续的非 \w 字符（标点/空白）作为分隔符直接切词，等价于原先「标点→空格再 split」。
 RE_NONWORD = re.compile(r"[^\w]+")
+RE_HASHTAG = re.compile(r"#(\w+)")
+RE_LINK = re.compile(r"http[s]?://|www\.")
 
 EMOJI_PATTERN = re.compile(
     "["
@@ -114,7 +116,7 @@ def load_jsonl(filepath):
     with codecs.open(filepath, "r", encoding="utf-8") as f:
         for line in f:
             try:
-                data = json.loads(line.strip())
+                data = json.loads(line)
                 texts.append(data)
             except:
                 continue
@@ -193,14 +195,14 @@ def stream_all(filepath, sample_size=5000, seed=42):
             ling_desc["ellipsis"] += text.count("...")
             ling_desc["upper"] += sum(map(str.isupper, text))
             ling_desc["digit"] += sum(map(str.isdigit, text))
-            ling_desc["link"] += len(re.findall(r"http[s]?://|www\.", text))
+            ling_desc["link"] += len(RE_LINK.findall(text))
         if title:
             ling_title["exclaim"] += title.count("!")
             ling_title["question"] += title.count("?")
             ling_title["ellipsis"] += title.count("...")
             ling_title["upper"] += sum(map(str.isupper, title))
             ling_title["digit"] += sum(map(str.isdigit, title))
-            ling_title["link"] += len(re.findall(r"http[s]?://|www\.", title))
+            ling_title["link"] += len(RE_LINK.findall(title))
 
     return {
         "total": total,
@@ -230,7 +232,7 @@ def extract_emojis(text):
 def extract_hashtags(text):
     if not text:
         return []
-    return re.findall(r"#(\w+)", str(text))
+    return RE_HASHTAG.findall(str(text))
 
 
 def analyze_unique_words(freqs, files, word_sets=None):

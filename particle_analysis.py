@@ -177,7 +177,7 @@ def load_jsonl(filepath):
     with open(filepath, "r", encoding="utf-8") as f:
         for line in f:
             try:
-                data = json.loads(line.strip())
+                data = json.loads(line)
                 texts.append(data)
             except:
                 continue
@@ -248,7 +248,7 @@ def load_particle_data(files, particles):
         with open(f, "r", encoding="utf-8") as fh:
             for line in fh:
                 try:
-                    item = json.loads(line.strip())
+                    item = json.loads(line)
                 except Exception:
                     continue
                 total += 1

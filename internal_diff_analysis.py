@@ -21,7 +21,7 @@ def iter_records(filepath):
     with open(filepath, "r", encoding="utf-8") as f:
         for line in f:
             try:
-                yield json.loads(line.strip())
+                yield json.loads(line)
             except Exception:
                 continue
 

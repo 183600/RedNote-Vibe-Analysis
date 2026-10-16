@@ -38,6 +38,11 @@ DOMAINS = [
     "心理",
 ]
 
+# 热循环内使用的正则统一预编译（等价于原来的 re.search/re.findall 字面量）。
+RE_URL = re.compile(r"http[s]?://|www\.")
+RE_MENTION = re.compile(r"@[\w]+")
+RE_BRACKET = re.compile(r"\[.*?\]")
+
 
 def setup_fonts():
     init_plot_style()
@@ -61,7 +66,7 @@ def load_aggregates():
         with open(filepath, "r", encoding="utf-8") as f:
             for line in f:
                 try:
-                    item = json.loads(line.strip())
+                    item = json.loads(line)
                 except Exception:
                     continue
                 total += 1
@@ -79,13 +84,12 @@ def load_aggregates():
                         eng[domain].append(engagement / length)
                     rec = inter[domain]
                     rec[3] += 1
-                    if re.search(r"http[s]?://|www\.", text):
+                    if RE_URL.search(text):
                         rec[0] += 1
-                    if re.search(r"@[\w]+", text):
+                    if RE_MENTION.search(text):
                         rec[1] += 1
-                    rec[2] += len(
-                        [e for e in re.findall(r"\[.*?\]", text) if e != "[话题]"]
-                    )
+                    rec[2] += sum(1 for e in RE_BRACKET.findall(text)
+                                  if e != "[话题]")
         aggs[ds_name] = {
             "total": total,
             "has_user_id": has_user_id,

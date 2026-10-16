@@ -266,9 +266,12 @@ def analyze_engagement_patterns(grouped):
             if not domain_items:
                 continue
 
-            likes = [engagement_of(item)[0] for item in domain_items]
-            collects = [engagement_of(item)[1] for item in domain_items]
-            comments = [engagement_of(item)[2] for item in domain_items]
+            likes, collects, comments = [], [], []
+            for item in domain_items:
+                like_i, collect_i, comment_i = engagement_of(item)
+                likes.append(like_i)
+                collects.append(collect_i)
+                comments.append(comment_i)
 
             total_likes = sum(likes)
             total_collects = sum(collects)

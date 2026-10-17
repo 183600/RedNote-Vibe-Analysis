@@ -219,6 +219,16 @@
 3. **野外构成与训练先验显著不同**：高 P(AI) 帖中 DeepSeek（30.4%）与 GLM（25.2%）风格合计过半，远高于训练集先验（22.0% / 10.9%），GPT（14.4%）与 Qwen（8.5%）则明显低配；半年度构成 χ²=71.5（p=1.0e-07），Gemini 风格份额从 2023H1 的 4.8% 升到 2025H1 的 11.6%（季度 ρ=+0.746，p=0.01），是唯一趋势显著的家族，其余家族在 31 个月内基本平稳。
 4. **互动惩罚存在家族结构**：控制月份×领域、正文长度、P(AI) 与标签数后（整群 bootstrap 300 次），Claude 与 Gemini 风格帖相对 GLM 的点赞偏效应为 +0.268 [+0.184, +0.361] 与 +0.216 [+0.113, +0.324]（约 1.9× / 1.6×），Qwen 风格点估计最低（收藏端显著为负 -0.092 [-0.179, -0.007]），GPT/DeepSeek 与 GLM 差异不显著；把高置信阈值换成 0.7/0.95 重跑，排序不变——互动惩罚的家族结构与像人度排名（Gemini 全系最不像人）不同，风格来源与阅读体验是互动层面的独立维度。
 
+### 语气情态层：谨慎、断言、强化与呼语（`stance_analysis.py`）
+
+把「AI 味」再下沉到**话语语气**层：用四个先验词表类别（谨慎表达 hedge / 断言强调 boost / 程度强化 intens / 社区呼语 vocative，共 33 个词，不做数据驱动筛选）统计三个子集的使用密度，检验探索集内的 P(AI) 梯度（含长度分层稳健性），并用与 `engagement_drivers_analysis.py` 完全相同的月份×领域固定效应 + 整群 bootstrap 估计其对互动的偏效应。结果图在 `insights/stance_lexicon.png`、`insights/stance_gradient.png`，数据在 `stance_results.json` 与 `stance_results.md`。人类/探索集按 note_id 去重，正文 ≥50 字，p_ai 按行序对齐（content_len mismatch=0）：
+
+1. **生成集过量使用「强化 + 呼语」，谨慎表达并不缺**：密度（次/百字）human / aigc / exploring 分别为——谨慎 0.158/0.132/0.157，断言 0.090/0.104/0.082，程度强化 0.268/0.445/0.213，社区呼语 0.017/0.076/0.027。逐词看 AIGC 过量最多的是「真的」（+8.9/万字符）、「姐妹们」（+5.7）、「简直」（+5.2）、「超级」（+3.8），而「非常」「应该」「可能」「有点」等是生成集欠用的人类词——与 `family_lexicon_analysis.py` 的家族口癖互洽。
+2. **野外梯度：谨慎表达是既有权重特征之外最强的「像人」语气信号**：探索集（39,941 篇去重笔记 / 313 个单元）谨慎表达与 P(AI) 的单元内加权 ρ=-0.207（100% 单元为负），长度分层后仍为 -0.118；最高 vs 最低 P(AI) 十分位密度 δ=-0.313（0.218 → 0.072）。社区呼语方向相反（ρ=+0.163，长度分层 +0.198，δ=+0.183）。断言强调与程度强化的整体 ρ 为 -0.060/-0.099，但长度分层后接近 0（+0.012/-0.026）——它们主要是生成集内部的过用词，不是野外的稳定风格轴。逐词负端：「非常」-0.174、「应该」-0.141、「可能」/「有点」-0.122、「特别」-0.101；正端：「姐妹们」+0.100、「宝子们」+0.099、「简直」+0.089、「家人们」+0.084。
+3. **语气层的互动偏效应与「哪边像人」不同向**：控制 P(AI)、正文长度与标签数后（n=54,969、116 个单元、整群 bootstrap 300 次），谨慎表达 β=-0.018 [-0.030, -0.005]（点赞）与 -0.031 [-0.045, -0.019]（收藏）——虽是最像人的语气，却独立地压低互动；断言强调 +0.028/+0.031、社区呼语 +0.018/+0.028 均为正；P(AI) 自身仍显著为负（-0.048/-0.034）。即语气层的「像人」与互动回报并不同向，「AI 味惩罚」也不由谨慎/断言语气承载（观察性关联，不作因果解读）。
+4. **家族指纹：DeepSeek 最不谨慎、Gemini 最外放**：DeepSeek 家族谨慎表达最低（0.065/百字）、Gemini 最高（0.180）；Gemini 的社区呼语密度（0.207）约是其余家族的 2.5–10 倍，Claude/Gemini 的程度强化约 0.61，GPT/GLM 几乎不用社区呼语（0.02/0.03）。
+5. **季度趋势：断言语气持续走低**：2023Q2→2025Q2 断言强调由 0.099 降到 0.070（ρ=-0.750，p=0.020；固定领域权重后 -0.883，p=0.002），谨慎表达/程度强化/社区呼语无显著趋势——与词汇层面的扩散曲线不同，语气层的「自信话术」在消退。
+
 ### 生成的可视化图表
 
 | 文件 | 描述 |
@@ -249,6 +259,8 @@
 | `insights/near_duplicate.png` | 近重复/模板复用图（各子集最近邻相似度生存曲线、子集内近重复率、跨子集对矩阵、P(AI) 梯度、季度趋势、簇规模分布） |
 | `insights/family_transfer.png` | 家族迁移图（家族分类器混淆矩阵、分带归属构成、野外构成 vs 训练先验、半年度演化） |
 | `insights/family_transfer_engagement.png` | 家族互动回报图（单元内残差箱线图、点赞/收藏的家族偏效应森林图） |
+| `insights/stance_lexicon.png` | 语气情态图（三子集四类语气密度、逐词 AIGC−人类过量使用与探索集标记） |
+| `insights/stance_gradient.png` | 语气梯度图（P(AI) 十分位曲线、逐词单元内 ρ、互动偏效应森林图、家族语气指纹热力图） |
 | `output/` | 领域、话题、互动等探索性图表合集 |
 | `paper_figs/` | 论文管线图表（检测器、漂移、互动、稳健性） |
 
@@ -281,9 +293,10 @@
 - `symbol_analysis.py` - 标签/表情生态：结构普及率、AI 专属符号、P(AI) 梯度与季度扩散、标签×互动（输出 `insights/symbol_*.png`、`symbol_results.json/md`）
 - `near_duplicate_analysis.py` - 近重复/模板复用：字符 5-gram Jaccard 全量扫描（bottom-k 候选 + 精确校验）、跨子集模板迁移、P(AI) 梯度、季度与簇结构（输出 `insights/near_duplicate.png`、`near_duplicate_results.json/md`）
 - `family_transfer_analysis.py` - 家族风格迁移：6 路家族分类器（5 折 CV）迁移到探索集，高 P(AI) 帖的家族构成/半年度演化与互动回报的家族结构（月份×领域 FE + 整群 bootstrap，输出 `insights/family_transfer*.png`、`family_transfer_results.json/md`）
+- `stance_analysis.py` - 语气情态：谨慎/断言/强化/呼语四类先验词表的跨子集密度、P(AI) 梯度（含长度分层）、互动偏效应（月份×领域 FE + 整群 bootstrap）与家族指纹（输出 `insights/stance_*.png`、`stance_results.json/md`）
 - `quick_start.py` - BERT 基线训练
 
-深潜分析套件可一键顺序执行：`python3 run_fork_pipeline.py`（`--list` / `--from N` / `--only 脚本名`，编排 deep_dive / framing / title_style / title_body_congruence / diversity / detector_diagnostics / family_lexicon / engagement_structure / engagement_drivers / author_style / user_clustering / symbol / near_duplicate / family_transfer 共 14 步，输出统一落在 `insights/`）。两个管线运行器共用 `pipeline_common.py` 的步骤选择与顺序执行实现（含未知脚本名校验），其单元测试见 `tests/test_pipeline_common.py`。
+深潜分析套件可一键顺序执行：`python3 run_fork_pipeline.py`（`--list` / `--from N` / `--only 脚本名`，编排 deep_dive / framing / title_style / title_body_congruence / diversity / detector_diagnostics / family_lexicon / engagement_structure / engagement_drivers / author_style / user_clustering / symbol / near_duplicate / family_transfer / stance 共 15 步，输出统一落在 `insights/`）。两个管线运行器共用 `pipeline_common.py` 的步骤选择与顺序执行实现（含未知脚本名校验），其单元测试见 `tests/test_pipeline_common.py`。
 
 运行环境：`pip install -r requirements.txt`；公共工具位于 `analysis_utils.py`（含概率校准、阈值指标与单元内秩相关工具），单元测试见 `tests/`（`python3 -m unittest discover -s tests`，覆盖 `analysis_utils.py`、`framing_analysis.py` 及标题/标题正文组合/多样性/符号/近重复/互动载体/作者层分解/家族迁移分析的纯函数与共享管线运行器）。
 

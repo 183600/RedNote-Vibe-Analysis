@@ -6,7 +6,7 @@
 或全量扫描原始 JSONL，互不写坏对方输出，可以任意单独重跑。
 
 用法：
-  python3 run_fork_pipeline.py                     # 运行全部 14 步
+  python3 run_fork_pipeline.py                     # 运行全部 15 步
   python3 run_fork_pipeline.py --list              # 只打印步骤
   python3 run_fork_pipeline.py --from 3            # 从第 3 步开始
   python3 run_fork_pipeline.py --only detector_diagnostics.py family_lexicon_analysis.py
@@ -47,6 +47,8 @@ STEPS = [
      "字符 5-gram Jaccard 近重复/模板复用（bottom-k 候选+精确校验）-> near_duplicate_results.{json,md} + 1 图"),
     ("family_transfer_analysis.py",
      "家族分类器迁移：野外高 AI 味帖的风格家族构成与互动回报 -> family_transfer_results.{json,md} + 2 图"),
+    ("stance_analysis.py",
+     "语气情态：谨慎表达/断言强调/程度强化/社区呼语的梯度与互动偏效应 -> stance_results.{json,md} + 2 图"),
 ]
 
 

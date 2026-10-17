@@ -170,6 +170,16 @@
 
 > 方法注记：单变量与多元回答的问题不同，个别特征会出现符号反转（如正文长度单变量 ρ 略负、偏效应显著为正），这是特征间强相关下的抑制定量（suppression）；结果文件同时给出两种口径，避免误读。
 
+### 作者层分解：作者间 vs 人内（`author_style_analysis.py`）
+
+前面的互动分析都在逐帖层面，无法回答「惩罚来自同一作者写了更 AI 风格的帖子，还是来自长期写 AI 风格的作者整体互动更低」。本分析在探索集带 `user_id` 的去重笔记子集（33,219 篇 / 26,740 位作者，占去重笔记 55.2%）上做作者间/人内分解。结果图在 `insights/author_structure.png`、`insights/author_within.png`，数据在 `author_style_results.json` 与 `author_style_results.md`。口径与 `paper_engagement.py` 一致（≥2023.01），并复算总体 ρ=-0.1392、单元内加权 ρ=-0.0907 与 `paper_engagement_results.json` 逐位吻合：
+
+1. **选择检查**：作者子集 2025 年占 71.0%、点赞中位 597（无 user_id 记录 28）、P(AI) 更低（均值 0.439 vs 0.504，高置信 15.6% vs 22.4%）——作者层结论只在此采样层内成立。
+2. **风格是半作者属性**：≥2 帖作者（3,362 位 / 9,841 帖）的 P(AI) ICC=0.535；作者发文量并不更 AI（ρ=-0.027），高置信帖在前 10% 高产作者中占 21.7%（低于其笔记占比 25.5%）。
+3. **惩罚主要在作者之间**：精确分解 β_pooled=-0.324 = 0.91×β_between(-0.355) + 0.09×β_within(-0.006)；作者间 WLS（≥2 帖）β=-0.141（95% 整群 bootstrap CI [-0.298, -0.011]），人内（作者 FE）β=-0.006（[-0.070, +0.067]）、再加月份 FE 为 -0.001（[-0.068, +0.062]）。
+4. **人内配对无差异**：1,266 位同时有「像人」（P(AI)<0.5）与「像 AI」（≥0.5）帖的作者，平均 Δ(log10 点赞)=-0.003（CI [-0.050, +0.042]，乘数 ×0.99；48.1% 为负，Wilcoxon p=0.85）；同作者同月份单元（517 个）Δ=-0.016（p=0.63）；≥4 帖作者（616 位）人内 ρ 加权均值 -0.003。
+5. **解读**：横截面负相关主要由作者间差异承载，人内点估计接近零但 CI 较宽（无法排除小幅惩罚）；这不是对 `paper_engagement.py` 结论的否定，而是把「AI 味惩罚」的位置定位到作者层。
+
 ### 话题标签与表情生态（`symbol_analysis.py`）
 
 把标签与表情当作「符号系统」全量扫描六个维度：标签结构与普及率、生成器专属标签、标签级 AI 味、P(AI) 梯度与季度扩散、emoji/[xxR] 表情生态、标签数×互动。结果图在 `insights/symbol_*.png`，数据在 `symbol_results.json` 与 `symbol_results.md`。标签口径与 `paper_features.py` 的 `n_hashtags` 同源（兼容 `#标签[话题]#` 与 BOM 残留），表情正则与其完全相同（另剔除变体选择符的重复计数）；人类/探索集按 note_id 去重，探索集 p_ai 按行序对齐（content_len 校验 mismatch=0）：
@@ -215,6 +225,7 @@
 | `insights/family_lexicon.png` | 模型家族词表指纹（词×家族 log-odds 热力图、AI 味词密度） |
 | `insights/engagement_structure.png` | 互动结构分解（零互动密度、基尼集中度、收藏/点赞比与十分位趋势） |
 | `insights/engagement_drivers.png` | 互动惩罚的逐特征载体（单变量秩相关 ρ、多元固定效应 β 与整群 bootstrap CI、点赞-收藏偏效应一致性） |
+| `insights/author_structure.png`、`author_within.png` | 作者层分解图（选择检查 ECDF、作者发文集中度、作者间梯度、斜率森林图、人内配对散点与 Δ 分布） |
 | `insights/symbol_hashtag.png`、`symbol_gradient.png`、`symbol_emoji.png` | 标签/表情生态图（标签结构、P(AI) 梯度与专属标签命中、emoji 与 [xxR] 偏好） |
 | `insights/near_duplicate.png` | 近重复/模板复用图（各子集最近邻相似度生存曲线、子集内近重复率、跨子集对矩阵、P(AI) 梯度、季度趋势、簇规模分布） |
 | `output/` | 领域、话题、互动等探索性图表合集 |
@@ -243,14 +254,15 @@
 - `family_lexicon_analysis.py` - AIGC 子集内家族/单模型词表指纹（输出 `insights/family_lexicon.png`、`family_lexicon_results.json/md`）
 - `engagement_structure_analysis.py` - 「AI 味惩罚」的互动结构分解：零互动密度 / 基尼集中度 / 互动构成比 / 单元内秩相关（输出 `insights/engagement_structure.png`、`engagement_structure_results.json/md`）
 - `engagement_drivers_analysis.py` - 「AI 味惩罚」的逐特征载体：37 个特征的单元内秩相关 + 月份×领域固定效应多元回归（整群 bootstrap CI）+ P(AI) 净效应（输出 `insights/engagement_drivers.png`、`engagement_drivers_results.json/md`）
+- `author_style_analysis.py` - 作者层分解：作者集中度与 ICC、作者间/人内固定效应斜率（整群 bootstrap CI）、同作者配对对照（输出 `insights/author_*.png`、`author_style_results.json/md`）
 - `user_clustering.py` - 用户风格聚类（输出 `user_clustering_results.md`）
 - `symbol_analysis.py` - 标签/表情生态：结构普及率、AI 专属符号、P(AI) 梯度与季度扩散、标签×互动（输出 `insights/symbol_*.png`、`symbol_results.json/md`）
 - `near_duplicate_analysis.py` - 近重复/模板复用：字符 5-gram Jaccard 全量扫描（bottom-k 候选 + 精确校验）、跨子集模板迁移、P(AI) 梯度、季度与簇结构（输出 `insights/near_duplicate.png`、`near_duplicate_results.json/md`）
 - `quick_start.py` - BERT 基线训练
 
-深潜分析套件可一键顺序执行：`python3 run_fork_pipeline.py`（`--list` / `--from N` / `--only 脚本名`，编排 deep_dive / framing / title_style / diversity / detector_diagnostics / family_lexicon / engagement_structure / engagement_drivers / user_clustering / symbol / near_duplicate 共 11 步，输出统一落在 `insights/`）。两个管线运行器共用 `pipeline_common.py` 的步骤选择与顺序执行实现（含未知脚本名校验），其单元测试见 `tests/test_pipeline_common.py`。
+深潜分析套件可一键顺序执行：`python3 run_fork_pipeline.py`（`--list` / `--from N` / `--only 脚本名`，编排 deep_dive / framing / title_style / diversity / detector_diagnostics / family_lexicon / engagement_structure / engagement_drivers / author_style / user_clustering / symbol / near_duplicate 共 12 步，输出统一落在 `insights/`）。两个管线运行器共用 `pipeline_common.py` 的步骤选择与顺序执行实现（含未知脚本名校验），其单元测试见 `tests/test_pipeline_common.py`。
 
-运行环境：`pip install -r requirements.txt`；公共工具位于 `analysis_utils.py`（含概率校准、阈值指标与单元内秩相关工具），单元测试见 `tests/`（`python3 -m unittest discover -s tests`，覆盖 `analysis_utils.py`、`framing_analysis.py` 及标题/多样性/符号/近重复/互动载体分析的纯函数与共享管线运行器）。
+运行环境：`pip install -r requirements.txt`；公共工具位于 `analysis_utils.py`（含概率校准、阈值指标与单元内秩相关工具），单元测试见 `tests/`（`python3 -m unittest discover -s tests`，覆盖 `analysis_utils.py`、`framing_analysis.py` 及标题/多样性/符号/近重复/互动载体/作者层分解分析的纯函数与共享管线运行器）。
 
 中文字体由 `setup_chinese_fonts()` 自动解析：依次扫描 `REDNOTE_FONT_DIR`、`assets/fonts/`、系统字体目录（Noto Sans CJK/SC、思源黑体、文泉驿等），找不到时回退下载 Noto Sans SC（另含单色 emoji 字体）并缓存到 `~/.cache/rednote-vibe/fonts`；也可用 `REDNOTE_FONT_PATH` 直接指定字体文件，或设 `REDNOTE_FONT_DOWNLOAD=0` 禁用联网下载。写回 CSV 时使用内容比较（`write_csv_gz_if_changed`），内容未变则不触碰文件；`paper_drift.py --figs-only` 可只重绘图表、完全不写 `paper_exploring_scores.csv.gz`。
 

@@ -1,0 +1,182 @@
+{
+ "meta": {
+  "source": "paper_exploring_scores.csv.gz + exploring_set_fixed.jsonl",
+  "month_from": "202301",
+  "style_split": 0.5,
+  "hi_conf": 0.9,
+  "n_raw_records": 91517,
+  "n_dedup_notes": 60161,
+  "n_author_notes": 33219,
+  "author_share": 0.5522,
+  "content_len_mismatch": 0,
+  "n_boot": 500,
+  "n_boot_two_way": 300,
+  "seed": 42
+ },
+ "selection": {
+  "with_uid": {
+   "n": 33219,
+   "p_ai_mean": 0.4385,
+   "p_ai_median": 0.3974,
+   "hi_conf_share": 0.1558,
+   "hi_conf_ci": [
+    0.1519,
+    0.1597
+   ],
+   "likes_median": 597.0,
+   "content_len_mean": 270.3,
+   "months": "202302–202506",
+   "year_share_2025": 0.71
+  },
+  "without_uid": {
+   "n": 26906,
+   "p_ai_mean": 0.5036,
+   "p_ai_median": 0.498,
+   "hi_conf_share": 0.2239,
+   "hi_conf_ci": [
+    0.2189,
+    0.2289
+   ],
+   "likes_median": 28.0,
+   "content_len_mean": 225.8,
+   "months": "202301–202506",
+   "year_share_2025": 0.448
+  }
+ },
+ "concentration": {
+  "n_authors": 26740,
+  "n_notes": 33219,
+  "notes_gini": 0.18,
+  "top_frac": 0.1,
+  "top_n": 2674,
+  "top_note_share": 0.2548,
+  "top_hi_conf_share": 0.2174,
+  "notes_per_author_mean": 1.242,
+  "notes_per_author_median": 1,
+  "multi_note_author_share": 0.1257,
+  "prolific_vs_mean_p_ai": {
+   "rho": -0.0268,
+   "p": 1.1468198757223336e-05
+  }
+ },
+ "variance": {
+  "icc": 0.5346,
+  "sd_between": 0.2547,
+  "sd_within": 0.2377,
+  "var_between": 0.0649,
+  "var_within": 0.0565,
+  "n_groups": 3362,
+  "n": 9841
+ },
+ "engagement": {
+  "decomposition": {
+   "pooled": -0.3237,
+   "between": -0.3549,
+   "within": -0.0056,
+   "between_weight": 0.9109,
+   "n_groups": 26740
+  },
+  "between_authors": {
+   "all_authors": {
+    "n_authors": 26740,
+    "n_notes": 33219,
+    "slope_wls": -0.3549,
+    "slope_ols": -0.3682
+   },
+   "multi_note_authors": {
+    "n_authors": 3362,
+    "n_notes": 9841,
+    "slope_wls": -0.1411,
+    "slope_ols": -0.1746
+   }
+  },
+  "between_ci": {
+   "all_authors": {
+    "slope": -0.3549,
+    "ci_low": -0.4192,
+    "ci_high": -0.2899,
+    "n_boot": 500
+   },
+   "multi_note_authors": {
+    "slope": -0.1411,
+    "ci_low": -0.2978,
+    "ci_high": -0.0108,
+    "n_boot": 500
+   }
+  },
+  "within_author": {
+   "slope": -0.0056,
+   "ci_low": -0.0699,
+   "ci_high": 0.0666,
+   "n_boot": 500
+  },
+  "within_author_month": {
+   "slope": -0.0014,
+   "ci_low": -0.0684,
+   "ci_high": 0.0622,
+   "n_boot": 300
+  },
+  "author_quartiles": [
+   {
+    "quartile": 1,
+    "n_authors": 841,
+    "n_notes": 2427,
+    "mean_p_ai": 0.0413,
+    "mean_log_likes": 3.0159
+   },
+   {
+    "quartile": 2,
+    "n_authors": 840,
+    "n_notes": 2490,
+    "mean_p_ai": 0.2863,
+    "mean_log_likes": 2.9752
+   },
+   {
+    "quartile": 3,
+    "n_authors": 840,
+    "n_notes": 2491,
+    "mean_p_ai": 0.5206,
+    "mean_log_likes": 2.9618
+   },
+   {
+    "quartile": 4,
+    "n_authors": 841,
+    "n_notes": 2433,
+    "mean_p_ai": 0.8117,
+    "mean_log_likes": 2.86
+   }
+  ],
+  "spearman_pooled_uid": -0.0992
+ },
+ "paired": {
+  "authors": {
+   "n_authors": 1266,
+   "mean_delta": -0.0029,
+   "ci_low": -0.05,
+   "ci_high": 0.0419,
+   "median_delta": 0.0299,
+   "neg_share": 0.481,
+   "likes_multiplier": 0.993,
+   "wilcoxon_p": 0.8502123405189367
+  },
+  "author_month_cells": {
+   "n_cells": 517,
+   "mean_delta": -0.0164,
+   "neg_share": 0.5068,
+   "wilcoxon_p": 0.6268160796616917
+  },
+  "within_author_rho": {
+   "min_notes": 4,
+   "n_authors": 616,
+   "weighted_mean_rho": -0.0033,
+   "neg_share": 0.4724
+  }
+ },
+ "consistency": {
+  "overall_rho_recomputed": -0.1392,
+  "overall_rho_paper": -0.1392,
+  "within_cell_rho_recomputed": -0.0907,
+  "within_cell_rho_paper": -0.0907,
+  "n_rows_full": 91481
+ }
+}

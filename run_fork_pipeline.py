@@ -6,7 +6,7 @@
 或全量扫描原始 JSONL，互不写坏对方输出，可以任意单独重跑。
 
 用法：
-  python3 run_fork_pipeline.py                     # 运行全部 11 步
+  python3 run_fork_pipeline.py                     # 运行全部 12 步
   python3 run_fork_pipeline.py --list              # 只打印步骤
   python3 run_fork_pipeline.py --from 3            # 从第 3 步开始
   python3 run_fork_pipeline.py --only detector_diagnostics.py family_lexicon_analysis.py
@@ -35,6 +35,8 @@ STEPS = [
      "AI 味惩罚的互动结构分解（零互动/基尼/构成比）-> engagement_structure_results.{json,md} + 1 图"),
     ("engagement_drivers_analysis.py",
      "互动惩罚的逐特征载体（单元内秩相关 + 固定效应多元回归）-> engagement_drivers_results.{json,md} + 1 图"),
+    ("author_style_analysis.py",
+     "作者层分解（作者间 vs 人内斜率、ICC、人内配对）-> author_style_results.{json,md} + 2 图"),
     ("user_clustering.py",
      "探索集用户风格聚类 -> user_clustering_results.md"),
     ("symbol_analysis.py",

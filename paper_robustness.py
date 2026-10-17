@@ -114,9 +114,11 @@ def part_domain_consistency(human: pd.DataFrame, aigc: pd.DataFrame) -> dict:
     domains = sorted(set(human["domain"]) & set(aigc["domain"]))
     matrix = np.full((len(domains), len(CONSISTENCY_FEATS)), np.nan)
     pvals = np.full_like(matrix, np.nan)
+    h_groups = human.groupby("domain").indices  # 一次分组，避免逐领域全表扫描
+    a_groups = aigc.groupby("domain").indices
     for i, d in enumerate(domains):
-        gh = human[human["domain"] == d]
-        ga = aigc[aigc["domain"] == d]
+        gh = human.iloc[h_groups[d]]
+        ga = aigc.iloc[a_groups[d]]
         if len(gh) < MIN_DOMAIN_N or len(ga) < MIN_DOMAIN_N:
             continue
         for j, f in enumerate(CONSISTENCY_FEATS):
@@ -171,10 +173,11 @@ def part_cross_domain(df: pd.DataFrame, X: np.ndarray, y: np.ndarray,
                      & set(df.loc[df["dataset"] == "aigc", "domain"]))
     is_human = (df["dataset"] == "human").values
     is_aigc = (df["dataset"] == "aigc").values
+    domain_col = df["domain"].values
     rows = {}
     for d in domains:
-        tr = (df["domain"] != d).values
-        te = (df["domain"] == d).values
+        te = domain_col == d
+        tr = ~te  # 补集，避免再扫一遍全表
         pipe.fit(X[tr], y[tr])
         proba = pipe.predict_proba(X[te])[:, 1]
         rows[d] = {"auc": round(float(roc_auc_score(y[te], proba)), 4),

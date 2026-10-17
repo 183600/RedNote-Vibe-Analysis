@@ -91,15 +91,20 @@ def compact(body: str) -> str:
 
 
 def ending_class(suffix: str) -> str:
-    """按紧凑文本的结尾后缀分类收尾符号。"""
+    """按紧凑文本的结尾后缀分类收尾符号。
+
+    XHS_TAIL / MENTION_TAIL 都是 `$` 锚定的模式（最长匹配 12/21 字符），
+    只需在末尾 24 个字符上搜索；对长正文可省去整段扫描，分类结果不变。
+    """
     if not suffix:
         return "纯标签/空正文"
-    if XHS_TAIL.search(suffix):
+    tail = suffix[-24:]
+    if XHS_TAIL.search(tail):
         return "小红书表情[xxR]"
     last = suffix[-1]
     if EMOJI.match(last):
         return "Unicode emoji"
-    if MENTION_TAIL.search(suffix):
+    if MENTION_TAIL.search(tail):
         return "@提及"
     for name, chars in PUNCT_CLASS.items():
         if last in chars:
@@ -114,7 +119,7 @@ def ending_class(suffix: str) -> str:
 def scan_view(path: str, content_len_ref: np.ndarray | None = None) -> dict:
     """单次流式扫描：收集首/尾框架片段、note_id、元数据完整度、时间与收尾类别。"""
     heads, tails, ids, months = [], [], [], []
-    meta, hours, content_lens, ending_classes = [], [], [], []
+    meta, hours, ending_classes = [], [], []
     month_pool: dict = {}   # 共享同月字符串对象（月份只有几十种）
     n_raw = n_short = mismatch = 0
     for rec in iter_jsonl(path):
@@ -147,7 +152,6 @@ def scan_view(path: str, content_len_ref: np.ndarray | None = None) -> dict:
             if month is None:
                 month = month_pool[ym] = f"{dt.year:04d}{dt.month:02d}"
             months.append(month)
-        content_lens.append(len(body))
         n_raw += 1
     return {
         "path": path, "n_raw": n_raw, "n_short": n_short, "mismatch": mismatch,
@@ -155,7 +159,6 @@ def scan_view(path: str, content_len_ref: np.ndarray | None = None) -> dict:
         "ending_classes": ending_classes, "ids": ids, "months": months,
         "meta": np.asarray(meta, dtype=np.int64),
         "hours": np.asarray(hours, dtype=np.int64),
-        "content_lens": np.asarray(content_lens, dtype=np.int64),
     }
 
 
@@ -407,6 +410,9 @@ def main() -> None:
 
     kept = {k: np.asarray(dedup_indices(s["ids"], s["meta"]))
             for k, s in scans.items()}
+    for s in scans.values():  # 去重后 ids/meta 不再需要，尽早释放
+        s.pop("ids")
+        s.pop("meta")
     n_sub = min(sum(1 for i in kept[k] if scans[k]["heads"][i] is not None)
                 for k in kept)
 
@@ -414,12 +420,15 @@ def main() -> None:
     view_stats, boots, ending_pct = {}, {}, {}
     side_arrays: dict = {}
     side_counts: dict = {}
+    opened: dict = {}   # 去重后的开篇片段，供维度 3 基线复用
     for k in DATASETS:
         sel = kept[k]
         side_arrays[k] = {}
         side_counts[k] = {}
         side_bincount: dict = {}
-        for side, values in (("open", [scans[k]["heads"][i] for i in sel]),
+        open_values = [scans[k]["heads"][i] for i in sel]
+        opened[k] = open_values
+        for side, values in (("open", open_values),
                              ("close", [scans[k]["tails"][i] for i in sel])):
             codes, valid, cmap = encode(values)
             cnt = np.bincount(codes[valid])
@@ -463,6 +472,13 @@ def main() -> None:
               f"close top20={view_stats[k]['top20_close']:.1%}, "
               f"open entropy={view_stats[k]['entropy_open_mm']:.2f} bit")
 
+    # 编码表 / 全局逐帖片段此后不再需要（opened 已保留开篇列表），及时释放
+    del side_arrays
+    for s in scans.values():
+        s.pop("heads")
+        s.pop("tails")
+        s.pop("ending_classes")
+
     # ---- 维度 2：专属模板提炼 ----
     n_used_h = view_stats["human"]["n_used"]
     n_used_a = view_stats["aigc"]["n_used"]
@@ -479,10 +495,11 @@ def main() -> None:
     a_open_set = {t["word"] for t in templates["aigc_specific_open"]}
     top_open_set = {t["word"] for t in templates["aigc_top_open"]}
     h_open_set = {t["word"] for t in templates["human_specific_open"]}
+    del side_counts  # 模板提炼完成，汇总计数字典不再需要
 
     # ---- 维度 3：探索集梯度 / 季度 / 小时 ----
     sel_e = kept["exploring"]
-    head_e = [scans["exploring"]["heads"][i] for i in sel_e]
+    head_e = opened["exploring"]
     hours_e = scans["exploring"]["hours"][sel_e]
     head_valid = np.asarray([h is not None for h in head_e])
     p_v = p_ai[sel_e][head_valid]
@@ -576,7 +593,7 @@ def main() -> None:
         quarterly["trend_human_tmpl"] = q_trend("share_human_tmpl")
 
     # 基线：人类集（全量 / ≤2022.06 干净窗口）与 AIGC 生成集
-    h_heads = [scans["human"]["heads"][i] for i in kept["human"]]
+    h_heads = opened["human"]
     h_months = [scans["human"]["months"][i] for i in kept["human"]]
     h_valid = [h is not None for h in h_heads]
     quarterly["human_all_share"] = round(
@@ -586,11 +603,13 @@ def main() -> None:
              if v and m is not None and m <= "202206"]
     quarterly["human_clean_share"] = round(
         sum(1 for h, _ in clean if h in a_open_set) / max(len(clean), 1), 4)
-    a_heads = [h for h in [scans["aigc"]["heads"][i] for i in kept["aigc"]]
-               if h is not None]
+    a_heads = [h for h in opened["aigc"] if h is not None]
     quarterly["aigc_share"] = round(
         sum(1 for h in a_heads if h in a_open_set) / max(len(a_heads), 1), 4)
-    head_e_counter = Counter(h for h in head_e if h is not None)
+    for s in scans.values():  # 月份仅用于人类集基线，用完后释放
+        s.pop("months")
+    del opened
+    head_e_counter = Counter(heads_valid)
     n_head_e = sum(head_e_counter.values())
     quarterly["template_exploring_per1k"] = {
         t["word"]: round(head_e_counter.get(t["word"], 0) / max(n_head_e, 1)

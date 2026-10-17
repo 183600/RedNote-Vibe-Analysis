@@ -392,18 +392,40 @@ def iter_jsonl_codecs(path: str) -> Iterator[dict]:
                 continue
 
 
-def _stream_sample(factory, sample: int | None, seed: int):
+def count_jsonl_lines(path: str) -> int:
+    """按 `iter_jsonl` 完全相同的行规则数记录数（不解析 JSON）。
+
+    `iter_jsonl` 对每个非空白文本行产出一条记录（解析失败会直接抛错），
+    因此对能正常读取的文件，行数就是记录数；分行语义与文本模式逐行迭代
+    一致（含 \\r 等通用换行），不会改变抽样索引。
+    """
+    n = 0
+    with open(path, encoding="utf-8") as f:
+        for line in f:
+            if not line or line.isspace():
+                continue
+            n += 1
+    return n
+
+
+def _stream_sample(factory, sample: int | None, seed: int, count=None):
     """两遍流式抽样，结果与 `random.Random(seed).sample(list(items), sample)` 完全一致。
 
     第一遍只计数（O(1) 内存），第二遍仅解析被抽中的记录。索引抽样使用
     `sample(range(n), k)`，与对等长列表抽样走完全相同的随机数路径。
+    传入 `count`（返回记录数的无参函数）时用它替代第一遍迭代——调用方须
+    保证计数口径与 `factory` 产出的条目一一对应（如 `count_jsonl_lines`
+    对应 `iter_jsonl`），否则会改变抽样索引。
     """
     n = 0
     if sample is None:
         items = list(factory())
         return items, len(items)
-    for _ in factory():
-        n += 1
+    if count is not None:
+        n = count()
+    else:
+        for _ in factory():
+            n += 1
     if n <= sample:
         return list(factory()), n
     idx = random.Random(seed).sample(range(n), sample)
@@ -699,14 +721,16 @@ def topk_coverage(counts, k: int) -> float:
 def load_posts(path: str, with_title: bool = True, sample: int | None = None,
                seed: int = 42) -> list[str]:
     """读取一个 JSONL 数据集为文本列表；可复现地随机抽样（流式，仅解析抽中记录）。"""
-    recs, _ = _stream_sample(lambda: iter_jsonl(path), sample, seed)
+    recs, _ = _stream_sample(lambda: iter_jsonl(path), sample, seed,
+                             count=lambda: count_jsonl_lines(path))
     return [post_text(rec, with_title) for rec in recs]
 
 
 def load_records(path: str, sample: int | None = None,
                  seed: int = 42) -> list[dict]:
     """读取一个 JSONL 数据集为记录列表；可复现地随机抽样（同 load_posts 的抽样口径）。"""
-    return _stream_sample(lambda: iter_jsonl(path), sample, seed)[0]
+    return _stream_sample(lambda: iter_jsonl(path), sample, seed,
+                          count=lambda: count_jsonl_lines(path))[0]
 
 
 def load_records_with_total(path: str, sample: int | None = None,
@@ -843,12 +867,30 @@ def cliff_share_test(indicator, values) -> dict:
     return {"delta": round(float(delta), 3), "p": float(p)}
 
 
-def within_cell_spearman(x, y, cell_codes, min_cell_n: int = 100) -> dict:
+def cell_groups(cell_codes, min_cell_n: int = 100) -> list:
+    """预分组：返回样本量 >= `min_cell_n` 的单元的索引数组列表（按编码排序）。
+
+    多次对同一份 `cell_codes` 做单元内统计时，预先算一次分组可避免重复
+    argsort；分组顺序与 `within_cell_spearman` 内部排序一致。
+    """
+    codes = np.asarray(cell_codes)
+    if len(codes) == 0:
+        return []
+    order = np.argsort(codes, kind="stable")
+    sorted_codes = codes[order]
+    starts = np.flatnonzero(np.r_[True, sorted_codes[1:] != sorted_codes[:-1]])
+    ends = np.r_[starts[1:], len(sorted_codes)]
+    return [order[s:e] for s, e in zip(starts, ends) if e - s >= min_cell_n]
+
+
+def within_cell_spearman(x, y, cell_codes, min_cell_n: int = 100,
+                         groups=None) -> dict:
     """分组单元（如月份×领域）内 Spearman 相关的加权汇总。
 
     对每个样本量 >= `min_cell_n` 的单元分别计算 Spearman ρ，再按单元样本量
     加权平均。x/y 为等长数值序列，cell_codes 为等长分组标签（任意可比较
     类型）。常量序列（相关系数未定义）与样本不足的单元直接跳过。
+    传入 `groups`（`cell_groups` 的结果）时直接复用预分组。
 
     返回 ``{"weighted_rho", "neg_cell_share", "n_cells"}``；没有任何可计算
     单元时两个统计量均为 NaN、n_cells=0。口径与 `paper_engagement.py` 的
@@ -865,19 +907,14 @@ def within_cell_spearman(x, y, cell_codes, min_cell_n: int = 100) -> dict:
         return {"weighted_rho": float("nan"),
                 "neg_cell_share": float("nan"), "n_cells": 0}
 
-    order = np.argsort(codes, kind="stable")
-    sorted_codes = codes[order]
-    starts = np.flatnonzero(np.r_[True, sorted_codes[1:] != sorted_codes[:-1]])
-    ends = np.r_[starts[1:], len(sorted_codes)]
+    if groups is None:
+        groups = cell_groups(codes, min_cell_n)
 
     rhos: list[float] = []
     weights: list[int] = []
-    for s, e in zip(starts, ends):
-        n = int(e - s)
-        if n < min_cell_n:
-            continue
-        idx = order[s:e]
+    for idx in groups:
         xc, yc = x[idx], y[idx]
+        n = len(idx)
         if np.unique(xc).size < 2 or np.unique(yc).size < 2:
             continue
         r, _ = spearmanr(xc, yc)
@@ -1064,17 +1101,21 @@ def reliability_bins(proba, y, bins: int = 10) -> dict:
             "count": count.tolist()}
 
 
-def expected_calibration_error(proba, y, bins: int = 10) -> float:
-    """Expected Calibration Error（等宽分箱，|平均预测-实际频率| 的样本加权）。"""
-    r = reliability_bins(proba, y, bins)
-    count = np.asarray(r["count"], dtype=float)
+def ece_from_bins(bins: dict) -> float:
+    """由 `reliability_bins` 的逐箱统计直接计算 ECE，避免重复分箱。"""
+    count = np.asarray(bins["count"], dtype=float)
     n = count.sum()
     if n <= 0:
         return 0.0
-    pred = np.asarray(r["mean_pred"], dtype=float)
-    true = np.asarray(r["mean_true"], dtype=float)
+    pred = np.asarray(bins["mean_pred"], dtype=float)
+    true = np.asarray(bins["mean_true"], dtype=float)
     valid = count > 0
     return float((count[valid] / n * np.abs(pred[valid] - true[valid])).sum())
+
+
+def expected_calibration_error(proba, y, bins: int = 10) -> float:
+    """Expected Calibration Error（等宽分箱，|平均预测-实际频率| 的样本加权）。"""
+    return ece_from_bins(reliability_bins(proba, y, bins))
 
 
 def bootstrap_median_ci(values, n_boot: int = 1000, seed: int = 42,

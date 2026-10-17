@@ -79,6 +79,9 @@ def main(with_scores: bool = True):
     human["p_ai"] = score(human, model, robust=True)
     expl["p_ai"] = score(expl, model, robust=True)
     expl["p_ai_full"] = score(expl, model, robust=False)
+    # 人类集基线与月度均值只算一次，图/JSON/摘要复用
+    human_mean_p = float(human["p_ai"].mean())
+    human_hi_share = float((human["p_ai"] > 0.9).mean())
 
     ms_h = monthly_series(human)
     ms_e = monthly_series(expl)
@@ -104,9 +107,10 @@ def main(with_scores: bool = True):
     fig, axes = plt.subplots(1, 2, figsize=(14, 4.6),
                              gridspec_kw={"width_ratios": [1, 1.6]})
     ax = axes[0]
+    human_monthly_base = float(ms_h["mean"].mean())
     x_h = range(len(ms_h))
     ax.plot(x_h, ms_h["mean"], "o-", color="#4C72B0", ms=3, lw=1.2)
-    ax.axhline(ms_h["mean"].mean(), color="gray", ls="--", lw=0.8)
+    ax.axhline(human_monthly_base, color="gray", ls="--", lw=0.8)
     ax.set_xticks(list(x_h)[::4])
     ax.set_xticklabels(ms_h.index[::4], rotation=45, fontsize=8)
     ax.set_ylabel("平均 P(AI)")
@@ -120,7 +124,7 @@ def main(with_scores: bool = True):
     adj_x = [month_pos[m] for m in adj.index if m in month_pos]
     ax.plot(adj_x, [adj[m] for m in adj.index if m in month_pos],
             "s--", color="#55A868", ms=3, lw=1.2, label="领域调整后")
-    ax.axhline(ms_h["mean"].mean(), color="gray", ls="--", lw=0.8, label="人类集基线")
+    ax.axhline(human_monthly_base, color="gray", ls="--", lw=0.8, label="人类集基线")
     ax.set_xticks(list(x_e)[::3])
     ax.set_xticklabels(ms_e.index[::3], rotation=45, fontsize=8)
     ax.set_title(f"探索集（后LLM时代）AI 风格得分\n原始 ρ={rho:.2f} (p={p:.2g})，调整后 ρ={rho_adj:.2f} (p={p_adj:.2g})")
@@ -134,7 +138,7 @@ def main(with_scores: bool = True):
     # ---- 图2：高置信占比 ----
     fig, ax = plt.subplots(figsize=(9, 4.2))
     ax.bar(x_e, ms_e["hi"] * 100, color="#C44E52", alpha=0.85)
-    hi_base = (human["p_ai"] > 0.9).mean() * 100
+    hi_base = human_hi_share * 100
     ax.axhline(hi_base, color="gray", ls="--", lw=1,
                label=f"人类集基线 {hi_base:.1f}%")
     ax.set_xticks(list(x_e)[::3])
@@ -175,8 +179,8 @@ def main(with_scores: bool = True):
 
     # ---- 数值输出 ----
     out = {
-        "human_baseline_mean_p": round(float(human["p_ai"].mean()), 4),
-        "human_baseline_hi_share": round(float((human["p_ai"] > 0.9).mean()), 4),
+        "human_baseline_mean_p": round(human_mean_p, 4),
+        "human_baseline_hi_share": round(human_hi_share, 4),
         "trend": {
             "exploring_mean": {"rho": round(rho, 3), "p": float(p)},
             "exploring_hi": {"rho": round(rho_hi, 3), "p": float(p_hi)},
@@ -200,7 +204,7 @@ def main(with_scores: bool = True):
     # 摘要打印
     e23 = expl[(expl["month"] >= "202301") & (expl["month"] <= "202306")]
     e25 = expl[(expl["month"] >= "202501") & (expl["month"] <= "202506")]
-    print(f"\n人类集基线 mean P(AI) = {human['p_ai'].mean():.4f}, >0.9 占比 {(human['p_ai']>0.9).mean()*100:.1f}%")
+    print(f"\n人类集基线 mean P(AI) = {human_mean_p:.4f}, >0.9 占比 {human_hi_share*100:.1f}%")
     print(f"探索集 2023上半年: mean={e23['p_ai'].mean():.4f}, >0.9 {(e23['p_ai']>0.9).mean()*100:.1f}% (n={len(e23)})")
     print(f"探索集 2025上半年: mean={e25['p_ai'].mean():.4f}, >0.9 {(e25['p_ai']>0.9).mean()*100:.1f}% (n={len(e25)})")
 

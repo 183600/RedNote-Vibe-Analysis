@@ -35,7 +35,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from analysis_utils import (BASE, INSIGHTS, init_plot_style, save_fig, save_json,
-                            load_detector_model, within_cell_spearman)
+                            cell_groups, load_detector_model,
+                            within_cell_spearman)
 
 MIN_CELL_N = 100        # 月份×领域单元最少帖子数（同 paper_engagement）
 MONTH_FROM = "202301"   # 与 paper_engagement 相同的观察窗口
@@ -108,29 +109,43 @@ def demean_within(values: np.ndarray, cell_codes) -> np.ndarray:
     return out[:, 0] if one_dim else out
 
 
+def prepare_fe(X: np.ndarray, cell_codes,
+               min_cell_n: int = MIN_CELL_N) -> dict:
+    """FE-OLS 的特征侧预处理（与 y 无关），多次拟合同一 X 时可复用。
+
+    返回 keep_mask / cell_codes / X_demeaned / mean / scale / n_obs / n_cells。
+    """
+    keep = cell_keep_mask(cell_codes, min_cell_n)
+    Xk = np.asarray(X, dtype=float)[keep]
+    codes_raw = np.asarray(cell_codes)[keep]
+    codes = pd.factorize(codes_raw, sort=True)[0]
+    z, mean, scale = standardize(Xk)
+    zd = demean_within(z, codes)
+    return {
+        "keep_mask": keep, "cell_codes": codes,
+        "X_demeaned": zd, "mean": mean, "scale": scale,
+        "n_obs": int(keep.sum()), "n_cells": int(codes.max()) + 1,
+    }
+
+
 def fe_ols(X: np.ndarray, y: np.ndarray, cell_codes,
-           min_cell_n: int = MIN_CELL_N) -> dict:
+           min_cell_n: int = MIN_CELL_N, prepared: dict | None = None) -> dict:
     """月份×领域固定效应 OLS（特征先 z-score、再单元内去均值）。
 
     返回 dict：coef（每 1 SD 特征的偏效应）、mean/scale（标准化参数）、
     keep_mask（参与拟合的行）、cell_codes（保留下来的行重新编码为 0..K-1）、
     X_demeaned / y_demeaned（供整群 bootstrap 复用）、n_obs / n_cells。
+    传入 `prepared`（`prepare_fe` 的结果）时复用特征侧预处理（X 被忽略）。
     """
-    keep = cell_keep_mask(cell_codes, min_cell_n)
-    Xk = np.asarray(X, dtype=float)[keep]
-    yk = np.asarray(y, dtype=float)[keep]
-    codes_raw = np.asarray(cell_codes)[keep]
-    codes = pd.factorize(codes_raw, sort=True)[0]
-    z, mean, scale = standardize(Xk)
-    zd = demean_within(z, codes)
-    yd = demean_within(yk, codes)
-    coef, *_ = np.linalg.lstsq(zd, yd, rcond=None)
-    return {
-        "coef": coef, "mean": mean, "scale": scale,
-        "keep_mask": keep, "cell_codes": codes,
-        "X_demeaned": zd, "y_demeaned": yd,
-        "n_obs": int(keep.sum()), "n_cells": int(codes.max()) + 1,
-    }
+    if prepared is None:
+        prepared = prepare_fe(X, cell_codes, min_cell_n)
+    yk = np.asarray(y, dtype=float)[prepared["keep_mask"]]
+    yd = demean_within(yk, prepared["cell_codes"])
+    coef, *_ = np.linalg.lstsq(prepared["X_demeaned"], yd, rcond=None)
+    out = dict(prepared)
+    out["coef"] = coef
+    out["y_demeaned"] = yd
+    return out
 
 
 def cluster_bootstrap_fe_ols(X_demeaned: np.ndarray, y_demeaned: np.ndarray,
@@ -160,7 +175,9 @@ def univariate_table(feature_names, columns: dict, cell_codes,
     """对每个特征在三个互动指标上做单元内加权秩相关。
 
     `columns` 为 {指标名: 数值数组}；返回 {feature: {target: stat, ...}}。
+    预分组一次、所有特征共享，避免每个「特征×指标」组合重复 argsort。
     """
+    groups = cell_groups(cell_codes, min_cell_n)
     out: dict = {}
     for feat in feature_names:
         x = columns["x"][feat]
@@ -168,7 +185,7 @@ def univariate_table(feature_names, columns: dict, cell_codes,
         for tname in columns["targets"]:
             row[tname] = within_cell_spearman(
                 x, columns["targets"][tname], cell_codes,
-                min_cell_n=min_cell_n)
+                min_cell_n=min_cell_n, groups=groups)
         out[feat] = row
     return out
 
@@ -310,14 +327,15 @@ def main() -> None:
           f"{uni['p_ai']['likes']['n_cells']} 个单元）")
 
     X = df[features].fillna(0).to_numpy(dtype=float)
-    beta = fe_ols(X, targets["likes"], cells)
+    prep = prepare_fe(X, cells)  # 特征侧预处理只做一次，供两个被解释变量复用
+    beta = fe_ols(X, targets["likes"], cells, prepared=prep)
     boot = cluster_bootstrap_fe_ols(beta["X_demeaned"], beta["y_demeaned"],
                                     beta["cell_codes"])
     ci = np.percentile(boot, [2.5, 97.5], axis=0)
     beta["ci_low"], beta["ci_high"] = ci[0], ci[1]
     n_sig = {"likes": int(((ci[0] > 0) | (ci[1] < 0)).sum())}
 
-    beta_c = fe_ols(X, targets["collections"], cells)
+    beta_c = fe_ols(X, targets["collections"], cells, prepared=prep)
     boot_c = cluster_bootstrap_fe_ols(beta_c["X_demeaned"], beta_c["y_demeaned"],
                                       beta_c["cell_codes"])
     ci_c = np.percentile(boot_c, [2.5, 97.5], axis=0)

@@ -47,7 +47,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 from analysis_utils import (BASE, INSIGHTS, init_plot_style, save_fig, save_json,
-                            expected_calibration_error, prior_corrected_proba,
+                            ece_from_bins, prior_corrected_proba,
                             reliability_bins, load_detector_model,
                             threshold_metrics)
 from paper_detector import LABELS
@@ -406,8 +406,8 @@ def main() -> None:
     proba_corr = prior_corrected_proba(proba, n_neg=n_h, n_pos=n_a)
     raw_bins = reliability_bins(proba, y, bins=10)
     corr_bins = reliability_bins(proba_corr, y, bins=10)
-    ece_raw = expected_calibration_error(proba, y, bins=10)
-    ece_corr = expected_calibration_error(proba_corr, y, bins=10)
+    ece_raw = ece_from_bins(raw_bins)  # 直接复用已分箱结果，避免重复分箱
+    ece_corr = ece_from_bins(corr_bins)
     brier_raw = float(brier_score_loss(y, proba))
     brier_corr = float(brier_score_loss(y, proba_corr))
     print(f"ECE 原始={ece_raw:.4f} 先验校正后={ece_corr:.4f}；"

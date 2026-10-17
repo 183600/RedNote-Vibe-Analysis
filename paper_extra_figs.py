@@ -95,6 +95,13 @@ e = expl[expl["month"] >= "202301"]
 fresh_post = e[e["likes"] < 100]["p_ai"]
 hot_pre = clean[clean["likes"] > 1000]["p_ai"]
 hot_post = e[e["likes"] >= 1000]["p_ai"]
+# 均值/高置信占比各算一次，图与 JSON 复用（避免重复全列扫描）
+stats = {
+    name: (float(s.mean()), float((s > 0.9).mean()))
+    for name, s in (("clean", clean["p_ai"]), ("late", late["p_ai"]),
+                    ("fresh_post", fresh_post), ("hot_pre", hot_pre),
+                    ("hot_post", hot_post))
+}
 groups = {
     "新帖/低互动层": (late["p_ai"], fresh_post),
     "热帖层": (hot_pre, hot_post),
@@ -150,20 +157,20 @@ drift["trend"]["human_control_clean_window"] = {
     "months": f"202012-202206 ({len(clean_months)}个月)"}
 drift["sampling_discontinuity"] = {
     "note": "人类集2022.07起点赞>0比例从~70%骤降至~20%，且各领域得分同步上升，判定为爬取批次切换（回溯爬取->实时爬取）",
-    "clean_window_meanP": round(float(clean["p_ai"].mean()), 4),
-    "clean_window_hi": round(float((clean["p_ai"] > 0.9).mean()), 4),
-    "late_window_meanP": round(float(late["p_ai"].mean()), 4),
-    "late_window_hi": round(float((late["p_ai"] > 0.9).mean()), 4),
+    "clean_window_meanP": round(stats["clean"][0], 4),
+    "clean_window_hi": round(stats["clean"][1], 4),
+    "late_window_meanP": round(stats["late"][0], 4),
+    "late_window_hi": round(stats["late"][1], 4),
 }
 drift["did"] = {
-    "fresh_stratum": {"pre": round(float(late["p_ai"].mean()), 3),
-                      "post": round(float(fresh_post.mean()), 3),
-                      "pre_hi": round(float((late["p_ai"] > 0.9).mean()), 4),
-                      "post_hi": round(float((fresh_post > 0.9).mean()), 4)},
-    "hot_stratum": {"pre": round(float(hot_pre.mean()), 3),
-                    "post": round(float(hot_post.mean()), 3),
-                    "pre_hi": round(float((hot_pre > 0.9).mean()), 4),
-                    "post_hi": round(float((hot_post > 0.9).mean()), 4)},
+    "fresh_stratum": {"pre": round(stats["late"][0], 3),
+                      "post": round(stats["fresh_post"][0], 3),
+                      "pre_hi": round(stats["late"][1], 4),
+                      "post_hi": round(stats["fresh_post"][1], 4)},
+    "hot_stratum": {"pre": round(stats["hot_pre"][0], 3),
+                    "post": round(stats["hot_post"][0], 3),
+                    "pre_hi": round(stats["hot_pre"][1], 4),
+                    "post_hi": round(stats["hot_post"][1], 4)},
 }
 with open(BASE + "paper_drift_results.json", "w", encoding="utf-8") as f:
     json.dump(drift, f, ensure_ascii=False, indent=1)

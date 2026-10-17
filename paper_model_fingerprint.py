@@ -57,8 +57,9 @@ def main():
     aigc = pd.read_csv(BASE + "paper_features_aigc.csv.gz")
     feats = list(CORE_FEATS.keys())
 
-    h_mean = human[feats].mean()
-    h_std = human[feats].std().replace(0, 1)
+    h_feats = human[feats]  # 只切一次列，均值/标准差复用
+    h_mean = h_feats.mean()
+    h_std = h_feats.std().replace(0, 1)
 
     # ---- 每个模型的质心 z-score（以人类分布为参照）----
     rows, dists = {}, {}
@@ -110,10 +111,11 @@ def main():
     plt.close(fig)
 
     # ---- 数值输出 ----
+    model_counts = aigc["model"].value_counts().to_dict()  # 一次分组计数
     out = {
         "model_distance_rank": [
             {"model": m, "family": FAMILY_NAME.get(fam_of[m], fam_of[m]),
-             "rms_z": round(dists[m], 3), "n": int((aigc["model"] == m).sum())}
+             "rms_z": round(dists[m], 3), "n": int(model_counts.get(m, 0))}
             for m in order
         ],
         "family_distance": {k: round(v, 3) for k, v in

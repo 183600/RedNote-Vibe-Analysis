@@ -54,7 +54,7 @@ from analysis_utils import (BASE, INSIGHTS, PALETTE, init_plot_style, save_fig,
                             engagement_of, extract_hashtags, iter_jsonl,
                             parse_local_time, quarter_of, rate_diff_ranking,
                             rate_top, save_json, shannon_entropy, topk_coverage,
-                            wilson_ci)
+                            wilson_ci, within_cell_spearman)
 from paper_features import EMOJI, XHS_EMO
 
 DATASETS = {
@@ -168,10 +168,15 @@ def bin_share(counts: np.ndarray) -> dict:
             for i, lab in enumerate(BIN_LABELS)}
 
 
-def tag_structure(note_tags: list[list[str]]) -> dict:
-    """一个子集的标签结构指标（输入为去重后的逐笔记标签列表）。"""
+def tag_structure(note_tags: list[list[str]],
+                  tag_counts: Counter | None = None) -> dict:
+    """一个子集的标签结构指标（输入为去重后的逐笔记标签列表）。
+
+    `tag_counts` 可传入已算好的每篇计一次标签 Counter，避免调用方重复统计。
+    """
     counts = np.asarray([len(t) for t in note_tags], dtype=np.int64)
-    tag_counts = note_tag_counts(note_tags)
+    if tag_counts is None:
+        tag_counts = note_tag_counts(note_tags)
     n_notes = counts.size
     tagged = int((counts > 0).sum())
     total = int(counts.sum())
@@ -198,12 +203,20 @@ def tag_structure(note_tags: list[list[str]]) -> dict:
 
 
 def emoji_structure(note_emoji: list[list[str]],
-                    note_xhs: list[list[str]]) -> dict:
-    """一个子集的 Unicode / 小红书表情结构指标（输入为去重后的逐笔记列表）。"""
+                    note_xhs: list[list[str]],
+                    vocab: Counter | None = None,
+                    xhs_vocab: Counter | None = None) -> dict:
+    """一个子集的 Unicode / 小红书表情结构指标（输入为去重后的逐笔记列表）。
+
+    `vocab` / `xhs_vocab` 可传入已算好的全量词频 Counter（调用方后续复用），
+    避免同一份列表被多次展开统计。
+    """
     uni = np.asarray([len(e) for e in note_emoji], dtype=np.int64)
     xhs = np.asarray([len(e) for e in note_xhs], dtype=np.int64)
-    vocab = Counter(e for lst in note_emoji for e in lst)
-    xhs_vocab = Counter(e for lst in note_xhs for e in lst)
+    if vocab is None:
+        vocab = Counter(e for lst in note_emoji for e in lst)
+    if xhs_vocab is None:
+        xhs_vocab = Counter(e for lst in note_xhs for e in lst)
     n = uni.size
     return {
         "n_notes": int(n),
@@ -235,21 +248,28 @@ def cliff_share_test(indicator: np.ndarray, values: np.ndarray) -> dict:
 
 def decile_gradient(p: np.ndarray, note_tags: list[list[str]],
                     ai_set: set, h_set: set, top_set: set,
-                    body_lens: np.ndarray) -> dict:
+                    body_lens: np.ndarray, *,
+                    tag_sets: list[set] | None = None,
+                    tags_n: np.ndarray | None = None,
+                    decile: np.ndarray | None = None) -> dict:
     """P(AI) 十分位上的标签用量与专属标签命中率梯度。
 
     `body_lens` 为清洗后正文长度：用于报告各十分位「纯标签/空正文」帖占比，
     并给出剔除这类帖子后的稳健性检验（它们会同时拉低正文长度与 P(AI)）。
+    `tag_sets` / `tags_n` / `decile` 可传入调用方已算好的等价中间量，避免重复。
     """
     n = p.size
-    order = np.argsort(p, kind="stable")
-    decile = np.empty(n, dtype=np.int64)
-    decile[order] = np.minimum(np.arange(n) * N_DECILES // n, N_DECILES - 1)
-    tags_n = np.asarray([len(t) for t in note_tags], dtype=np.int64)
-    sets = [set(t) for t in note_tags]
-    hit_a = np.asarray([bool(s & ai_set) for s in sets])
-    hit_h = np.asarray([bool(s & h_set) for s in sets])
-    hit_top = np.asarray([bool(s & top_set) for s in sets])
+    if decile is None:
+        order = np.argsort(p, kind="stable")
+        decile = np.empty(n, dtype=np.int64)
+        decile[order] = np.minimum(np.arange(n) * N_DECILES // n, N_DECILES - 1)
+    if tags_n is None:
+        tags_n = np.asarray([len(t) for t in note_tags], dtype=np.int64)
+    if tag_sets is None:
+        tag_sets = [set(t) for t in note_tags]
+    hit_a = np.asarray([bool(s & ai_set) for s in tag_sets])
+    hit_h = np.asarray([bool(s & h_set) for s in tag_sets])
+    hit_top = np.asarray([bool(s & top_set) for s in tag_sets])
     short = body_lens < MIN_BODY_LEN
     rows = []
     for d in range(N_DECILES):
@@ -377,7 +397,7 @@ def tag_ai_ness(p: np.ndarray, months: np.ndarray, note_tags: list[list[str]],
 def tag_engagement(tags_n: np.ndarray, likes: np.ndarray, colls: np.ndarray,
                    months: np.ndarray, domains: np.ndarray) -> dict:
     """探索集（2023.01 起）标签数与互动的关系：分箱中位数 + 单元内秩相关。"""
-    mask = np.asarray([m >= ENG_MONTH_FROM if m else False for m in months])
+    mask = np.asarray([m >= ENG_MONTH_FROM for m in months])
     tn, lk, cl = tags_n[mask], likes[mask], colls[mask]
     mo, dm = months[mask], domains[mask]
     bins = np.searchsorted(np.asarray(BIN_EDGES), tn, side="right")
@@ -396,24 +416,17 @@ def tag_engagement(tags_n: np.ndarray, likes: np.ndarray, colls: np.ndarray,
             "zero_like_ci": [round(float(lo), 4), round(float(hi), 4)],
             "coll_per_like": float(np.median(cl[m] / (lk[m] + 1))),
         })
-    rhos, ns = [], []
     log_likes = np.log10(1.0 + lk)
-    for cell in set(zip(mo.tolist(), dm.tolist())):
-        m = (mo == cell[0]) & (dm == cell[1])
-        if (int(m.sum()) < MIN_CELL_N or np.unique(tn[m]).size < 2
-                or np.unique(log_likes[m]).size < 2):
-            continue
-        r, _ = spearmanr(tn[m], log_likes[m])
-        if not np.isnan(r):
-            rhos.append(float(r))
-            ns.append(int(m.sum()))
-    if rhos:
-        cells = {"weighted_rho": round(float(np.average(rhos, weights=ns)), 4),
-                 "neg_cell_share": round(float(np.mean(np.asarray(rhos) < 0)), 4),
-                 "n_cells": len(rhos)}
-    else:
-        cells = {"weighted_rho": float("nan"), "neg_cell_share": float("nan"),
-                 "n_cells": 0}
+    # 单元内秩相关统一走 analysis_utils.within_cell_spearman：一次稳定排序
+    # 后按单元切片，避免原先「每个单元都对全量数组做两次布尔比较」的
+    # O(单元数 × 样本数) 扫描；口径（≥MIN_CELL_N、常量单元跳过）完全一致。
+    cell_codes = np.asarray([f"{a}\x00{b}" for a, b in zip(mo, dm)],
+                            dtype=object)
+    stat = within_cell_spearman(tn, log_likes, cell_codes,
+                                min_cell_n=MIN_CELL_N)
+    cells = {"weighted_rho": round(float(stat["weighted_rho"]), 4),
+             "neg_cell_share": round(float(stat["neg_cell_share"]), 4),
+             "n_cells": stat["n_cells"]}
     return {"bins": rows, "within_cell": cells}
 
 
@@ -735,7 +748,8 @@ def plot_emoji(structs: dict, grad_emoji: dict, emoji_diff: dict,
 # --------------------------------------------------------------------------
 def main() -> None:
     init_plot_style()
-    scores = pd.read_csv(SCORES_PATH)
+    scores = pd.read_csv(SCORES_PATH,
+                         usecols=["p_ai", "month", "domain", "content_len"])
     p_ai = scores["p_ai"].to_numpy()
     months_scores = scores["month"].astype(str).to_numpy()
     domains_scores = scores["domain"].fillna("").astype(str).to_numpy()
@@ -759,7 +773,10 @@ def main() -> None:
               f"{len(kept[k])} 篇笔记")
 
     # ---- 维度 1：标签结构 ----
-    structs = {k: tag_structure(note_tags[k]) for k in scans}
+    # 每篇计一次的标签 Counter 只统计一次：结构指标、专属标签、基线共用。
+    tag_counts_all = {k: note_tag_counts(note_tags[k]) for k in scans}
+    structs = {k: tag_structure(note_tags[k], tag_counts_all[k])
+               for k in scans}
     for k in scans:
         s = structs[k]
         print(f"[tags] {k}: 每帖 {s['tags_per_note_mean']:.2f} 个，"
@@ -768,8 +785,8 @@ def main() -> None:
               f"Top20={s['top20_coverage']:.1%}，H={s['entropy_mm']:.2f} bit")
 
     # ---- 维度 2：专属标签与标签级 AI 味 ----
-    h_counts = note_tag_counts(note_tags["human"])
-    a_counts = note_tag_counts(note_tags["aigc"])
+    h_counts = tag_counts_all["human"]
+    a_counts = tag_counts_all["aigc"]
     n_h = len(note_tags["human"])
     n_a = len(note_tags["aigc"])
     specific = {
@@ -798,14 +815,22 @@ def main() -> None:
           f"最像 AI: " + "、".join("#" + t["tag"] for t in ai_ness["top_aigc"][:3]))
 
     # ---- 维度 3：梯度与扩散 ----
+    # 逐帖标签集合 / 标签数 / P(AI) 十分位只算一次，供梯度、扩散、
+    # 表情梯度与互动分析复用。
     body_lens_e = scans["exploring"]["content_lens"]
+    tag_sets_e = [set(t) for t in note_tags["exploring"]]
+    tags_n_e = np.asarray([len(t) for t in note_tags["exploring"]],
+                          dtype=np.int64)
+    order_e = np.argsort(p_e, kind="stable")
+    decile_e = np.empty(p_e.size, dtype=np.int64)
+    decile_e[order_e] = np.minimum(
+        np.arange(p_e.size) * N_DECILES // p_e.size, N_DECILES - 1)
     grad = decile_gradient(p_e, note_tags["exploring"], ai_tag_set, h_tag_set,
-                           top_tag_set, body_lens_e)
-    hit_a = np.asarray([bool(set(t) & ai_tag_set) for t in note_tags["exploring"]])
-    hit_top = np.asarray([bool(set(t) & top_tag_set)
-                          for t in note_tags["exploring"]])
-    hit_h = np.asarray([bool(set(t) & h_tag_set)
-                        for t in note_tags["exploring"]])
+                           top_tag_set, body_lens_e, tag_sets=tag_sets_e,
+                           tags_n=tags_n_e, decile=decile_e)
+    hit_a = np.asarray([bool(s & ai_tag_set) for s in tag_sets_e])
+    hit_top = np.asarray([bool(s & top_tag_set) for s in tag_sets_e])
+    hit_h = np.asarray([bool(s & h_tag_set) for s in tag_sets_e])
     diff = quarterly_diffusion(m_e, hit_a, hit_top, hit_h)
     h_tags = note_tags["human"]
     h_months = note_months["human"]
@@ -832,14 +857,16 @@ def main() -> None:
           f"(最新季度) / 人类干净窗口 {baselines['human_clean_aigc_tag']:.1%}")
 
     # ---- 维度 4：表情生态 ----
-    emoji_structs = {k: emoji_structure(note_emojis[k], note_xhs[k])
+    # 表情词频 Counter 只展开一次：结构指标与专属表情对比共用。
+    uni_vocab = {k: Counter(e for lst in note_emojis[k] for e in lst)
+                 for k in scans}
+    xhs_vocab = {k: Counter(e for lst in note_xhs[k] for e in lst)
+                 for k in scans}
+    emoji_structs = {k: emoji_structure(note_emojis[k], note_xhs[k],
+                                        uni_vocab[k], xhs_vocab[k])
                      for k in scans}
-    e_uni = Counter(e for lst in note_emojis["exploring"] for e in lst)
-    h_uni = Counter(e for lst in note_emojis["human"] for e in lst)
-    a_uni = Counter(e for lst in note_emojis["aigc"] for e in lst)
-    e_xhs = Counter(e for lst in note_xhs["exploring"] for e in lst)
-    h_xhs = Counter(e for lst in note_xhs["human"] for e in lst)
-    a_xhs = Counter(e for lst in note_xhs["aigc"] for e in lst)
+    e_uni, h_uni, a_uni = (uni_vocab[k] for k in ("exploring", "human", "aigc"))
+    e_xhs, h_xhs, a_xhs = (xhs_vocab[k] for k in ("exploring", "human", "aigc"))
     emoji_diff = {
         "human": rate_diff_ranking(h_uni, len(note_emojis["human"]),
                                    a_uni, len(note_emojis["aigc"]),
@@ -860,15 +887,11 @@ def main() -> None:
         "exploring_top": [[e, int(c), round(c / len(sel_e) * 1000, 2)]
                           for e, c in e_xhs.most_common(15)],
     }
-    n_e = len(note_emojis["exploring"])
     uni_n = np.asarray([len(e) for e in note_emojis["exploring"]])
     xhs_n = np.asarray([len(e) for e in note_xhs["exploring"]])
-    order = np.argsort(p_e, kind="stable")
-    decile = np.empty(n_e, dtype=np.int64)
-    decile[order] = np.minimum(np.arange(n_e) * N_DECILES // n_e, N_DECILES - 1)
     grad_emoji = {"deciles": []}
     for d in range(N_DECILES):
-        m = decile == d
+        m = decile_e == d
         grad_emoji["deciles"].append({
             "decile": d + 1, "n": int(m.sum()),
             "emoji_mean": round(float(uni_n[m].mean()), 3),
@@ -888,7 +911,7 @@ def main() -> None:
 
     # ---- 维度 5：标签×互动 ----
     eng = tag_engagement(
-        np.asarray([len(t) for t in note_tags["exploring"]], dtype=np.int64),
+        tags_n_e,
         scans["exploring"]["likes"],
         scans["exploring"]["colls"],
         m_e, d_e)

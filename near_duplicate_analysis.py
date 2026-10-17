@@ -145,8 +145,9 @@ def candidate_pair_keys(sketches: np.ndarray, n_docs: int,
     idx = np.flatnonzero(flat)
     if idx.size == 0:
         return np.empty(0, dtype=np.int64), np.empty(0, dtype=np.int64)
-    docs = np.repeat(np.arange(n_docs, dtype=np.int64),
-                     sketches.shape[1])[idx]
+    # C 顺序展平：flat_idx = doc * K + 槽位，故 doc = flat_idx // K，
+    # 与 np.repeat(arange(n_docs), K)[idx] 完全一致但省下 13M 元素的临时数组。
+    docs = (idx // sketches.shape[1]).astype(np.int64)
     hv = flat[idx]
     order = np.argsort(hv, kind="stable")
     docs, hv = docs[order], hv[order]
@@ -187,14 +188,18 @@ def select_verify_pairs(keys: np.ndarray, counts: np.ndarray,
 
 
 def verified_pairs(keys: np.ndarray, counts: np.ndarray, sets: list[np.ndarray],
-                   min_j: float = MIN_J, k: int = SKETCH_K):
+                   min_j: float = MIN_J, k: int = SKETCH_K,
+                   lengths: np.ndarray | None = None):
     """候选对精确校验：返回 J ≥ min_j 的 (相似度, i, j) 列表（降序）。
 
     候选对的「共享链接键数 ≥ 2 或短文档单键」筛选见 `select_verify_pairs`；
     其余候选对不校验（召回自检会在真实数据上复核漏检率）。
+    `lengths` 可传入已算好的各文档 unique 5-gram 数以避免重复计算。
     """
     n_docs = len(sets)
-    lengths = np.fromiter((s.size for s in sets), dtype=np.int64, count=n_docs)
+    if lengths is None:
+        lengths = np.fromiter((s.size for s in sets), dtype=np.int64,
+                              count=n_docs)
     sel = select_verify_pairs(keys, counts, lengths, n_docs, k)
     if sel.size:
         la = lengths[sel // n_docs]
@@ -607,9 +612,10 @@ def recall_check(sets: list[np.ndarray], pairs, n_sample: int = RECALL_SAMPLE,
 
 def collect_stats(docs: list, dataset: np.ndarray, within_j: np.ndarray,
                   pairs, n_shingles: np.ndarray, scores: pd.DataFrame) -> dict:
+    """docs 每项为 (dataset, raw_idx, body_snippet[:60], body_len, aux)。"""
     ds_names = ("human", "aigc", "exploring")
     n_docs = len(docs)
-    lengths = np.fromiter((len(d[2]) for d in docs), dtype=np.int64, count=n_docs)
+    lengths = np.fromiter((d[3] for d in docs), dtype=np.int64, count=n_docs)
 
     within: dict = {}
     for name in ds_names:
@@ -677,7 +683,7 @@ def collect_stats(docs: list, dataset: np.ndarray, within_j: np.ndarray,
     rho, p_val = spearmanr(dec.index.to_numpy(), dec["share_pct"].to_numpy())
 
     # AIGC 家族：子集内近重复 + 与人类集跨子集近重复
-    fam = np.asarray([d[3][0] for d in docs])
+    fam = np.asarray([d[4][0] for d in docs])
     aigc_family = {}
     a_m = dataset == "aigc"
     cross_human: set[int] = set()
@@ -694,7 +700,7 @@ def collect_stats(docs: list, dataset: np.ndarray, within_j: np.ndarray,
                 float(sum(1 for i in cross_human if fam[i] == f)) / max(int(m.sum()), 1) * 100, 3)}
 
     # 季度趋势
-    quarters = [d[3][2] for d in docs]
+    quarters = [d[4][2] for d in docs]
     qmap: dict[str, list[int]] = defaultdict(list)
     for i in exp_idx.tolist():
         mm = quarters[i]
@@ -739,16 +745,16 @@ def collect_stats(docs: list, dataset: np.ndarray, within_j: np.ndarray,
             "size": len(comp),
             "datasets": {k: v for k, v in ds_count.items() if v},
             "months": dict(sorted(months.items())[:6]),
-            "sample": docs[comp[0]][2][:60]})
+            "sample": docs[comp[0]][2]})
 
     # 示例对
     def example(j: float, a: int, b: int) -> dict:
         return {
             "jaccard": round(float(j), 4),
             "a": {"dataset": str(dataset[a]), "n_shingles": int(n_shingles[a]),
-                  "snippet": docs[a][2][:60]},
+                  "snippet": docs[a][2]},
             "b": {"dataset": str(dataset[b]), "n_shingles": int(n_shingles[b]),
-                  "snippet": docs[b][2][:60]}}
+                  "snippet": docs[b][2]}}
 
     top_pairs = [example(j, a, b) for j, a, b in pairs[:10]]
     cross_examples = [example(j, a, b) for j, a, b in pairs
@@ -773,21 +779,30 @@ def collect_stats(docs: list, dataset: np.ndarray, within_j: np.ndarray,
 def main() -> int:
     init_plot_style()
     scans = {name: scan_dataset(name, path) for name, path in DATASETS.items()}
+    scan_meta = {name: {"n_raw": scans[name]["n_raw"],
+                        "n_docs": len(scans[name]["docs"])} for name in scans}
     all_docs = [(name, raw_i, body, aux)
                 for name in ("human", "aigc", "exploring")
                 for raw_i, body, aux in scans[name]["docs"]]
+    del scans  # 全量正文只保留 all_docs 一份引用
 
     all_sets = [shingle_hashes(d[2]) for d in all_docs]
     keep = [s.size >= MIN_SHINGLES for s in all_sets]
-    excluded = {name: 0 for name in scans}
+    excluded = {name: 0 for name in scan_meta}
     for d, k in zip(all_docs, keep):
         if not k:
             excluded[d[0]] += 1
-    docs = [d for d, k in zip(all_docs, keep) if k]
+    # 下游只用到正文前 60 字符与长度：换成短片段后释放全量正文，峰值内存大幅下降
+    docs = [(d[0], d[1], d[2][:60], len(d[2]), d[3])
+            for d, k in zip(all_docs, keep) if k]
+    del all_docs
     sets = [s for s, k in zip(all_sets, keep) if k]
+    del all_sets
     dataset = np.asarray([d[0] for d in docs])
     n_docs = len(docs)
-    lengths = np.fromiter((s.size for s in sets), dtype=np.int64, count=n_docs)
+    # 校验用「unique 5-gram 数」（原实现口径）；正文长度由 collect_stats 自行取
+    shingle_counts = np.fromiter((s.size for s in sets), dtype=np.int64,
+                                 count=n_docs)
     print(f"[近重复] 参与匹配 {n_docs:,} 篇（清洗后不足 {MIN_SHINGLES} 个 "
           f"5-gram、按「空正文/纯标签」剔除 {sum(excluded.values()):,} 篇）")
 
@@ -796,17 +811,21 @@ def main() -> int:
         sketches[idx, :min(s.size, SKETCH_K)] = bottom_k(s)
 
     keys, counts = candidate_pair_keys(sketches, n_docs)
-    print(f"[近重复] 候选对 {keys.size:,}（校验子集 "
-          f"{select_verify_pairs(keys, counts, lengths, n_docs).size:,}）")
-    pairs = verified_pairs(keys, counts, sets)
+    del sketches
+    n_verified = int(select_verify_pairs(keys, counts, shingle_counts,
+                                         n_docs).size)
+    print(f"[近重复] 候选对 {keys.size:,}（校验子集 {n_verified:,}）")
+    pairs = verified_pairs(keys, counts, sets, lengths=shingle_counts)
+    n_candidate_pairs = int(keys.size)
+    del keys, counts
     within_j = within_max_j(dataset, pairs, n_docs)
     print(f"[近重复] J ≥ {MIN_J} 的对 {len(pairs):,}；召回自检中 ...")
     recall = recall_check(sets, pairs)
     print(f"[近重复] 召回自检: {recall['found_pairs']}/{recall['true_pairs']} "
           f"= {recall['recall_pct']}%")
 
-    scores = pd.read_csv(SCORES_PATH)
-    out = collect_stats(docs, dataset, within_j, pairs, lengths, scores)
+    scores = pd.read_csv(SCORES_PATH, usecols=["p_ai", "content_len"])
+    out = collect_stats(docs, dataset, within_j, pairs, shingle_counts, scores)
     mismatch = out.pop("_exploring_mismatch")
     out["meta"] = {
         "shingle_chars": SHINGLE_N, "sketch_k": SKETCH_K, "df_cap": DF_CAP,
@@ -814,13 +833,10 @@ def main() -> int:
         "thresholds": list(THRESHOLDS), "n_docs": n_docs,
         "n_docs_excluded_short": sum(excluded.values()),
         "excluded_short_by_dataset": excluded,
-        "n_candidate_pairs": int(keys.size),
-        "n_verified_pairs": int(select_verify_pairs(
-            keys, counts, lengths, n_docs).size),
+        "n_candidate_pairs": n_candidate_pairs,
+        "n_verified_pairs": n_verified,
         "n_pairs_min_j": len(pairs),
-        "datasets": {name: {"n_raw": scans[name]["n_raw"],
-                            "n_docs": len(scans[name]["docs"])}
-                     for name in scans},
+        "datasets": scan_meta,
         "exploring_content_len_mismatch": mismatch,
         "recall": recall,
     }

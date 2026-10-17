@@ -221,6 +221,7 @@ def sample_lexical(path: str, pool=None, offsets=None) -> dict:
                 continue
             seen_ids.add(nid)
         bodies.append(clean_body(content_of(rec)))
+    del recs, seen_ids  # 正文已提取，抽样记录与去重集合不再需要
 
     mtld_values: list[float] = []
     seen: set[str] = set()

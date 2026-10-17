@@ -13,6 +13,9 @@ import re
 import gzip
 import csv
 import os
+from functools import partial
+
+from analysis_utils import close_pool, make_pool
 
 BASE = os.path.dirname(os.path.abspath(__file__)) + "/"
 
@@ -128,27 +131,46 @@ def extract(title, content):
     return feats
 
 
-def process(path, dataset, out_writer):
+def row_of(d: dict, dataset: str) -> dict:
+    """由一条记录构造输出行（纯函数，可在子进程中并行执行）。"""
+    content = d.get("note_content") or d.get("desc") or ""
+    title = d.get("note_title") or ""
+    row = extract(title, content)
+    lt = str(d.get("local_time") or "")
+    row.update({
+        "dataset": dataset,
+        "domain": d.get("domain") or "",
+        "month": lt[:6] if len(lt) >= 6 else "",
+        "model_family": d.get("model_family") or "",
+        "model": d.get("model") or "",
+        "likes": to_int(d.get("liked_count") or d.get("likes")),
+        "collections": to_int(d.get("collected_count") or d.get("collections")),
+        "comments": to_int(d.get("comments_count") or d.get("comments")),
+    })
+    return row
+
+
+def row_from_line(line: str, dataset: str) -> dict:
+    """解析一行 JSONL 并抽取输出行（并行任务的入口，可 pickle）。"""
+    return row_of(json.loads(line), dataset)
+
+
+def process(path, dataset, out_writer, pool=None):
+    """流式抽取特征并写出；传 pool 时并行抽取，imap 保序因此输出逐行一致。"""
     n = 0
+    if pool is None:
+        with open(path, encoding="utf-8") as f:
+            for line in f:
+                if not line or line.isspace():
+                    continue
+                row = row_from_line(line, dataset)
+                out_writer.writerow([row[k] for k in FIELDS])
+                n += 1
+        return n
     with open(path, encoding="utf-8") as f:
-        for line in f:
-            if not line or line.isspace():
-                continue
-            d = json.loads(line)
-            content = d.get("note_content") or d.get("desc") or ""
-            title = d.get("note_title") or ""
-            row = extract(title, content)
-            lt = str(d.get("local_time") or "")
-            row.update({
-                "dataset": dataset,
-                "domain": d.get("domain") or "",
-                "month": lt[:6] if len(lt) >= 6 else "",
-                "model_family": d.get("model_family") or "",
-                "model": d.get("model") or "",
-                "likes": to_int(d.get("liked_count") or d.get("likes")),
-                "collections": to_int(d.get("collected_count") or d.get("collections")),
-                "comments": to_int(d.get("comments_count") or d.get("comments")),
-            })
+        lines = (line for line in f if line and not line.isspace())
+        for row in pool.imap(partial(row_from_line, dataset=dataset), lines,
+                             chunksize=64):
             out_writer.writerow([row[k] for k in FIELDS])
             n += 1
     return n
@@ -160,13 +182,17 @@ def main():
         ("training_set_aigc.jsonl", "aigc"),
         ("exploring_set_fixed.jsonl", "exploring"),
     ]
-    for fname, ds in jobs:
-        out = BASE + f"paper_features_{ds}.csv.gz"
-        with gzip.open(out, "wt", encoding="utf-8", newline="") as g:
-            w = csv.writer(g)
-            w.writerow(FIELDS)
-            n = process(BASE + fname, ds, w)
-        print(f"{ds}: {n} rows -> {out}")
+    pool = make_pool()
+    try:
+        for fname, ds in jobs:
+            out = BASE + f"paper_features_{ds}.csv.gz"
+            with gzip.open(out, "wt", encoding="utf-8", newline="") as g:
+                w = csv.writer(g)
+                w.writerow(FIELDS)
+                n = process(BASE + fname, ds, w, pool=pool)
+            print(f"{ds}: {n} rows -> {out}")
+    finally:
+        close_pool(pool)
 
 
 if __name__ == "__main__":

@@ -126,7 +126,7 @@ def main():
     fam_auc = {}
     families = sorted(aigc["model_family"].unique())
     _FAM_CTX.update(aigc=aigc, feats=feats, pipe=pipe, cv=cv,
-                    X_human=human[feats].fillna(0).values)
+                    X_human=X[:len(human)])  # df 前段即人类集，直接切片复用
     pool = make_pool()
     try:
         rows = (pool.map(_family_fit, families) if pool is not None

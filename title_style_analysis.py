@@ -45,7 +45,7 @@ from sklearn.preprocessing import StandardScaler
 from analysis_utils import (BASE, INSIGHTS, init_plot_style, save_fig,
                             save_json, engagement_of, iter_jsonl,
                             linear_score, load_detector_model, parse_local_time,
-                            title_of, detector_score, content_of,
+                            title_of, detector_score, content_of, compact_text,
                             prefix_ngram_counts, shannon_entropy, topk_coverage,
                             bootstrap_median_ci, cliffs_delta, wilson_ci)
 from framing_analysis import dedup_indices, specific_templates
@@ -124,10 +124,17 @@ def fit_title_model(df: pd.DataFrame, title_feats: list[str],
 
 
 def scan_titles(path: str) -> tuple[list[str], list, np.ndarray]:
-    """流式扫描标题；meta 分数用于按 note_id 去重时保留最完整的一条。"""
-    titles, ids, metas = [], [], []
+    """流式扫描标题；meta 分数用于按 note_id 去重时保留最完整的一条。
+
+    主流程只用标题的紧凑前缀（TITLE_PREFIX_LEN 字符）做 n-gram 计数，
+    因此扫描时就地截断前缀，避免长期驻留全量标题字符串；过短标题存 None
+    （下游 compact_text 会把 None 视为空串，自动跳过）。
+    """
+    prefixes, ids, metas = [], [], []
     for rec in iter_jsonl(path):
-        title = title_of(rec)
+        compact = compact_text(title_of(rec))
+        prefixes.append(compact[:TITLE_PREFIX_LEN]
+                        if len(compact) >= TITLE_PREFIX_LEN else None)
         likes, colls, comms = engagement_of(rec)
         dt = parse_local_time(rec.get("local_time"))
         has_meta = bool(rec.get("user_id")) and rec.get("domain") not in (None, "", "未知")
@@ -136,10 +143,9 @@ def scan_titles(path: str) -> tuple[list[str], list, np.ndarray]:
             content = str(content)
         metas.append(int(has_meta) + int(bool(likes)) + int(bool(colls))
                      + int(bool(comms)) + int(dt is not None)
-                     + int(bool(content.strip())))
-        titles.append(title)
+                     + int(bool(content) and not content.isspace()))
         ids.append(rec.get("note_id"))
-    return titles, ids, np.asarray(metas, dtype=np.int64)
+    return prefixes, ids, np.asarray(metas, dtype=np.int64)
 
 
 def half_of(month: str) -> str | None:
@@ -297,7 +303,6 @@ def main() -> None:
         "median": float(np.median(aigc_score)),
         f"share_ge_{HIGH_CONF}": float((aigc_score >= HIGH_CONF).mean()),
     }
-    exploring = exploring.copy()
     exploring["title_p_ai"] = score(exploring)
     exploring["month"] = exploring["month"].astype(str)
     detector_model = load_detector_model()
@@ -347,7 +352,6 @@ def main() -> None:
         })
 
     # ---- 4. 互动（口径同 paper_engagement.py） ----
-    exp = exp.copy()
     exp["log_likes"] = np.log10(1 + exp["likes"])
     exp["log_colls"] = np.log10(1 + exp["collections"])
     exp["log_comms"] = np.log10(1 + exp["comments"])

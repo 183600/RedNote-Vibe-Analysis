@@ -125,6 +125,15 @@
 3. **标题端无互动惩罚**：标题得分与点赞总体 ρ=+0.082、控制月份×领域后仅 +0.006（正文对照 ρ=-0.139）；「AI 味惩罚」主要由正文承载，标题的营销式写法不直接压低互动。
 4. **标题模板化弱于正文**：AIGC 标题首 4 字 Top-20 覆盖率仅 3.8%（人类 2.8%、探索集 4.8%），远低于正文开篇的 14.8%（熵 12.46 vs 11.86 bit）；AI 专属标题前缀以 `姐妹们！`（+0.82pp）、`夏日必备`、`秋冬必备` 为代表；标题半年度高置信（≥0.9）占比仅 0.6%–1.2%，标题端风格跃升明显弱于正文端。
 
+### 标题×正文 AI 味组合（`title_body_congruence_analysis.py`）
+
+把每篇帖子按标题端/正文端得分各取上四分位（标题 Q75=0.579、正文 Q75=0.806）划分为四象限：Q1 双低、Q2 标题端高、Q3 正文端高、Q4 双高，回答「两端 AI 味如何组合、组合对应什么时间演化与互动回报」。标题得分复用 `title_style_results.json` 的标题模型，正文得分复用稳健检测器，互动口径同 `engagement_drivers_analysis.py`（月份×领域 FE + 整群 bootstrap 300 次）。结果图在 `insights/title_body_congruence.png`、`title_body_engagement.png`，数据在 `title_body_congruence_results.json` 与 `title_body_congruence_results.md`（复算标题-正文 ρ=0.0174 与 `title_style_results.json` 逐位一致）：
+
+1. **四象限构成**：探索集 Q1/Q2/Q3/Q4 = 56.6% / 18.4% / 18.0% / 7.0%；AIGC 训练集为 19.8% / 15.8% / 27.1% / 37.4%，人类集为 83.4% / 13.8% / 2.0% / 0.7%——生成帖以「正文高」为主，人类帖几乎不进入正文端高象限。
+2. **独立性是持续状态**：各季度标题-正文秩相关始终接近 0（+0.003–+0.054）；半年度双高占比从 2023H1 的 5.7% 缓升到 2025H1 的 7.5%，标题端高稳定在 14.5%–19.1%。
+3. **模型级像人度两端弱相关**：17 个 LLM 的标题均值与正文均值秩相关仅 ρ=+0.395（p=0.12）——「正文更不像人」不代表「标题也更不像人」，两端像人度是两个弱相关的排序。
+4. **惩罚集中在正文端高象限**：相对 Q1 双低，Q2 标题端高点赞 +0.074 [+0.038, +0.102]、Q3 正文端高 -0.170 [-0.205, -0.142]、Q4 双高 -0.091 [-0.131, -0.047]（收藏同向），零点赞密度仅 Q3/Q4 显著为正；控制正文长度与标签数后 Q2 仍为 +0.042、Q3 -0.152、Q4 -0.081（Q3/Q4 的负偏效应在 Q50/Q70/Q80 阈值下方向与量级稳定，Q2 在 Q50 下接近 0）。标题端高不降反升、正文端高最差、双高的惩罚反而小于纯正文端高——进一步把「AI 味惩罚」定位在正文端，同时说明营销式标题并未与正文 AI 味叠加恶化（象限为观察性分组，不作因果解读）。
+
 ### 文本多样性与节奏深潜（`diversity_analysis.py`）
 
 全量句法指标（去重口径同上）+ 每子集 12,000 帖固定种子抽样的词汇多样性。结果图在 `insights/diversity_*.png`，数据在 `diversity_results.json` 与 `diversity_results.md`：
@@ -229,6 +238,7 @@
 | `insights/publish_rhythm.png`、`lexicon_diffusion.png`、`sentence_rhythm.png`、`duplicate_content.png` | 深潜分析图表（发布节奏、词表扩散、句子节奏、重复内容） |
 | `insights/framing_formulaicity.png`、`framing_gradient.png` | 框架模板化图表（开篇/收尾集中度、收尾符号构成、P(AI) 梯度、季度扩散） |
 | `insights/title_detector.png`、`title_dynamics.png`、`title_formulaicity.png` | 标题端分析图表（特征权重消融、半年度动态与互动、标题前缀集中度） |
+| `insights/title_body_congruence.png`、`title_body_engagement.png` | 标题×正文 AI 味组合图（联合分布与象限、半年度演化、季度独立性、模型级散点；象限互动偏效应森林图与零点赞密度） |
 | `insights/diversity_burstiness.png`、`diversity_lexical.png` | 文本多样性图表（句长分布/burstiness ECDF、MTLD 小提琴图与 Heaps 曲线） |
 | `insights/detector_calibration.png`、`detector_errors.png`、`detector_uncertainty.png` | 检测器诊断图（可靠性曲线/阈值权衡、长度与领域错误切片、置信度分层时间线） |
 | `insights/family_lexicon.png` | 模型家族词表指纹（词×家族 log-odds 热力图、AI 味词密度） |
@@ -260,6 +270,7 @@
 - `deep_dive_analysis.py` - 发布节奏 / 词表扩散 / 句子节奏 / 重复内容深潜分析（输出 `insights/`）
 - `framing_analysis.py` - 开篇/收尾框架模板化与 AI 风格关联（输出 `insights/framing_*.png`、`framing_results.json/md`）
 - `title_style_analysis.py` - 标题端 AI 味：标题特征消融、模型标题像人度、标题互动与模板（输出 `insights/title_*.png`、`title_style_results.json/md`）
+- `title_body_congruence_analysis.py` - 标题×正文 AI 味四象限组合：构成/半年度演化/季度独立性与 17 模型一致性、象限互动偏效应（FE + 整群 bootstrap，含长度/标签控制与阈值敏感性，输出 `insights/title_body_*.png`、`title_body_congruence_results.json/md`）
 - `diversity_analysis.py` - 句长 burstiness / MTLD / Heaps β 多样性与节奏分析（输出 `insights/diversity_*.png`、`diversity_results.json/md`）
 - `detector_diagnostics.py` - 检测器概率校准 / 阈值敏感性 / 错分切片 / 探索集不确定性（输出 `insights/detector_*.png`、`detector_diagnostics_results.json/md`）
 - `family_lexicon_analysis.py` - AIGC 子集内家族/单模型词表指纹（输出 `insights/family_lexicon.png`、`family_lexicon_results.json/md`）
@@ -272,9 +283,9 @@
 - `family_transfer_analysis.py` - 家族风格迁移：6 路家族分类器（5 折 CV）迁移到探索集，高 P(AI) 帖的家族构成/半年度演化与互动回报的家族结构（月份×领域 FE + 整群 bootstrap，输出 `insights/family_transfer*.png`、`family_transfer_results.json/md`）
 - `quick_start.py` - BERT 基线训练
 
-深潜分析套件可一键顺序执行：`python3 run_fork_pipeline.py`（`--list` / `--from N` / `--only 脚本名`，编排 deep_dive / framing / title_style / diversity / detector_diagnostics / family_lexicon / engagement_structure / engagement_drivers / author_style / user_clustering / symbol / near_duplicate / family_transfer 共 13 步，输出统一落在 `insights/`）。两个管线运行器共用 `pipeline_common.py` 的步骤选择与顺序执行实现（含未知脚本名校验），其单元测试见 `tests/test_pipeline_common.py`。
+深潜分析套件可一键顺序执行：`python3 run_fork_pipeline.py`（`--list` / `--from N` / `--only 脚本名`，编排 deep_dive / framing / title_style / title_body_congruence / diversity / detector_diagnostics / family_lexicon / engagement_structure / engagement_drivers / author_style / user_clustering / symbol / near_duplicate / family_transfer 共 14 步，输出统一落在 `insights/`）。两个管线运行器共用 `pipeline_common.py` 的步骤选择与顺序执行实现（含未知脚本名校验），其单元测试见 `tests/test_pipeline_common.py`。
 
-运行环境：`pip install -r requirements.txt`；公共工具位于 `analysis_utils.py`（含概率校准、阈值指标与单元内秩相关工具），单元测试见 `tests/`（`python3 -m unittest discover -s tests`，覆盖 `analysis_utils.py`、`framing_analysis.py` 及标题/多样性/符号/近重复/互动载体/作者层分解/家族迁移分析的纯函数与共享管线运行器）。
+运行环境：`pip install -r requirements.txt`；公共工具位于 `analysis_utils.py`（含概率校准、阈值指标与单元内秩相关工具），单元测试见 `tests/`（`python3 -m unittest discover -s tests`，覆盖 `analysis_utils.py`、`framing_analysis.py` 及标题/标题正文组合/多样性/符号/近重复/互动载体/作者层分解/家族迁移分析的纯函数与共享管线运行器）。
 
 中文字体由 `setup_chinese_fonts()` 自动解析：依次扫描 `REDNOTE_FONT_DIR`、`assets/fonts/`、系统字体目录（Noto Sans CJK/SC、思源黑体、文泉驿等），找不到时回退下载 Noto Sans SC（另含单色 emoji 字体）并缓存到 `~/.cache/rednote-vibe/fonts`；也可用 `REDNOTE_FONT_PATH` 直接指定字体文件，或设 `REDNOTE_FONT_DOWNLOAD=0` 禁用联网下载。写回 CSV 时使用内容比较（`write_csv_gz_if_changed`），内容未变则不触碰文件；`paper_drift.py --figs-only` 可只重绘图表、完全不写 `paper_exploring_scores.csv.gz`。
 

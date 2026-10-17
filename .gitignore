@@ -7,3 +7,17 @@ venv/
 debug*.txt
 debug*.log
 err.txt
+*.log
+*.tmp
+*.bak
+*.orig
+*~
+
+# Tool caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# OS metadata
+.DS_Store

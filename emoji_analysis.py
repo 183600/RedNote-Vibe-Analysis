@@ -13,6 +13,7 @@ import warnings
 import os
 
 from analysis_utils import init_plot_style, load_records_with_total
+from paper_features import EMOJI
 
 # Configure font for Chinese character support
 init_plot_style()
@@ -22,33 +23,19 @@ warnings.filterwarnings("ignore")
 
 SAMPLE_LIMIT = 5000
 
+# 变体选择符（FE0E/FE0F）与零宽连接符（ZWJ）在 paper_features.EMOJI 里会被
+# 单独匹配，造成同一 emoji 重复计数（口径与 symbol_analysis 一致，仅剔除它们）。
+_EMOJI_SKIP = frozenset("\ufe0e\ufe0f\u200d")
+
 
 def load_jsonl(filepath, limit=SAMPLE_LIMIT, seed=42):
     return load_records_with_total(filepath, sample=limit, seed=seed)
 
 
-EMOJI_PATTERN = re.compile(
-    "["
-    "\U0001f600-\U0001f64f"
-    "\U0001f300-\U0001f5ff"
-    "\U0001f680-\U0001f6ff"
-    "\U0001f1e0-\U0001f1ff"
-    "\U00002702-\U000027b0"
-    "\U0001f900-\U0001f9ff"
-    "\U0001fa00-\U0001fa6f"
-    "]+",
-    flags=re.UNICODE,
-)
-
-
 def extract_emojis(text):
     if not text:
         return []
-    emojis = EMOJI_PATTERN.findall(str(text))
-    result = []
-    for e in emojis:
-        result.extend(list(e))
-    return result
+    return [c for c in EMOJI.findall(str(text)) if c not in _EMOJI_SKIP]
 
 
 def main():

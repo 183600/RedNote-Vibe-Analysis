@@ -748,7 +748,7 @@ def plot_emoji(structs: dict, grad_emoji: dict, emoji_diff: dict,
     ax.set_title("探索集表情使用的 P(AI) 梯度：中段最高、两端回落"
                  f"（emoji 帖占比 ρ={rho['rho']:+.2f}）", fontsize=10.5)
 
-    fig.suptitle("表情符号生态：AI 偏好清单符号，人类偏好情绪表情",
+    fig.suptitle("表情符号生态：人类偏好清单符号，AI 偏好情绪 emoji",
                  fontsize=13.5, y=1.0)
     save_fig(fig, INSIGHTS + "symbol_emoji.png")
 
@@ -881,22 +881,22 @@ def main() -> None:
     e_uni, h_uni, a_uni = (uni_vocab[k] for k in ("exploring", "human", "aigc"))
     e_xhs, h_xhs, a_xhs = (xhs_vocab[k] for k in ("exploring", "human", "aigc"))
     emoji_diff = {
-        "human": rate_diff_ranking(h_uni, len(note_emojis["human"]),
-                                   a_uni, len(note_emojis["aigc"]),
+        "human": rate_diff_ranking(a_uni, len(note_emojis["aigc"]),
+                                   h_uni, len(note_emojis["human"]),
                                    reverse=True, min_count=20, k=7),
-        "aigc": rate_diff_ranking(h_uni, len(note_emojis["human"]),
-                                  a_uni, len(note_emojis["aigc"]),
+        "aigc": rate_diff_ranking(a_uni, len(note_emojis["aigc"]),
+                                  h_uni, len(note_emojis["human"]),
                                   reverse=False, min_count=20, k=7),
         "exploring_top": [[e, int(c), round(c / len(sel_e) * 1000, 2)]
                           for e, c in e_uni.most_common(15)],
     }
     xhs_diff = {
-        "human": rate_diff_ranking(h_xhs, len(note_xhs["human"]),
-                                   a_xhs, len(note_xhs["aigc"]),
+        "human": rate_diff_ranking(a_xhs, len(note_xhs["aigc"]),
+                                   h_xhs, len(note_xhs["human"]),
                                    reverse=True, min_count=20, k=7),
-        "aigc": rate_diff_ranking(h_xhs, len(note_xhs["human"]),
-                                  a_xhs, len(note_xhs["aigc"]),
-                                  reverse=False, min_count=100, k=7),
+        "aigc": rate_diff_ranking(a_xhs, len(note_xhs["aigc"]),
+                                  h_xhs, len(note_xhs["human"]),
+                                  reverse=False, min_count=20, k=7),
         "exploring_top": [[e, int(c), round(c / len(sel_e) * 1000, 2)]
                           for e, c in e_xhs.most_common(15)],
     }

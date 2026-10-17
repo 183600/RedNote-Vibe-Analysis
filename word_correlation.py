@@ -63,9 +63,13 @@ def main():
     matrix = np.zeros((n_users, n_words))
     for i, uid in enumerate(user_ids):
         uc = user_totals[uid]
+        # 按用户总词频归一化：原始计数会让"发帖多/写得长"的用户对所有词
+        # 都有高计数，把活跃度混进词间相关；占比口径与
+        # word_correlation_extended.py 一致。
+        total = float(sum(uc.values()))
         row = matrix[i]
         for j, word in enumerate(all_words):
-            row[j] = uc.get(word, 0)
+            row[j] = uc.get(word, 0) / total if total > 0 else 0.0
 
     valid = [j for j in range(n_words) if np.std(matrix[:, j]) > 0]
     print(f"Valid: {len(valid)}")
@@ -76,7 +80,7 @@ def main():
         xm = cols[i] - cols[i].mean()
         xmax = np.max(np.abs(xm))
         with np.errstate(invalid="ignore", divide="ignore"):
-            norm = xmax * np.linalg.vector_norm(xm / xmax, axis=-1, keepdims=True)
+            norm = xmax * np.linalg.norm(xm / xmax)
             zs[i] = xm / norm
 
     print("Computing all...")
@@ -84,7 +88,7 @@ def main():
     for j1i in range(len(valid)):
         for j2i in range(j1i + 1, len(valid)):
             j1, j2 = valid[j1i], valid[j2i]
-            r = np.clip(np.vecdot(zs[j1i], zs[j2i]), -1.0, 1.0)
+            r = np.clip(np.dot(zs[j1i], zs[j2i]), -1.0, 1.0)
             if not np.isnan(r):
                 all_results.append((all_words[j1], all_words[j2], r, None))
 
@@ -111,6 +115,8 @@ def main():
         "word_correlation_results.md", "w"
     ) as f:
         f.write("# Word Correlation by User\n\n")
+        f.write("用户词频按本人总词频归一化（占比）后计算 Pearson r，"
+                "避免发帖量/篇幅差异的混杂。\n\n")
         f.write("## Positive (r > 0.2)\n\n")
         for w1, w2, r in pos[:25]:
             f.write(f"- {w1} - {w2}: {r:.3f}\n")

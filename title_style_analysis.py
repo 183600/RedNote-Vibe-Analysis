@@ -406,7 +406,7 @@ def main() -> None:
         tpl_stats[k] = {
             "n_texts": total,
             "coverage_topk": topk_coverage(c, TOPK),
-            "entropy": shannon_entropy(c),
+            "entropy": shannon_entropy(c, miller_madow=True),
             "unique_ratio": (len(c) / total) if total else 0.0,
             "top": c.most_common(TOPK),
         }
@@ -580,7 +580,7 @@ def write_markdown(out: dict) -> None:
         "",
         "## 5 标题模板化（首 4 字 Top-20）",
         "",
-        "| 子集 | 参与统计 | 覆盖率 | 前缀熵(bit) | 唯一率 |",
+        "| 子集 | 参与统计 | 覆盖率 | 前缀熵(bit, MM 校正) | 唯一率 |",
         "|---|---:|---:|---:|---:|",
     ]
     for k, label in (("human", "人类(前LLM)"), ("aigc", "AIGC(17模型)"),
@@ -603,9 +603,11 @@ def write_markdown(out: dict) -> None:
     tl = out["title_len_median"]
     lines += [
         "",
-        "对照：正文开篇（framing_analysis）AIGC 首 4 字 Top-20 覆盖率 14.8%、"
-        "熵 11.86 bit，远高于标题端（3.8% / 12.46 bit）——AI 生成的模板化主要"
-        "集中在正文框架，标题反而相对多样。",
+        f"对照：正文开篇（framing_analysis，同为 Miller–Madow 校正熵）AIGC 首 4 字 "
+        f"Top-20 覆盖率 14.8%、熵 11.86 bit，覆盖率远高于标题端"
+        f"（{out['title_prefix_stats']['aigc']['coverage_topk']:.1%} / "
+        f"{out['title_prefix_stats']['aigc']['entropy']:.2f} bit）而熵低于标题端"
+        "——AI 生成的模板化主要集中在正文框架，标题相对更多样。",
         "",
         f"标题长度中位数：人类 {tl['human']['median']:.0f} 字、"
         f"AIGC {tl['aigc']['median']:.0f} 字、探索集 {tl['exploring']['median']:.0f} 字"

@@ -22,8 +22,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from scipy.stats import spearmanr
 
-from analysis_utils import (BASE, setup_chinese_fonts, detector_score,
-                            write_csv_gz_if_changed)
+from analysis_utils import (BASE, setup_chinese_fonts, detector_oof_scores,
+                            detector_score, write_csv_gz_if_changed)
 
 FIGS = BASE + "paper_figs/"
 os.makedirs(FIGS, exist_ok=True)
@@ -76,7 +76,7 @@ def main(with_scores: bool = True):
     human["month"] = human["month"].astype(str)
     expl["month"] = expl["month"].astype(str)
 
-    human["p_ai"] = score(human, model, robust=True)
+    human["p_ai"] = detector_oof_scores(human, aigc_feats, model, robust=True)
     expl["p_ai"] = score(expl, model, robust=True)
     expl["p_ai_full"] = score(expl, model, robust=False)
     # 人类集基线与月度均值只算一次，图/JSON/摘要复用

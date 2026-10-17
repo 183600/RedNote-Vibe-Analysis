@@ -37,7 +37,8 @@ from sklearn.metrics import (roc_auc_score, average_precision_score,
 
 from analysis_utils import (BASE, FIGS, FEATURE_META, setup_chinese_fonts,
                             load_features, load_detector_model, detector_score,
-                            cliffs_delta, wilson_ci, bootstrap_auc, save_json)
+                            detector_oof_scores, cliffs_delta, wilson_ci,
+                            bootstrap_auc, save_json)
 
 setup_chinese_fonts()
 
@@ -257,9 +258,9 @@ def part_detector_ci(X: np.ndarray, y: np.ndarray) -> dict:
 
 
 def part_threshold_sensitivity(human: pd.DataFrame,
-                               expl: pd.DataFrame) -> dict:
+                               expl: pd.DataFrame, aigc: pd.DataFrame) -> dict:
     model = load_detector_model()
-    human["p_ai"] = detector_score(human, model, robust=True)
+    human["p_ai"] = detector_oof_scores(human, aigc, model, robust=True)
     expl["p_ai"] = detector_score(expl, model, robust=True)
 
     periods = {
@@ -366,7 +367,7 @@ def main() -> None:
     print("AP:", det["average_precision"], "P≥0.9工作点:", det["pr_at_threshold_0.9"])
 
     print("=== 5. 阈值敏感性 ===")
-    sens = part_threshold_sensitivity(human, expl)
+    sens = part_threshold_sensitivity(human, expl, aigc)
     for name, r in sens["post_pre_ratio"].items():
         print(f"{name}: 相对干净基线的放大倍数 {r}")
 

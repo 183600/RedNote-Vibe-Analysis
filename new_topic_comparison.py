@@ -503,7 +503,7 @@ def analyze_unique_vocabulary(grouped, word_counters):
             other_datasets = [d for d in all_datasets if d != ds]
             other_words = set()
             for od in other_datasets:
-                other_words.update(w for w, c in word_freqs[od][domain])
+                other_words.update(w for w, c in word_freqs[od][domain][:50])
 
             ds_words = dict(word_freqs[ds][domain][:50])
             unique_words = {w: c for w, c in ds_words.items() if w not in other_words}

@@ -42,7 +42,7 @@
    "unique_tag_ratio": 0.36402088772845953,
    "singleton_tag_share": 0.7303650839190934,
    "top20_coverage": 0.05646839632925693,
-   "entropy_mm": 14.329886699473303,
+   "entropy_mm": 14.329886699473304,
    "tag_len_mean": 4.53105091383812,
    "bins_pct": {
     "0": 45.06889611394953,
@@ -66,7 +66,7 @@
    "unique_tag_ratio": 0.6555166374781086,
    "singleton_tag_share": 0.8313652150681272,
    "top20_coverage": 0.0393772572670851,
-   "entropy_mm": 14.068970712974162,
+   "entropy_mm": 14.068970712974163,
    "tag_len_mean": 4.690647985989492,
    "bins_pct": {
     "0": 28.78411910669975,
@@ -90,7 +90,7 @@
    "unique_tag_ratio": 0.22893037820395218,
    "singleton_tag_share": 0.6514551063199148,
    "top20_coverage": 0.04784613705639154,
-   "entropy_mm": 14.376597444249356,
+   "entropy_mm": 14.376597444249352,
    "tag_len_mean": 4.849623153148851,
    "bins_pct": {
     "0": 8.114891707252207,
@@ -445,11 +445,11 @@
     "aigc_per1k": 3.31
    },
    {
-    "word": "自律",
+    "word": "时间管理",
     "aigc_per1k": 3.17
    },
    {
-    "word": "时间管理",
+    "word": "自律",
     "aigc_per1k": 3.17
    }
   ]
@@ -1626,90 +1626,90 @@
   "unicode": {
    "human": [
     {
-     "word": "✨",
-     "rate_diff_ppt": 9.568,
-     "aigc_per1k": 173.0,
-     "human_per1k": 268.68
-    },
-    {
-     "word": "🌟",
-     "rate_diff_ppt": 7.851,
-     "aigc_per1k": 38.67,
-     "human_per1k": 117.18
-    },
-    {
-     "word": "😭",
-     "rate_diff_ppt": 6.421,
-     "aigc_per1k": 6.23,
-     "human_per1k": 70.44
-    },
-    {
-     "word": "💪",
-     "rate_diff_ppt": 5.794,
-     "aigc_per1k": 4.51,
-     "human_per1k": 62.45
-    },
-    {
-     "word": "📍",
-     "rate_diff_ppt": 4.142,
-     "aigc_per1k": 21.31,
-     "human_per1k": 62.72
-    },
-    {
-     "word": "💖",
-     "rate_diff_ppt": 3.835,
-     "aigc_per1k": 2.46,
-     "human_per1k": 40.81
-    },
-    {
-     "word": "🔥",
-     "rate_diff_ppt": 3.679,
-     "aigc_per1k": 13.8,
-     "human_per1k": 50.59
-    }
-   ],
-   "aigc": [
-    {
      "word": "➕",
      "rate_diff_ppt": 7.541,
-     "aigc_per1k": 148.61,
-     "human_per1k": 73.2
+     "aigc_per1k": 73.2,
+     "human_per1k": 148.61
     },
     {
      "word": "⭐",
      "rate_diff_ppt": 6.004,
-     "aigc_per1k": 141.37,
-     "human_per1k": 81.33
+     "aigc_per1k": 81.33,
+     "human_per1k": 141.37
     },
     {
      "word": "❤",
      "rate_diff_ppt": 5.154,
-     "aigc_per1k": 115.36,
-     "human_per1k": 63.83
+     "aigc_per1k": 63.83,
+     "human_per1k": 115.36
     },
     {
      "word": "❗",
      "rate_diff_ppt": 4.193,
-     "aigc_per1k": 79.56,
-     "human_per1k": 37.63
+     "aigc_per1k": 37.63,
+     "human_per1k": 79.56
     },
     {
      "word": "♥",
      "rate_diff_ppt": 2.841,
-     "aigc_per1k": 36.4,
-     "human_per1k": 8.0
+     "aigc_per1k": 8.0,
+     "human_per1k": 36.4
     },
     {
      "word": "✅",
      "rate_diff_ppt": 1.845,
-     "aigc_per1k": 144.72,
-     "human_per1k": 126.28
+     "aigc_per1k": 126.28,
+     "human_per1k": 144.72
     },
     {
      "word": "⭕",
      "rate_diff_ppt": 1.492,
-     "aigc_per1k": 20.44,
-     "human_per1k": 5.51
+     "aigc_per1k": 5.51,
+     "human_per1k": 20.44
+    }
+   ],
+   "aigc": [
+    {
+     "word": "✨",
+     "rate_diff_ppt": 9.568,
+     "aigc_per1k": 268.68,
+     "human_per1k": 173.0
+    },
+    {
+     "word": "🌟",
+     "rate_diff_ppt": 7.851,
+     "aigc_per1k": 117.18,
+     "human_per1k": 38.67
+    },
+    {
+     "word": "😭",
+     "rate_diff_ppt": 6.421,
+     "aigc_per1k": 70.44,
+     "human_per1k": 6.23
+    },
+    {
+     "word": "💪",
+     "rate_diff_ppt": 5.794,
+     "aigc_per1k": 62.45,
+     "human_per1k": 4.51
+    },
+    {
+     "word": "📍",
+     "rate_diff_ppt": 4.142,
+     "aigc_per1k": 62.72,
+     "human_per1k": 21.31
+    },
+    {
+     "word": "💖",
+     "rate_diff_ppt": 3.835,
+     "aigc_per1k": 40.81,
+     "human_per1k": 2.46
+    },
+    {
+     "word": "🔥",
+     "rate_diff_ppt": 3.679,
+     "aigc_per1k": 50.59,
+     "human_per1k": 13.8
     }
    ],
    "exploring_top": [
@@ -1793,90 +1793,90 @@
   "xhs": {
    "human": [
     {
-     "word": "[爱心R]",
-     "rate_diff_ppt": 1.179,
-     "aigc_per1k": 2.83,
-     "human_per1k": 14.61
-    },
-    {
-     "word": "[开心R]",
-     "rate_diff_ppt": 0.827,
-     "aigc_per1k": 0.0,
-     "human_per1k": 8.27
-    },
-    {
-     "word": "[比心R]",
-     "rate_diff_ppt": 0.331,
-     "aigc_per1k": 0.0,
-     "human_per1k": 3.31
-    },
-    {
-     "word": "[鼓掌R]",
-     "rate_diff_ppt": 0.199,
-     "aigc_per1k": 1.05,
-     "human_per1k": 3.03
-    },
-    {
-     "word": "[加油R]",
-     "rate_diff_ppt": 0.122,
-     "aigc_per1k": 3.19,
-     "human_per1k": 4.41
-    },
-    {
-     "word": "[庆祝R]",
-     "rate_diff_ppt": 0.086,
-     "aigc_per1k": 3.0,
-     "human_per1k": 3.86
-    },
-    {
-     "word": "[太阳R]",
-     "rate_diff_ppt": 0.004,
-     "aigc_per1k": 3.27,
-     "human_per1k": 3.31
-    }
-   ],
-   "aigc": [
-    {
      "word": "[赞R]",
      "rate_diff_ppt": 6.215,
-     "aigc_per1k": 96.47,
-     "human_per1k": 34.33
+     "aigc_per1k": 34.33,
+     "human_per1k": 96.47
     },
     {
      "word": "[哭惹R]",
      "rate_diff_ppt": 5.676,
-     "aigc_per1k": 85.71,
-     "human_per1k": 28.95
+     "aigc_per1k": 28.95,
+     "human_per1k": 85.71
     },
     {
      "word": "[派对R]",
      "rate_diff_ppt": 5.385,
-     "aigc_per1k": 70.25,
-     "human_per1k": 16.4
+     "aigc_per1k": 16.4,
+     "human_per1k": 70.25
     },
     {
      "word": "[害羞R]",
      "rate_diff_ppt": 5.072,
-     "aigc_per1k": 65.47,
-     "human_per1k": 14.75
+     "aigc_per1k": 14.75,
+     "human_per1k": 65.47
     },
     {
      "word": "[笑哭R]",
      "rate_diff_ppt": 4.845,
-     "aigc_per1k": 73.81,
-     "human_per1k": 25.37
+     "aigc_per1k": 25.37,
+     "human_per1k": 73.81
     },
     {
      "word": "[失望R]",
      "rate_diff_ppt": 4.581,
-     "aigc_per1k": 53.53,
-     "human_per1k": 7.72
+     "aigc_per1k": 7.72,
+     "human_per1k": 53.53
     },
     {
      "word": "[偷笑R]",
      "rate_diff_ppt": 4.525,
-     "aigc_per1k": 76.13,
-     "human_per1k": 30.88
+     "aigc_per1k": 30.88,
+     "human_per1k": 76.13
+    }
+   ],
+   "aigc": [
+    {
+     "word": "[爱心R]",
+     "rate_diff_ppt": 1.179,
+     "aigc_per1k": 14.61,
+     "human_per1k": 2.83
+    },
+    {
+     "word": "[开心R]",
+     "rate_diff_ppt": 0.827,
+     "aigc_per1k": 8.27,
+     "human_per1k": 0.0
+    },
+    {
+     "word": "[比心R]",
+     "rate_diff_ppt": 0.331,
+     "aigc_per1k": 3.31,
+     "human_per1k": 0.0
+    },
+    {
+     "word": "[鼓掌R]",
+     "rate_diff_ppt": 0.199,
+     "aigc_per1k": 3.03,
+     "human_per1k": 1.05
+    },
+    {
+     "word": "[加油R]",
+     "rate_diff_ppt": 0.122,
+     "aigc_per1k": 4.41,
+     "human_per1k": 3.19
+    },
+    {
+     "word": "[庆祝R]",
+     "rate_diff_ppt": 0.086,
+     "aigc_per1k": 3.86,
+     "human_per1k": 3.0
+    },
+    {
+     "word": "[太阳R]",
+     "rate_diff_ppt": 0.004,
+     "aigc_per1k": 3.31,
+     "human_per1k": 3.27
     }
    ],
    "exploring_top": [

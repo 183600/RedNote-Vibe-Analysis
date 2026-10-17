@@ -14,23 +14,22 @@ import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from scipy.stats import spearmanr
+from scipy.stats import mannwhitneyu, spearmanr
 
-from analysis_utils import BASE, setup_chinese_fonts, detector_score
+from analysis_utils import BASE, setup_chinese_fonts, detector_oof_scores
 
 FIGS = BASE + "paper_figs/"
 setup_chinese_fonts()
 
-score = detector_score
-
 
 with open(BASE + "paper_detector_model.json", encoding="utf-8") as f:
     model = json.load(f)
-# 人类集只用到月份/点赞与稳健特征，按需读列压低内存与解析耗时
-human = pd.read_csv(BASE + "paper_features_human.csv.gz",
-                    usecols=["month", "likes"] + list(model["robust_features"]))
+# 人类基线用 5 折折外得分（口径同 paper_detector 的 CV），避免 in-sample 自评；
+# 需要完整特征列，同时读入 AIGC 特征以重建训练集
+human = pd.read_csv(BASE + "paper_features_human.csv.gz")
+aigc = pd.read_csv(BASE + "paper_features_aigc.csv.gz")
 human["month"] = human["month"].astype(str)
-human["p_ai"] = score(human, model)
+human["p_ai"] = detector_oof_scores(human, aigc, model, robust=True)
 # 探索集逐帖稳健得分已由 paper_drift.py 落盘（p_ai 列即稳健模型分），
 # 直接复用，避免重算全特征并保持与 drift 结果逐位一致
 expl = pd.read_csv(BASE + "paper_exploring_scores.csv.gz",
@@ -110,6 +109,9 @@ groups = {
     "新帖/低互动层": (late["p_ai"], fresh_post),
     "热帖层": (hot_pre, hot_post),
 }
+# 每层的后 LLM vs 前 LLM 得分差异检验（Mann–Whitney U 双侧，表 5 的 p 值来源）
+did_p = {name: float(mannwhitneyu(post, pre, alternative="two-sided").pvalue)
+         for name, (pre, post) in groups.items()}
 # 柱状图直接复用上面已算好的 stats（mean / >0.9 占比各只算一次）
 pre_stats = [stats["late"], stats["hot_pre"]]
 post_stats = [stats["fresh_post"], stats["hot_post"]]
@@ -174,11 +176,18 @@ drift["did"] = {
     "fresh_stratum": {"pre": round(stats["late"][0], 3),
                       "post": round(stats["fresh_post"][0], 3),
                       "pre_hi": round(stats["late"][1], 4),
-                      "post_hi": round(stats["fresh_post"][1], 4)},
+                      "post_hi": round(stats["fresh_post"][1], 4),
+                      "hi_ratio": round(stats["fresh_post"][1]
+                                        / max(stats["late"][1], 1e-12), 1),
+                      "mannwhitney_p_two_sided":
+                          did_p["新帖/低互动层"]},
     "hot_stratum": {"pre": round(stats["hot_pre"][0], 3),
                     "post": round(stats["hot_post"][0], 3),
                     "pre_hi": round(stats["hot_pre"][1], 4),
-                    "post_hi": round(stats["hot_post"][1], 4)},
+                    "post_hi": round(stats["hot_post"][1], 4),
+                    "hi_ratio": round(stats["hot_post"][1]
+                                      / max(stats["hot_pre"][1], 1e-12), 1),
+                    "mannwhitney_p_two_sided": did_p["热帖层"]},
 }
 with open(BASE + "paper_drift_results.json", "w", encoding="utf-8") as f:
     json.dump(drift, f, ensure_ascii=False, indent=1)

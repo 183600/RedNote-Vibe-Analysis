@@ -855,6 +855,33 @@ def detector_score(df: pd.DataFrame, model: dict, robust: bool = True) -> np.nda
                         model["scaler_scale"], model["coef"], model["intercept"])
 
 
+def detector_oof_scores(human: pd.DataFrame, aigc: pd.DataFrame, model: dict,
+                        robust: bool = True, seed: int = 42) -> np.ndarray:
+    """人类子集检测器得分的 5 折折外（out-of-fold）估计。
+
+    直接用全量模型给作为训练负类的人类集打分是 in-sample 自评，会系统性
+    低估人类集的假阳性率。这里用与 `paper_detector.py`/`cv_auc` 完全相同的
+    协议（StandardScaler + 平衡类权重 LogisticRegression(max_iter=2000)、
+    StratifiedKFold(5, shuffle=True, random_state=seed)）在 human+AIGC 特征上
+    重做交叉验证，返回人类行的折外 P(AI)，供时序分析的人类基线使用，口径与
+    探索集的 out-of-sample 打分一致。
+    """
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.model_selection import StratifiedKFold, cross_val_predict
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import make_pipeline
+
+    feats = list(model["robust_features"] if robust else model["features"])
+    X = pd.concat([human[feats], aigc[feats]], ignore_index=True).fillna(0).values
+    y = np.r_[np.zeros(len(human), dtype=int), np.ones(len(aigc), dtype=int)]
+    pipe = make_pipeline(StandardScaler(),
+                         LogisticRegression(max_iter=2000,
+                                            class_weight="balanced"))
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=seed)
+    proba = cross_val_predict(pipe, X, y, cv=cv, method="predict_proba")[:, 1]
+    return proba[:len(human)]
+
+
 def cliffs_delta_from_u(u: float, n1: int, n2: int) -> float:
     return 2.0 * u / (n1 * n2) - 1.0
 

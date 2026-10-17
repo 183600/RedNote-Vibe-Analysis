@@ -9,7 +9,7 @@ from collections import Counter
 import jieba
 
 from analysis_utils import (iter_jsonl_codecs, load_records_with_total,
-                            make_pool, close_pool)
+                            make_pool, close_pool, split_sentences)
 
 
 SAMPLE_LIMIT = 5000
@@ -28,7 +28,6 @@ RE_PRICE = re.compile(
 RE_QUANTITY = re.compile(
     r"\d+\s*(?:个|件|次|只|天|年|月|周|小时|分钟|杯|份|款|张|条|篇|本|套|位|人|岁|遍|组|双|对|袋|盒|瓶|支|斤|公斤|克|米|公里)"
 )
-RE_SENTENCE = re.compile(r"[。！？!?.]+")
 RE_LIST_NUM = re.compile(r"^\d+[.\s]", re.MULTILINE)
 RE_BULLET = re.compile(r"[-+*]\s")
 RE_LIST_ITEMS = re.compile(r"^\d+[.\s]|[-+*]\s", re.MULTILINE)
@@ -82,9 +81,7 @@ def analyze_numbers(text):
 def analyze_sentences(text):
     if not text:
         return {}
-    text = str(text)
-    sentences = RE_SENTENCE.split(text)
-    sentences = [s.strip() for s in sentences if s.strip()]
+    sentences = split_sentences(text)
     if not sentences:
         return {}
     words_list = [words_of(s) for s in sentences]
@@ -95,6 +92,7 @@ def analyze_sentences(text):
     vocab_richness = len(unique_words) / total_words if total_words else 0
     return {
         "num_sentences": len(sentences),
+        "total_words": total_words,
         "avg_words": round(total_words / len(sentences), 2),
         "vocab_richness": round(vocab_richness, 4),
     }
@@ -281,10 +279,12 @@ def main():
 
             print("\n4. SENTENCE PATTERNS (Content):")
             if sent_stats:
-                avg_words = sum(s["avg_words"] for s in sent_stats) / len(sent_stats)
+                total_sents = sum(s["num_sentences"] for s in sent_stats)
+                total_words = sum(s["total_words"] for s in sent_stats)
+                avg_words = total_words / total_sents if total_sents else 0.0
                 avg_vocab = sum(s["vocab_richness"] for s in sent_stats) / len(sent_stats)
-                print("   Avg words/sentence: " + str(avg_words))
-                print("   Vocab richness: " + str(avg_vocab))
+                print("   Avg words/sentence (pooled): " + str(round(avg_words, 2)))
+                print("   Vocab richness (mean per doc): " + str(round(avg_vocab, 4)))
 
             if repeat_ratios:
                 avg_repeat = sum(repeat_ratios) / len(repeat_ratios)
@@ -343,14 +343,14 @@ def main():
 
             print("\n4. SENTENCE PATTERNS (Title):")
             if sent_stats_title:
-                avg_words = sum(s["avg_words"] for s in sent_stats_title) / len(
-                    sent_stats_title
-                )
+                total_sents = sum(s["num_sentences"] for s in sent_stats_title)
+                total_words = sum(s["total_words"] for s in sent_stats_title)
+                avg_words = total_words / total_sents if total_sents else 0.0
                 avg_vocab = sum(s["vocab_richness"] for s in sent_stats_title) / len(
                     sent_stats_title
                 )
-                print("   Avg words/sentence: " + str(avg_words))
-                print("   Vocab richness: " + str(avg_vocab))
+                print("   Avg words/sentence (pooled): " + str(round(avg_words, 2)))
+                print("   Vocab richness (mean per doc): " + str(round(avg_vocab, 4)))
 
             if repeat_ratios_title:
                 avg_repeat = sum(repeat_ratios_title) / len(repeat_ratios_title)

@@ -572,19 +572,19 @@
   "human": {
    "n_texts": 51271,
    "coverage_topk": 0.0277,
-   "entropy": 15.035,
+   "entropy": 15.63,
    "unique_ratio": 0.8243
   },
   "aigc": {
    "n_texts": 7253,
    "coverage_topk": 0.0375,
-   "entropy": 12.465,
+   "entropy": 13.1,
    "unique_ratio": 0.8796
   },
   "exploring": {
    "n_texts": 58607,
    "coverage_topk": 0.0477,
-   "entropy": 14.719,
+   "entropy": 15.237,
    "unique_ratio": 0.7182
   }
  },

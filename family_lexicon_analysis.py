@@ -28,8 +28,9 @@ import matplotlib.pyplot as plt
 
 import jieba
 
-from analysis_utils import (BASE, INSIGHTS, init_plot_style, save_fig, save_json,
-                            iter_jsonl, post_text, make_pool, close_pool)
+from analysis_utils import (BASE, INSIGHTS, content_of, init_plot_style,
+                            save_fig, save_json, iter_jsonl, post_text,
+                            make_pool, close_pool)
 from paper_lexicon import clean, count_clean_words
 from paper_features import AI_WORDS
 
@@ -76,11 +77,16 @@ def _finalize_weighting(cell: dict[tuple[str, str], Counter],
     return raw, weighted
 
 
-def _doc_meta(cleaned: str) -> tuple[int, int, Counter]:
-    """worker：清洗后文本 →（字符数, AI 味词命中数, 词频）。"""
-    return (len(cleaned),
-            sum(cleaned.count(w) for w in AI_WORDS),
-            count_clean_words(cleaned))
+def _doc_meta(doc: tuple[str, str]) -> tuple[float, Counter]:
+    """worker：（清洗后「标题+正文」, 清洗后正文）→（单帖 AI 味词密度, 词频）。
+
+    词频口径与 paper_lexicon 一致（清洗后标题+正文）；AI 味词密度口径与
+    paper_features 的 ai_lex100 一致——只数清洗后正文子串，按 max(len,1)
+    归一为每万字符，因此可与人类基线的文档宏平均直接对照。
+    """
+    full, body = doc
+    hits = sum(body.count(w) for w in AI_WORDS)
+    return (hits / max(len(body), 1) * 1e4, count_clean_words(full))
 
 
 def collect_group_stats(records, pool=None, keys: tuple[str, ...] = (
@@ -90,31 +96,33 @@ def collect_group_stats(records, pool=None, keys: tuple[str, ...] = (
     """单次遍历记录：一次清洗 + 一次分词，同时聚合多个分组维度的词频。
 
     `records` 可以是列表或任意可迭代（如 iter_jsonl 生成器），按批处理避免
-    一次性持有全部记录。返回 (raw, weighted, ai_hits, ai_chars, n_records)：
+    一次性持有全部记录。返回 (raw, weighted, ai_dens, ai_docs, n_records)：
     raw/weighted 按分组键索引到 {组: Counter}（口径与原先逐维度独立扫描完全
-    一致）；ai_hits/ai_chars 按 `model_family` 累计共享 AI 味词表命中数与清洗
-    后字符数。传入 pool 时按批并行分词，逐帖结果与串行完全一致。
+    一致）；ai_dens/ai_docs 按 `model_family` 累计「单帖 AI 味词密度之和」
+    与帖数（正文口径，与 paper_features.ai_lex100 同源）。传入 pool 时按批
+    并行分词，逐帖结果与串行完全一致。
     """
     cell: dict[str, dict[tuple[str, str], Counter]] = {key: {} for key in keys}
     cell_n: dict[str, Counter] = {key: Counter() for key in keys}
     group_n: dict[str, Counter] = {key: Counter() for key in keys}
     dom_n: dict[str, Counter] = {key: Counter() for key in keys}
-    ai_hits: Counter = Counter()
-    ai_chars: Counter = Counter()
+    ai_dens: Counter = Counter()
+    ai_docs: Counter = Counter()
     n_records = 0
 
     batch = 1024
     kept: list = []
 
     def flush() -> None:
-        docs = [clean(post_text(rec)) for rec, _ in kept]
+        docs = [(clean(post_text(rec)), clean(content_of(rec)))
+                for rec, _ in kept]
         metas = (pool.map(_doc_meta, docs) if pool is not None
                  else [_doc_meta(t) for t in docs])
-        for (rec, by_key), (clen, ai, tokens) in zip(kept, metas):
+        for (rec, by_key), (dens, tokens) in zip(kept, metas):
             fam = by_key.get("model_family") or ""
             if fam:
-                ai_chars[fam] += clen
-                ai_hits[fam] += ai
+                ai_dens[fam] += dens
+                ai_docs[fam] += 1
             d = rec.get("domain") or "未知"
             for key in keys:
                 g = by_key[key]
@@ -143,7 +151,7 @@ def collect_group_stats(records, pool=None, keys: tuple[str, ...] = (
     for key in keys:
         raw[key], weighted[key] = _finalize_weighting(
             cell[key], cell_n[key], group_n[key], dom_n[key])
-    return raw, weighted, ai_hits, ai_chars, n_records
+    return raw, weighted, ai_dens, ai_docs, n_records
 
 
 def one_vs_rest_all(counts: dict[str, Counter],
@@ -260,7 +268,7 @@ def main() -> None:
     init_plot_style()
     pool = make_pool(preload=jieba.initialize)
     try:
-        raw, weighted, ai_hits, ai_chars, n_records = collect_group_stats(
+        raw, weighted, ai_dens, ai_docs, n_records = collect_group_stats(
             iter_jsonl(BASE + "training_set_aigc.jsonl"), pool)
     finally:
         close_pool(pool)
@@ -287,14 +295,15 @@ def main() -> None:
         for m, z in model_z.items()
     }
 
-    # ---- 共享 AI 味词的家族密度（清洗后正文子串计数，口径同 paper_features）----
+    # ---- 共享 AI 味词的家族密度（正文口径，按帖宏平均，同 paper_features）----
     ai_density = {}
-    for g in fam_cnt:
+    for g in ai_dens:
         ai_density[FAMILY_NAME.get(g, g)] = round(
-            ai_hits[g] / ai_chars[g] * 1e4, 3)
+            ai_dens[g] / max(ai_docs[g], 1), 3)
 
     import pandas as pd
-    # paper_features 的 ai_lex100 是"每百字"，这里统一换算成"每万字符"
+    # paper_features 的 ai_lex100 是"每帖每百字命中数"（清洗后正文口径），
+    # 文档宏平均 ×100 换算成"每万字符"，与上面的家族密度完全同口径
     human_density = float(pd.read_csv(
         BASE + "paper_features_human.csv.gz", usecols=["ai_lex100"])["ai_lex100"].mean()) * 100.0
     print(f"AI 味词密度（每万字符）: human={human_density:.2f}", ai_density)

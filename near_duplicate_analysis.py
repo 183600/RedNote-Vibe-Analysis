@@ -84,6 +84,10 @@ MAX_CROSS_EXAMPLES = 10
 _MIX1 = np.uint64(0x9E3779B185EBCA87)
 _MIX2 = np.uint64(0xC2B2AE3D27D4EB4F)
 
+# 候选对批量生成的单批上限（原始 pair 数）。按组大小分桶后，同尺寸的组
+# 用广播一次的三角索引向量化生成，批内控制临时数组在 ~200 万对以内。
+_PAIR_BLOCK = 1 << 21
+
 
 # --------------------------------------------------------------------------
 # 纯函数（可单元测试）
@@ -137,10 +141,14 @@ def candidate_pair_keys(sketches: np.ndarray, n_docs: int,
     升序去重）与每个候选对共享的链接键个数。sketch 中 0 视为空槽（哈希值
     恰好为 0 的概率可忽略，且 0 只会让该槽失去链接能力，不影响正确性）。
 
-    全 numpy 实现：把 (文档, 概要哈希) 展平后稳定排序，按哈希值分组
-    （组内文档下标仍升序），对 df ∈ [2, cap] 的组用预计算三角索引批量
-    生成 pair key。生成的多重集与逐对 Python 循环完全一致，因此
+    全 numpy 实现：把 (文档, 概要哈希) 展平后排序，按哈希值分组，对
+    df ∈ [2, cap] 的组批量生成 pair key（组内文档顺序任意，逐对取
+    min/max 保证 i < j）。生成的多重集与逐对 Python 循环完全一致，因此
     `np.unique(..., return_counts=True)` 返回的 keys/counts 不变。
+    实现要点：文档下标用 int32（~13M 元素省一半）、普通快排（少一份基数
+    排序缓冲）、分组元数据算完后立即释放哈希与下标数组；同尺寸的哈希组
+    按大小分桶、用广播的三角索引一次向量化生成（避免 ~80 万次逐组
+    Python 循环），单批 pair 数受 `_PAIR_BLOCK` 限制以控制临时内存。
     """
     flat = sketches.ravel()
     idx = np.flatnonzero(flat)
@@ -148,30 +156,47 @@ def candidate_pair_keys(sketches: np.ndarray, n_docs: int,
         return np.empty(0, dtype=np.int64), np.empty(0, dtype=np.int64)
     # C 顺序展平：flat_idx = doc * K + 槽位，故 doc = flat_idx // K，
     # 与 np.repeat(arange(n_docs), K)[idx] 完全一致但省下 13M 元素的临时数组。
-    docs = idx // sketches.shape[1]
+    docs = (idx // sketches.shape[1]).astype(np.int32)
     hv = flat[idx]
-    order = np.argsort(hv, kind="stable")
+    del idx
+    order = np.argsort(hv)
     docs = docs[order]
-    hv.sort()  # 与 hv = hv[order] 等价，但原地排序省一份 gather 临时数组
+    del order
+    hv.sort()
     starts = np.concatenate(([0], np.flatnonzero(hv[1:] != hv[:-1]) + 1))
     ends = np.concatenate((starts[1:], [hv.size]))
     df = ends - starts
+    del hv
     keep = np.flatnonzero((df >= 2) & (df <= cap))
     if keep.size == 0:
         return np.empty(0, dtype=np.int64), np.empty(0, dtype=np.int64)
     tri = {int(m): np.triu_indices(int(m), 1)
            for m in np.unique(df[keep])}
-    total = int(sum(int(df[g]) * (int(df[g]) - 1) // 2 for g in keep))
+    sizes = df[keep].astype(np.int64)
+    total = int((sizes * (sizes - 1) // 2).sum())
     keys_arr = np.empty(total, dtype=np.int64)
-    pos = 0
-    for g in keep.tolist():
-        start, end = int(starts[g]), int(ends[g])
-        grp = docs[start:end]
-        tri_i, tri_j = tri[end - start]
-        nxt = pos + tri_i.size
-        np.multiply(grp[tri_i], n_docs, out=keys_arr[pos:nxt])
-        keys_arr[pos:nxt] += grp[tri_j]
-        pos = nxt
+    nd = np.int64(n_docs)
+    # 按组大小分桶：同尺寸组的 (开始位置, 三角索引) 广播成批
+    order_m = np.argsort(sizes, kind="stable")
+    unique_m, m_counts = np.unique(sizes[order_m], return_counts=True)
+    ptr = pos = 0
+    for m, cnt in zip(unique_m.tolist(), m_counts.tolist()):
+        tri_i, tri_j = tri[m]
+        p = tri_i.size
+        gids_m = keep[order_m[ptr:ptr + cnt]]
+        ptr += cnt
+        per_batch = max(1, _PAIR_BLOCK // p)
+        for b0 in range(0, cnt, per_batch):
+            gstart = starts[gids_m[b0:b0 + per_batch]]
+            pos_i = (gstart[:, None] + tri_i).ravel()
+            pos_j = (gstart[:, None] + tri_j).ravel()
+            a = docs[pos_i]
+            b = docs[pos_j]
+            lo = np.minimum(a, b)
+            nxt = pos + p * gstart.size
+            np.multiply(lo, nd, out=keys_arr[pos:nxt])
+            keys_arr[pos:nxt] += np.maximum(a, b)
+            pos = nxt
     return np.unique(keys_arr, return_counts=True)
 
 

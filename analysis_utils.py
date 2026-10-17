@@ -673,8 +673,14 @@ def clean_body(content: str | None) -> str:
 
         _CLEAN_BODY_RES = (HUATI, HASHTAG)
     huati, hashtag = _CLEAN_BODY_RES
-    body = huati.sub("", content or "")
-    return hashtag.sub(" ", body).strip()
+    body = content or ""
+    # 快路径：绝大多数正文既无 [话题] 字面标记也无 # 标签，跳过 re.sub 调用
+    # （无匹配时 re.sub 的结果与原文相等，等价性不受影响）。
+    if "[话题]" in body:
+        body = huati.sub("", body)
+    if "#" in body:
+        body = hashtag.sub(" ", body)
+    return body.strip()
 
 
 def _positive_counts(counts) -> np.ndarray:
@@ -741,8 +747,17 @@ def load_records_with_total(path: str, sample: int | None = None,
     容错口径与历史探索脚本一致：跳过空行与无法解析的行。抽样结果与
     `random.Random(seed).sample(完整记录列表, sample)` 完全一致，但内存占用
     与 sample 成正比而非与文件大小成正比。
+
+    默认的 `iter_jsonl_relaxed` 只会在行无法解析时少产出一条记录，而本仓库
+    的研究数据文件每行都是合法 JSON（无坏行），因此计数可以直接走
+    `count_jsonl_lines` 的无解析扫描（与 `load_posts`/`load_records` 同一
+    口径），把两遍全量 JSON 解析减为一遍。传入自定义 `iterator`（如
+    `iter_jsonl_codecs`，其切行语义不同）时仍按迭代器逐条计数。
     """
-    return _stream_sample(lambda: iterator(path), sample, seed)
+    count = None
+    if iterator is iter_jsonl_relaxed:
+        count = lambda: count_jsonl_lines(path)
+    return _stream_sample(lambda: iterator(path), sample, seed, count=count)
 
 
 def to_int(v, default: int = 0) -> int:
@@ -883,21 +898,44 @@ def cell_groups(cell_codes, min_cell_n: int = 100) -> list:
     return [order[s:e] for s, e in zip(starts, ends) if e - s >= min_cell_n]
 
 
+def cell_rank_cache(values, groups) -> list:
+    """按 `groups`（`cell_groups` 的结果）预计算每个单元的并列平均秩。
+
+    组内常量（ptp=0，等价于 `np.unique` 只有 1 个值）或空组返回 None，
+    供 `within_cell_spearman` 直接跳过。同一向量与多个对侧向量做单元内
+    秩相关时（如一个特征 vs 多个互动指标），预计算一次即可复用，避免
+    每次调用重复排序。
+    """
+    from scipy.stats import rankdata
+
+    v = np.asarray(values, dtype=float)
+    out: list = []
+    for idx in groups:
+        vc = v[idx]
+        if vc.size == 0 or bool(np.isnan(vc).any()) \
+                or float(np.ptp(vc)) == 0.0:
+            out.append(None)
+        else:
+            out.append(rankdata(vc))
+    return out
+
+
 def within_cell_spearman(x, y, cell_codes, min_cell_n: int = 100,
-                         groups=None) -> dict:
+                         groups=None, x_ranks=None, y_ranks=None) -> dict:
     """分组单元（如月份×领域）内 Spearman 相关的加权汇总。
 
     对每个样本量 >= `min_cell_n` 的单元分别计算 Spearman ρ，再按单元样本量
     加权平均。x/y 为等长数值序列，cell_codes 为等长分组标签（任意可比较
     类型）。常量序列（相关系数未定义）与样本不足的单元直接跳过。
-    传入 `groups`（`cell_groups` 的结果）时直接复用预分组。
+    传入 `groups`（`cell_groups` 的结果）时直接复用预分组；传入
+    `x_ranks`/`y_ranks`（`cell_rank_cache` 的结果）时直接复用预计算的
+    单元内平均秩，省去重复排序（仅计算皮尔逊式相关系数，与 spearmanr
+    的「秩上的皮尔逊相关」同口径）。
 
     返回 ``{"weighted_rho", "neg_cell_share", "n_cells"}``；没有任何可计算
     单元时两个统计量均为 NaN、n_cells=0。口径与 `paper_engagement.py` 的
     「月份×领域」单元内秩相关一致（>=100 条起算）。
     """
-    from scipy.stats import spearmanr
-
     x = np.asarray(x, dtype=float)
     y = np.asarray(y, dtype=float)
     codes = np.asarray(cell_codes)
@@ -909,18 +947,24 @@ def within_cell_spearman(x, y, cell_codes, min_cell_n: int = 100,
 
     if groups is None:
         groups = cell_groups(codes, min_cell_n)
+    if x_ranks is None:
+        x_ranks = cell_rank_cache(x, groups)
+    if y_ranks is None:
+        y_ranks = cell_rank_cache(y, groups)
 
     rhos: list[float] = []
     weights: list[int] = []
-    for idx in groups:
-        xc, yc = x[idx], y[idx]
-        n = len(idx)
-        if np.unique(xc).size < 2 or np.unique(yc).size < 2:
+    for i, idx in enumerate(groups):
+        xr, yr = x_ranks[i], y_ranks[i]
+        if xr is None or yr is None:
             continue
-        r, _ = spearmanr(xc, yc)
+        xc = xr - xr.mean()
+        yc = yr - yr.mean()
+        den = float((xc * xc).sum() * (yc * yc).sum())
+        r = float((xc * yc).sum() / np.sqrt(den)) if den > 0 else float("nan")
         if not np.isnan(r):
-            rhos.append(float(r))
-            weights.append(n)
+            rhos.append(r)
+            weights.append(len(idx))
     if not rhos:
         return {"weighted_rho": float("nan"),
                 "neg_cell_share": float("nan"), "n_cells": 0}
@@ -959,15 +1003,48 @@ def wilson_ci(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
 
 
 def bootstrap_auc(y, proba, n_boot: int = 1000, seed: int = 42) -> dict:
-    """对已有点预测做 bootstrap，返回 AUC 的 95% 置信区间。"""
+    """对已有点预测做 bootstrap，返回 AUC 的 95% 置信区间。
+
+    二分类输入走向量化快路径：先对整个 proba 做一次值分组（并列分数同一
+    平均秩），每轮重抽样只需对「组号」计两次 bincount，用与原来完全相同的
+    「并列取平均秩」公式（等价于逐轮 argsort 分组后的 Mann-Whitney U）得到
+    AUC，省去每轮 O(n log n) 的排序；抽样随机数路径、并列处理与跳过规则
+    （全为正/全为负）均保持不变。多分类/含非有限值输入回退原实现。
+    """
     from sklearn.metrics import roc_auc_score
     y = np.asarray(y)
     proba = np.asarray(proba)
     rng = np.random.default_rng(seed)
     n = len(y)
     aucs = []
+    classes = np.unique(y)
+    fast = len(classes) == 2 and bool(np.isfinite(proba).all())
+    if fast:
+        pos_mask_all = y == classes[-1]
+        # 组号按概率值升序（与 argsort 分组一致），供每轮 bincount 复用
+        code = np.unique(proba, return_inverse=True)[1].astype(np.intp, copy=False)
+        n_groups = int(code.max()) + 1 if code.size else 0
     for _ in range(n_boot):
         idx = rng.integers(0, n, n)
+        if fast:
+            pos_drawn = pos_mask_all[idx]
+            n1 = float(pos_drawn.sum())
+            if n1 == 0.0 or n1 == n:
+                continue
+            cidx = code[idx]
+            sizes = np.bincount(cidx, minlength=n_groups)
+            pos_cnt = np.bincount(cidx, weights=pos_drawn, minlength=n_groups)
+            nz = sizes > 0
+            sizes = sizes[nz]
+            pos_cnt = pos_cnt[nz]
+            ends = np.cumsum(sizes)
+            avg_ranks = (ends - sizes) + (sizes + 1) / 2.0
+            n0 = n - n1
+            aucs.append(
+                (float(np.dot(pos_cnt, avg_ranks)) - n1 * (n1 + 1) / 2.0)
+                / (n1 * n0)
+            )
+            continue
         yb = y[idx]
         pos_val = yb.max()
         if yb.min() == pos_val:

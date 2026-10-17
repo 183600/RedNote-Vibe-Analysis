@@ -42,6 +42,8 @@
 """
 from __future__ import annotations
 
+import os
+
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -49,10 +51,11 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from scipy.stats import spearmanr, wilcoxon
 
-from analysis_utils import (BASE, INSIGHTS, PALETTE, clean_body, content_of,
-                            dedup_indices, engagement_of, gini_coefficient,
-                            init_plot_style, iter_jsonl, save_fig, save_json,
-                            wilson_ci, within_cell_spearman)
+from analysis_utils import (BASE, INSIGHTS, PALETTE, clean_body, close_pool,
+                            content_of, dedup_indices, engagement_of,
+                            gini_coefficient, init_plot_style, iter_jsonl,
+                            make_pool, save_fig, save_json, wilson_ci,
+                            within_cell_spearman)
 
 SCORES_PATH = BASE + "paper_exploring_scores.csv.gz"
 EXPLORING_PATH = BASE + "exploring_set_fixed.jsonl"
@@ -214,19 +217,21 @@ def variance_decomposition(values, codes) -> dict:
     }
 
 
-def paired_style_deltas(ids, p_ai, log_likes,
-                        split: float = STYLE_SPLIT) -> np.ndarray:
-    """逐作者 Δ = 高风格半组均值(log 点赞) - 低风格半组均值(log 点赞)。
+def _paired_half_means(ids, p_ai, log_likes,
+                       split: float = STYLE_SPLIT
+                       ) -> tuple[np.ndarray, np.ndarray]:
+    """逐作者「低风格半组均值 / 高风格半组均值」。
 
     只保留两半都非空（p_ai < split 与 p_ai >= split 各至少一条）的作者。
-    用稳定排序 + 分组求和实现，与逐作者 pandas 分组的取值完全一致，但把
-    O(作者数) 次 DataFrame 布尔筛选/求均值降为几次 O(n) 的数组运算。
+    用稳定排序 + 分组求和实现，与逐作者 pandas 布尔筛选/求均值取值一致，
+    但把 O(作者数) 次 DataFrame 筛选降为几次 O(n) 的数组运算。
+    返回 (lo_means, hi_means)，两个数组按作者在稳定排序下的顺序对齐。
     """
     ids = np.asarray(ids)
     p = np.asarray(p_ai, dtype=float)
     y = np.asarray(log_likes, dtype=float)
     if ids.size == 0:
-        return np.empty(0, dtype=float)
+        return np.empty(0, dtype=float), np.empty(0, dtype=float)
     order = np.argsort(ids, kind="stable")
     ids_s, p_s, y_s = ids[order], p[order], y[order]
     change = np.empty(ids_s.shape, dtype=bool)
@@ -242,7 +247,18 @@ def paired_style_deltas(ids, p_ai, log_likes,
     keep = (n_hi > 0) & (n_lo > 0)
     sum_hi = np.bincount(g[hi], weights=y_s[hi], minlength=n_groups)
     sum_lo = np.bincount(g[lo], weights=y_s[lo], minlength=n_groups)
-    return (sum_hi[keep] / n_hi[keep] - sum_lo[keep] / n_lo[keep]).astype(float)
+    return (sum_lo[keep] / n_lo[keep]).astype(float), \
+        (sum_hi[keep] / n_hi[keep]).astype(float)
+
+
+def paired_style_deltas(ids, p_ai, log_likes,
+                        split: float = STYLE_SPLIT) -> np.ndarray:
+    """逐作者 Δ = 高风格半组均值(log 点赞) - 低风格半组均值(log 点赞)。
+
+    只保留两半都非空（p_ai < split 与 p_ai >= split 各至少一条）的作者。
+    """
+    lo, hi = _paired_half_means(ids, p_ai, log_likes, split)
+    return hi - lo
 
 
 def top_author_shares(counts, indicator, frac: float = TOP_AUTHOR_FRAC) -> dict:
@@ -324,30 +340,21 @@ def bootstrap_wls_slope(x, y, weights=None, n_boot: int = N_BOOT,
             "ci_high": float(hi), "n_boot": int(arr.size)}
 
 
-def cluster_bootstrap_slope(x, y, codes, n_boot: int = N_BOOT,
-                            seed: int = BOOT_SEED, second_codes=None,
-                            alpha: float = 0.05) -> dict:
-    """按 `codes`（作者）整群重抽的斜率 bootstrap。
+def _cluster_boot_slopes_segment(payload) -> list[float]:
+    """整群 bootstrap 第 [start, end) 次重抽的斜率（供分段并行调用）。
 
-    单因素时对组内去均值后做 OLS；`second_codes` 非空时对两个因素交替
-    去均值（作者+月份固定效应）。重抽后按作者重抽次数加权（未抽中的
-    作者剔除），返回点估计与百分位 CI。要求组内确有离差：每组仅一条
-    观测（无组内变异）时点估计为 NaN，退化重抽样本直接跳过。
+    先重放 RNG 到第 start 次重抽再计算本段，抽样序列与串行循环逐次一致
+    （`default_rng(seed)` 每次循环恰好调用一次 `integers(0, k, k)`），
+    因此分段并行与串行结果逐位相同。`codes` 为已编码的 0..k-1 整数。
+    payload = (x, y, codes, second_codes, k, seed, start, end)。
     """
-    x = np.asarray(x, dtype=float)
-    y = np.asarray(y, dtype=float)
-    codes, k = factorize_codes(codes)
+    x, y, codes, second_codes, k, seed, start, end = payload
     rng = np.random.default_rng(seed)
-    if second_codes is None:
-        xr, yr = demean_group(x, codes), demean_group(y, codes)
-        point = ols_slope(xr, yr)
-    else:
-        c2, _ = factorize_codes(second_codes)
-        point = ols_slope(demean_two_way(x, codes, c2),
-                          demean_two_way(y, codes, c2))
-    slopes = []
-    for _ in range(n_boot):
+    slopes: list[float] = []
+    for i in range(end):
         samp = rng.integers(0, k, k)
+        if i < start:
+            continue
         mult = np.bincount(samp, minlength=k).astype(float)
         w = mult[codes]
         m = w > 0
@@ -369,6 +376,54 @@ def cluster_bootstrap_slope(x, y, codes, n_boot: int = N_BOOT,
         s = ols_slope(xr, yr, w[m])
         if not np.isnan(s):
             slopes.append(s)
+    return slopes
+
+
+def cluster_bootstrap_slope(x, y, codes, n_boot: int = N_BOOT,
+                            seed: int = BOOT_SEED, second_codes=None,
+                            alpha: float = 0.05) -> dict:
+    """按 `codes`（作者）整群重抽的斜率 bootstrap。
+
+    单因素时对组内去均值后做 OLS；`second_codes` 非空时对两个因素交替
+    去均值（作者+月份固定效应）。重抽后按作者重抽次数加权（未抽中的
+    作者剔除），返回点估计与百分位 CI。要求组内确有离差：每组仅一条
+    观测（无组内变异）时点估计为 NaN，退化重抽样本直接跳过。
+
+    双因素去均值每次重抽要跑满交替投影的迭代上限，是主要 CPU 开销；
+    双因素且样本规模足够大时按重抽次数分段、用进程池并行计算（Linux
+    fork；不可用时自动回退串行），分段之间通过重放 RNG 保证抽样序列
+    与串行完全一致。
+    """
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+    codes, k = factorize_codes(codes)
+    rng = np.random.default_rng(seed)
+    if second_codes is None:
+        xr, yr = demean_group(x, codes), demean_group(y, codes)
+        point = ols_slope(xr, yr)
+    else:
+        c2, _ = factorize_codes(second_codes)
+        point = ols_slope(demean_two_way(x, codes, c2),
+                          demean_two_way(y, codes, c2))
+    slopes: list[float] = []
+    parallel = second_codes is not None and n_boot >= 64 and k >= 64
+    pool = make_pool(4) if parallel else None
+    if pool is not None:
+        try:
+            n_workers = min(4, max(1, os.cpu_count() or 1))
+            bounds = np.linspace(0, n_boot, n_workers + 1).astype(int)
+            segments = [(int(bounds[i]), int(bounds[i + 1]))
+                        for i in range(n_workers) if bounds[i] < bounds[i + 1]]
+            results = pool.map(
+                _cluster_boot_slopes_segment,
+                [(x, y, codes, second_codes, k, seed, a, b)
+                 for a, b in segments], chunksize=1)
+            slopes = [s for part in results for s in part]
+        finally:
+            close_pool(pool)
+    else:
+        slopes = _cluster_boot_slopes_segment(
+            (x, y, codes, second_codes, k, seed, 0, n_boot))
     arr = np.asarray(slopes)
     if arr.size == 0:
         return {"slope": point, "ci_low": float("nan"),
@@ -569,16 +624,10 @@ def paired_analysis(auth: pd.DataFrame) -> dict:
         "wilcoxon_p": p_wil,
     }
 
-    auth = auth.assign(cell=auth["user_id"] + "|" + auth["month"])
-    cell_deltas = []
-    for _, g in auth.groupby("cell", sort=True):
-        if len(g) < 2:
-            continue
-        lo = g.loc[g["p_ai"] < STYLE_SPLIT, "log_likes"]
-        hi = g.loc[g["p_ai"] >= STYLE_SPLIT, "log_likes"]
-        if len(lo) and len(hi):
-            cell_deltas.append(float(hi.mean() - lo.mean()))
-    cell_deltas = np.asarray(cell_deltas, dtype=float)
+    # 同作者同月份单元：与逐组 DataFrame 筛选求均值同口径，但一次向量化算完
+    cell_ids = (auth["user_id"].to_numpy().astype(str) + "|"
+                + auth["month"].to_numpy().astype(str))
+    cell_deltas = paired_style_deltas(cell_ids, auth["p_ai"], auth["log_likes"])
     p_cell = float(wilcoxon(cell_deltas).pvalue) if cell_deltas.size else float("nan")
     out["author_month_cells"] = {
         "n_cells": int(cell_deltas.size),
@@ -728,14 +777,10 @@ def plot_within(decom: dict, paired: dict, auth: pd.DataFrame,
     ax.set_ylim(-0.5, len(rows) - 0.4)
 
     ax = axes[1]
-    g = auth.groupby("user_id")
-    both = []
-    for uid, gg in g:
-        lo = gg.loc[gg["p_ai"] < STYLE_SPLIT, "log_likes"]
-        hi = gg.loc[gg["p_ai"] >= STYLE_SPLIT, "log_likes"]
-        if len(lo) and len(hi):
-            both.append((lo.mean(), hi.mean()))
-    both = np.asarray(both, dtype=float)
+    lo_means, hi_means = _paired_half_means(
+        auth["user_id"], auth["p_ai"], auth["log_likes"])
+    both = np.column_stack([lo_means, hi_means]) if lo_means.size else \
+        np.empty((0, 2), dtype=float)
     if both.size:
         ax.scatter(both[:, 0], both[:, 1], s=9, alpha=0.35,
                    color=PALETTE["aigc"], edgecolor="none")

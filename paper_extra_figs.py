@@ -26,12 +26,16 @@ score = detector_score
 
 with open(BASE + "paper_detector_model.json", encoding="utf-8") as f:
     model = json.load(f)
-human = pd.read_csv(BASE + "paper_features_human.csv.gz")
+# 人类集只用到月份/点赞与稳健特征，按需读列压低内存与解析耗时
+human = pd.read_csv(BASE + "paper_features_human.csv.gz",
+                    usecols=["month", "likes"] + list(model["robust_features"]))
 human["month"] = human["month"].astype(str)
 human["p_ai"] = score(human, model)
-expl = pd.read_csv(BASE + "paper_features_exploring.csv.gz")
+# 探索集逐帖稳健得分已由 paper_drift.py 落盘（p_ai 列即稳健模型分），
+# 直接复用，避免重算全特征并保持与 drift 结果逐位一致
+expl = pd.read_csv(BASE + "paper_exploring_scores.csv.gz",
+                   usecols=["month", "likes", "p_ai"])
 expl["month"] = expl["month"].astype(str)
-expl["p_ai"] = score(expl, model)
 
 ms_h = human.groupby("month")["p_ai"].agg(["size", "mean"])
 ms_h = ms_h[ms_h["size"] >= 100].sort_index()

@@ -35,7 +35,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from analysis_utils import (BASE, INSIGHTS, init_plot_style, save_fig, save_json,
-                            cell_groups, load_detector_model,
+                            cell_groups, cell_rank_cache, load_detector_model,
                             within_cell_spearman)
 
 MIN_CELL_N = 100        # 月份×领域单元最少帖子数（同 paper_engagement）
@@ -196,17 +196,23 @@ def univariate_table(feature_names, columns: dict, cell_codes,
     """对每个特征在三个互动指标上做单元内加权秩相关。
 
     `columns` 为 {指标名: 数值数组}；返回 {feature: {target: stat, ...}}。
-    预分组一次、所有特征共享，避免每个「特征×指标」组合重复 argsort。
+    预分组一次、所有特征共享，避免每个「特征×指标」组合重复 argsort；
+    各特征与各指标的单元内平均秩也各自只算一次（40 个特征×3 指标共
+    120 个组合，若逐组合重排会多做约 3 倍排序）。
     """
     groups = cell_groups(cell_codes, min_cell_n)
+    target_ranks = {tname: cell_rank_cache(columns["targets"][tname], groups)
+                    for tname in columns["targets"]}
     out: dict = {}
     for feat in feature_names:
         x = columns["x"][feat]
+        x_ranks = cell_rank_cache(x, groups)
         row = {}
         for tname in columns["targets"]:
             row[tname] = within_cell_spearman(
                 x, columns["targets"][tname], cell_codes,
-                min_cell_n=min_cell_n, groups=groups)
+                min_cell_n=min_cell_n, groups=groups,
+                x_ranks=x_ranks, y_ranks=target_ranks[tname])
         out[feat] = row
     return out
 

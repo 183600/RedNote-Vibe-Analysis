@@ -150,9 +150,14 @@ def row_of(d: dict, dataset: str) -> dict:
     return row
 
 
-def row_from_line(line: str, dataset: str) -> dict:
-    """解析一行 JSONL 并抽取输出行（并行任务的入口，可 pickle）。"""
-    return row_of(json.loads(line), dataset)
+def row_from_line(line: str, dataset: str) -> tuple:
+    """解析一行 JSONL 并抽取输出行（并行任务的入口，可 pickle）。
+
+    返回按 FIELDS 顺序排列的值元组：与返回 dict 相比，子进程回传时省掉
+    每行 47 个键的 pickle 开销，写出内容逐字节一致。
+    """
+    row = row_of(json.loads(line), dataset)
+    return tuple(row[k] for k in FIELDS)
 
 
 def process(path, dataset, out_writer, pool=None):
@@ -164,14 +169,14 @@ def process(path, dataset, out_writer, pool=None):
                 if not line or line.isspace():
                     continue
                 row = row_from_line(line, dataset)
-                out_writer.writerow([row[k] for k in FIELDS])
+                out_writer.writerow(row)
                 n += 1
         return n
     with open(path, encoding="utf-8") as f:
         lines = (line for line in f if line and not line.isspace())
         for row in pool.imap(partial(row_from_line, dataset=dataset), lines,
                              chunksize=64):
-            out_writer.writerow([row[k] for k in FIELDS])
+            out_writer.writerow(row)
             n += 1
     return n
 

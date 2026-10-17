@@ -46,7 +46,6 @@
 """
 from __future__ import annotations
 
-from array import array
 from collections import defaultdict
 
 import numpy as np
@@ -136,30 +135,36 @@ def candidate_pair_keys(sketches: np.ndarray, n_docs: int,
     返回 (keys, counts)：key = i * n_docs + j（i < j）编码的候选对（int64，
     升序去重）与每个候选对共享的链接键个数。sketch 中 0 视为空槽（哈希值
     恰好为 0 的概率可忽略，且 0 只会让该槽失去链接能力，不影响正确性）。
+
+    全 numpy 实现：把 (文档, 概要哈希) 展平后稳定排序，按哈希值分组
+    （组内文档下标仍升序），对 df ∈ [2, cap] 的组用预计算三角索引批量
+    生成 pair key。生成的多重集与逐对 Python 循环完全一致，因此
+    `np.unique(..., return_counts=True)` 返回的 keys/counts 不变。
     """
     flat = sketches.ravel()
-    flat = flat[flat != 0]
-    if flat.size == 0:
+    idx = np.flatnonzero(flat)
+    if idx.size == 0:
         return np.empty(0, dtype=np.int64), np.empty(0, dtype=np.int64)
-    flat.sort()
-    uniq, counts = np.unique(flat, return_counts=True)
-    keep_df = (counts >= 2) & (counts <= cap)
-    if not keep_df.any():
+    docs = np.repeat(np.arange(n_docs, dtype=np.int64),
+                     sketches.shape[1])[idx]
+    hv = flat[idx]
+    order = np.argsort(hv, kind="stable")
+    docs, hv = docs[order], hv[order]
+    starts = np.concatenate(([0], np.flatnonzero(hv[1:] != hv[:-1]) + 1))
+    ends = np.concatenate((starts[1:], [hv.size]))
+    df = ends - starts
+    keep = np.flatnonzero((df >= 2) & (df <= cap))
+    if keep.size == 0:
         return np.empty(0, dtype=np.int64), np.empty(0, dtype=np.int64)
-    link = {int(u) for u in uniq[keep_df]}
-    members: dict[int, list[int]] = defaultdict(list)
-    for idx in range(sketches.shape[0]):
-        for hv in sketches[idx]:
-            iv = int(hv)
-            if iv in link:
-                members[iv].append(idx)
-    keys = array("q")
-    for docs in members.values():
-        docs.sort()
-        for pos, di in enumerate(docs):
-            for dj in docs[pos + 1:]:
-                keys.append(di * n_docs + dj)
-    keys_arr = np.frombuffer(keys, dtype=np.int64).copy()
+    tri = {int(m): np.triu_indices(int(m), 1)
+           for m in np.unique(df[keep])}
+    parts = []
+    for g in keep.tolist():
+        start, end = int(starts[g]), int(ends[g])
+        grp = docs[start:end]
+        tri_i, tri_j = tri[end - start]
+        parts.append(grp[tri_i] * n_docs + grp[tri_j])
+    keys_arr = np.concatenate(parts)
     return np.unique(keys_arr, return_counts=True)
 
 
@@ -190,8 +195,16 @@ def verified_pairs(keys: np.ndarray, counts: np.ndarray, sets: list[np.ndarray],
     """
     n_docs = len(sets)
     lengths = np.fromiter((s.size for s in sets), dtype=np.int64, count=n_docs)
+    sel = select_verify_pairs(keys, counts, lengths, n_docs, k)
+    if sel.size:
+        la = lengths[sel // n_docs]
+        lb = lengths[sel % n_docs]
+        min_len = np.minimum(la, lb)
+        # J ≤ min_len / (la + lb - min_len)：达不到 min_j 的对直接跳过
+        # （数学上不可能命中，结果与逐对精确校验完全一致）。
+        sel = sel[(1.0 + min_j) * min_len >= min_j * (la + lb)]
     pairs: list[tuple[float, int, int]] = []
-    for key in select_verify_pairs(keys, counts, lengths, n_docs, k).tolist():
+    for key in sel.tolist():
         i, j = divmod(key, n_docs)
         sim = jaccard_sorted(sets[i], sets[j])
         if sim >= min_j:
@@ -568,14 +581,16 @@ def recall_check(sets: list[np.ndarray], pairs, n_sample: int = RECALL_SAMPLE,
         if not match.any():
             continue
         shared = mask[pos[match]].sum(axis=0)
-        for s_pos in np.flatnonzero(shared):
+        nz = np.flatnonzero(shared)
+        if nz.size == 0:
+            continue
+        inter = shared[nz].astype(np.int64)
+        j = inter / (h.size + sizes[nz] - inter)
+        for s_pos in nz[j >= min_j]:
             s = int(nonempty[s_pos])
             if s == d:
                 continue
-            inter = int(shared[s_pos])
-            j = inter / (h.size + int(sizes[s_pos]) - inter)
-            if j >= min_j:
-                true_pairs.add((min(d, s), max(d, s)))
+            true_pairs.add((min(d, s), max(d, s)))
 
     in_sample = set(int(x) for x in sample)
     found = {(min(a, b), max(a, b)) for _, a, b in pairs

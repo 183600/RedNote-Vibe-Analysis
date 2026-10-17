@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import heapq
 import json
 import random
 import re
@@ -249,24 +250,27 @@ def analyze_unique_words(freqs, files, word_sets=None):
             f1, f2 = files[i], files[j]
             freq1, freq2 = freqs[i], freqs[j]
             keys_j = word_sets[j]
-            sorted1 = sorted(
+            sorted1 = heapq.nsmallest(
+                30,
                 ((w, freq1[w]) for w in keys_i - keys_j),
                 key=lambda x: (-x[1], x[0]),
-            )[:30]
-            sorted2 = sorted(
+            )
+            sorted2 = heapq.nsmallest(
+                30,
                 ((w, freq2[w]) for w in keys_j - keys_i),
                 key=lambda x: (-x[1], x[0]),
-            )[:30]
+            )
             key1 = f1 + "_unique_in_" + f2
             key2 = f2 + "_unique_in_" + f1
             results[key1] = sorted1
             results[key2] = sorted2
     common = set.intersection(*word_sets)
     totals = {w: sum(f.get(w, 0) for f in freqs) for w in common}
-    results["common_words"] = sorted(
+    results["common_words"] = heapq.nsmallest(
+        50,
         ((w, totals[w]) for w in common),
         key=lambda x: (-x[1], x[0]),
-    )[:50]
+    )
     return results
 
 

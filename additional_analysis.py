@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import heapq
 import json
 import re
 import numpy as np
@@ -208,14 +209,16 @@ def analyze_unique_words(freqs, files, word_sets=None):
                                           start=i + 1):
             keys2 = word_sets[j]
 
-            unique1_top = sorted(
+            unique1_top = heapq.nsmallest(
+                20,
                 ((w, freq1[w]) for w in keys1 - keys2),
                 key=lambda x: (-x[1], x[0]),
-            )[:20]
-            unique2_top = sorted(
+            )
+            unique2_top = heapq.nsmallest(
+                20,
                 ((w, freq2[w]) for w in keys2 - keys1),
                 key=lambda x: (-x[1], x[0]),
-            )[:20]
+            )
 
             results[f"{f1}_unique_in_{f2}"] = unique1_top
             results[f"{f2}_unique_in_{f1}"] = unique2_top

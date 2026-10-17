@@ -171,7 +171,9 @@ def main():
     for idx, (f, sent_data) in enumerate(zip(files, sentiments)):
         net_scores = [s[2] for s in sent_data]
 
-        axes[idx].boxplot([net_scores], tick_labels=[f.replace(".jsonl", "")])
+        axes[idx].boxplot([net_scores])
+        # 兼容 matplotlib <3.9：旧版本 boxplot 无 tick_labels 参数
+        axes[idx].set_xticklabels([f.replace(".jsonl", "")])
         axes[idx].set_title("Net Sentiment Score Distribution")
         axes[idx].set_ylabel("Score (Positive - Negative)")
 

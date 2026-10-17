@@ -15,7 +15,9 @@ RE_CJK = re.compile(r"[\u4e00-\u9fff]+")
 RE_SENT_SPLIT = re.compile(r"[。！？\n]")
 RE_LIST_ITEM = re.compile(r"^\d+[.、]", re.MULTILINE)
 RE_BULLET = re.compile(r"^[、•·]", re.MULTILINE)
-RE_HASHTAG_CJK = re.compile(r"#[\u4e00-\u9fff]+")
+# 与 paper_features.HASHTAG 同口径：拉丁/数字标签同样计入（原正则只匹配
+# 汉字，含英文的 #OOTD 等会被漏计），长度为 1-30 个非空白非 # 字符。
+RE_HASHTAG = re.compile(r"#[^#\s]{1,30}")
 RE_EMOJI = re.compile(
     r"[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF"
     r"\U0001F1E0-\U0001F1FF\U00002702-\U000027B0"
@@ -191,13 +193,13 @@ def scan(path):
         list_c += len(RE_LIST_ITEM.findall(content))
         bullet_c += len(RE_BULLET.findall(content))
         emoji_c += len(RE_EMOJI.findall(content))
-        hashtag_c += len(RE_HASHTAG_CJK.findall(content))
+        hashtag_c += len(RE_HASHTAG.findall(content))
         # 4b. 结构（标题）
         para_t += sum(1 for p in title.split("\n") if p.strip())
         list_t += len(RE_LIST_ITEM.findall(title))
         bullet_t += len(RE_BULLET.findall(title))
         emoji_t += len(RE_EMOJI.findall(title))
-        hashtag_t += len(RE_HASHTAG_CJK.findall(title))
+        hashtag_t += len(RE_HASHTAG.findall(title))
 
         # 5. 复杂度（正文）
         words = extract_chinese(content)

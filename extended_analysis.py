@@ -180,6 +180,11 @@ def parse_timestamp(ts):
         return None
     try:
         if isinstance(ts, (int, float)):
+            # 兼容以整型存储的 "YYYYMMDDHH"（10 位）本地时间戳：
+            # 与字符串分支同样先按该格式解析，避免被误当作 epoch 秒。
+            if isinstance(ts, int) and len(str(ts)) == 10 and str(ts)[:2] in ("19", "20"):
+                dt = datetime.strptime(str(ts), "%Y%m%d%H").replace(tzinfo=timezone.utc)
+                return dt.timestamp()
             value = float(ts) / 1000.0 if ts > 1e10 else float(ts)
             return value + 8 * 3600
         ts_str = str(ts).strip()
@@ -350,7 +355,9 @@ def plot_sentiment_box(sentiments, files, output_dir):
     for idx, (f, sent_data) in enumerate(zip(files, sentiments)):
         net_scores = [s[2] for s in sent_data]
 
-        axes[idx].boxplot([net_scores], tick_labels=[f.replace(".jsonl", "")])
+        axes[idx].boxplot([net_scores])
+        # 兼容 matplotlib <3.9：旧版本 boxplot 无 tick_labels 参数
+        axes[idx].set_xticklabels([f.replace(".jsonl", "")])
         axes[idx].set_title("Net Sentiment Score Distribution")
         axes[idx].set_ylabel("Score (Positive - Negative)")
 

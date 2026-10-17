@@ -179,6 +179,30 @@ DOMAIN_LIST = [
     "心理",
 ]
 
+# 中文描述无空格，clean_tokenize 产出的是连续片段（如 "今天好开心啊"），
+# 直接用 `w in POSITIVE_WORDS` 会因整段不等于词表词而几乎永不命中。
+# 与 advanced_topic_comparison.py 的子串匹配口径一致：在片段内做词表匹配，
+# 正负词合并为单个模式、长词优先（如 "不好" 先于 "好"），避免把否定词
+# 误判为正向，也避免同一位置重复计数。
+SENTIMENT_PATTERN = re.compile(
+    "(?P<pos>"
+    + "|".join(sorted((re.escape(w) for w in POSITIVE_WORDS), key=len, reverse=True))
+    + ")|(?P<neg>"
+    + "|".join(sorted((re.escape(w) for w in NEGATIVE_WORDS), key=len, reverse=True))
+    + ")"
+)
+
+
+def count_sentiment_words(token):
+    """统计单个片段内正/负向词的出现次数。"""
+    pos = neg = 0
+    for m in SENTIMENT_PATTERN.finditer(token):
+        if m.lastgroup == "pos":
+            pos += 1
+        else:
+            neg += 1
+    return pos, neg
+
 
 def clean_tokenize(text):
     if not text:
@@ -229,10 +253,9 @@ def load_aggregates(filepath):
                 d["words"].update(words)
                 d["total_words"] += len(words)
                 for w in words:
-                    if w in POSITIVE_WORDS:
-                        d["pos"] += 1
-                    elif w in NEGATIVE_WORDS:
-                        d["neg"] += 1
+                    pos_n, neg_n = count_sentiment_words(w)
+                    d["pos"] += pos_n
+                    d["neg"] += neg_n
     return {"total": total, "domain_counter": domain_counter, "domains": domains}
 
 

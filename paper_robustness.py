@@ -14,6 +14,7 @@
 只使用既有派生特征（paper_features_*.csv.gz）与已保存的检测器参数，
 除新增图表/JSON 外不改动任何产物。
 """
+import json
 import os
 
 # 单线程 BLAS：小矩阵下多线程同步开销大于收益
@@ -308,6 +309,20 @@ def part_threshold_sensitivity(human: pd.DataFrame,
     return {"periods": table, "post_pre_ratio": ratios}
 
 
+def load_reference_auc() -> float:
+    """读取 paper_detector.py 保存的全数据 5 折 CV AUC，作为稳健性比较基准。
+
+    直接从 paper_detector_results.json 读取，避免硬编码值随检测器重训而失配；
+    文件缺失或结构异常时回退到当前基准 0.9402。
+    """
+    path = BASE + "paper_detector_results.json"
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return float(json.load(f)["cv_metrics"]["auc"])
+    except Exception:
+        return 0.9402
+
+
 def main() -> None:
     human = load_features("human")
     aigc = load_features("aigc")
@@ -330,7 +345,7 @@ def main() -> None:
         print(f"{FEAT_LABEL[f]:12s} 同向领域 {s['positive_domains']}↑/"
               f"{s['negative_domains']}↓ (共{s['n_domains']}) 中位δ={s['median_delta']:+.2f}")
 
-    ref_auc = 0.9402
+    ref_auc = load_reference_auc()
     print("=== 3. 留一领域 ===")
     transfer = part_cross_domain(df, X, y, ref_auc)
     for d, r in sorted(transfer["per_domain"].items(), key=lambda x: x[1]["auc"]):

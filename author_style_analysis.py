@@ -603,11 +603,12 @@ def engagement_decomposition(auth: pd.DataFrame) -> dict:
     }
 
 
-def paired_analysis(auth: pd.DataFrame) -> dict:
+def paired_analysis(auth: pd.DataFrame, deltas: np.ndarray | None = None) -> dict:
     """人内配对：同作者两半、同作者同月份两半的 Δ(log 点赞)。"""
     out = {}
-    deltas = paired_style_deltas(auth["user_id"], auth["p_ai"],
-                                 auth["log_likes"])
+    if deltas is None:
+        deltas = paired_style_deltas(auth["user_id"], auth["p_ai"],
+                                     auth["log_likes"])
     if deltas.size:
         p_wil = float(wilcoxon(deltas).pvalue)
     else:
@@ -742,7 +743,8 @@ def plot_structure(full: pd.DataFrame, auth: pd.DataFrame, conc: dict,
 
 
 def plot_within(decom: dict, paired: dict, auth: pd.DataFrame,
-                out_path: str) -> None:
+                out_path: str, deltas: np.ndarray | None = None,
+                half_means: tuple[np.ndarray, np.ndarray] | None = None) -> None:
     init_plot_style()
     fig, axes = plt.subplots(1, 3, figsize=(15, 4.6))
 
@@ -777,8 +779,10 @@ def plot_within(decom: dict, paired: dict, auth: pd.DataFrame,
     ax.set_ylim(-0.5, len(rows) - 0.4)
 
     ax = axes[1]
-    lo_means, hi_means = _paired_half_means(
-        auth["user_id"], auth["p_ai"], auth["log_likes"])
+    if half_means is None:
+        half_means = _paired_half_means(
+            auth["user_id"], auth["p_ai"], auth["log_likes"])
+    lo_means, hi_means = half_means
     both = np.column_stack([lo_means, hi_means]) if lo_means.size else \
         np.empty((0, 2), dtype=float)
     if both.size:
@@ -795,8 +799,9 @@ def plot_within(decom: dict, paired: dict, auth: pd.DataFrame,
     ax.legend(fontsize=8.5, loc="upper left")
 
     ax = axes[2]
-    deltas = paired_style_deltas(auth["user_id"], auth["p_ai"],
-                                 auth["log_likes"])
+    if deltas is None:
+        deltas = paired_style_deltas(auth["user_id"], auth["p_ai"],
+                                     auth["log_likes"])
     if deltas.size:
         ax.hist(deltas, bins=41, color=PALETTE["exploring"], alpha=0.85)
         ax.axvline(0, color="k", lw=0.9)
@@ -956,7 +961,11 @@ def main() -> None:
     var = variance_decomposition(auth.loc[multi, "p_ai"].to_numpy(),
                                  auth.loc[multi, "user_id"].to_numpy())
     eng = engagement_decomposition(auth)
-    paired = paired_analysis(auth)
+    pair_deltas = paired_style_deltas(auth["user_id"], auth["p_ai"],
+                                      auth["log_likes"])
+    pair_halves = _paired_half_means(auth["user_id"], auth["p_ai"],
+                                     auth["log_likes"])
+    paired = paired_analysis(auth, deltas=pair_deltas)
     cons = consistency_check(scores)
 
     print(f"ICC={var['icc']:.3f}  分解: pooled={eng['decomposition']['pooled']:+.3f}"
@@ -999,7 +1008,8 @@ def main() -> None:
     with open(BASE + "author_style_results.md", "w", encoding="utf-8") as f:
         f.write(render_markdown(out))
     plot_structure(full, auth, conc, eng, INSIGHTS + "author_structure.png")
-    plot_within(eng, paired, auth, INSIGHTS + "author_within.png")
+    plot_within(eng, paired, auth, INSIGHTS + "author_within.png",
+                deltas=pair_deltas, half_means=pair_halves)
     print("已保存 author_style_results.json/.md 与 "
           "insights/author_structure.png、insights/author_within.png")
 

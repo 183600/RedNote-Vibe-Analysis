@@ -15,12 +15,26 @@ exclude = set([u"话题", u"时尚薯", u"生活薯", u"知识薯", u"美食薯"
 # 全文件共用一个预编译 CJK 正则
 _CJK_RUN_RE = re.compile(r"[\u4e00-\u9fff]+")
 
+PATH = BASE + "exploring_set_fixed.jsonl"
+
+
+def _qualifying_words(text):
+    return [w for w in set(_CJK_RUN_RE.findall(text))
+            if len(w) >= 2 and w not in exclude]
+
+
+def _record_words(item):
+    text = item.get("note_title", "") + " " + (
+        item.get("desc") or item.get("note_content") or "")
+    return _qualifying_words(text)
+
+
 def main():
     print("Loading...")
-    note_by_user = defaultdict(lambda: defaultdict(int))
+    user_word_total = defaultdict(int)
     word_doc_freq = Counter()
 
-    with open(BASE + "exploring_set_fixed.jsonl", "rb") as f:
+    with open(PATH, "rb") as f:
         for line in f:
             try:
                 s = line.decode("utf-8")
@@ -28,25 +42,39 @@ def main():
                 user_id = item.get("user_id")
                 if not user_id:
                     continue
-                text = item.get("note_title", "") + " " + (
-                    item.get("desc") or item.get("note_content") or "")
-                words = _CJK_RUN_RE.findall(text)
-                for w in set(words):
-                    if len(w) >= 2 and w not in exclude:
-                        note_by_user[user_id][w] += 1
-                        word_doc_freq[w] += 1
+                words = _record_words(item)
+                if words:
+                    user_word_total[user_id] += len(words)
+                    word_doc_freq.update(words)
             except:
                 pass
 
-    print("Users: " + str(len(note_by_user)))
+    print("Users: " + str(len(user_word_total)))
 
     MIN_COUNT = 20
-    active_users = {u: c for u, c in note_by_user.items() if sum(c.values()) >= MIN_COUNT}
+    active_users = {u for u, c in user_word_total.items() if c >= MIN_COUNT}
     print("Active: " + str(len(active_users)))
 
     MIN_USERS = 30
     top_words = [w for w, c in word_doc_freq.most_common(100) if c >= MIN_USERS]
     print("Words: " + str(len(top_words)))
+
+    top_word_set = set(top_words)
+    note_by_user = defaultdict(lambda: defaultdict(int))
+    with open(PATH, "rb") as f:
+        for line in f:
+            try:
+                s = line.decode("utf-8")
+                item = json.loads(s)
+                user_id = item.get("user_id")
+                if not user_id or user_id not in active_users:
+                    continue
+                counts = note_by_user[user_id]
+                for w in _record_words(item):
+                    if w in top_word_set:
+                        counts[w] += 1
+            except:
+                pass
 
     word_to_idx = {w: i for i, w in enumerate(top_words)}
     user_ids = random.Random(42).sample(
@@ -59,8 +87,9 @@ def main():
 
     matrix = []
     for uid in user_ids:
-        total = float(sum(active_users[uid].values()))
-        row = [active_users[uid].get(w, 0) / total if total > 0 else 0 for w in top_words]
+        total = float(user_word_total[uid])
+        row = [note_by_user[uid].get(w, 0) / total if total > 0 else 0
+               for w in top_words]
         matrix.append(row)
 
     cols = np.ascontiguousarray(np.array(matrix, dtype=np.float64).T)

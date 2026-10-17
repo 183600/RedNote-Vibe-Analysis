@@ -20,28 +20,31 @@ def clean_text(text):
     return [w for w in RE_NON_CJK.split(text) if len(w) >= 2]
 
 
+PATH = BASE + "exploring_set_fixed.jsonl"
+
+
+def _record_words(item):
+    text = item.get("note_title", "") + " " + (
+        item.get("desc") or item.get("note_content") or "")
+    return clean_text(text)
+
+
 def main():
     note_counts = defaultdict(int)
-    user_totals = defaultdict(Counter)
+    user_token_total = defaultdict(int)
     word_doc_freq = Counter()
 
     print("Loading...")
-    with open(
-        BASE + "exploring_set_fixed.jsonl",
-        "r",
-        encoding="utf-8",
-    ) as f:
+    with open(PATH, "r", encoding="utf-8") as f:
         for line in f:
             try:
                 item = json.loads(line)
                 user_id = item.get("user_id")
                 if not user_id:
                     continue
-                text = item.get("note_title", "") + " " + (
-                    item.get("desc") or item.get("note_content") or "")
-                words = clean_text(text)
+                words = _record_words(item)
                 note_counts[user_id] += 1
-                user_totals[user_id].update(words)
+                user_token_total[user_id] += len(words)
                 for w in set(words):
                     word_doc_freq[w] += 1
             except:
@@ -52,6 +55,22 @@ def main():
 
     MIN_USERS = 3
     topWords = [w for w, c in word_doc_freq.most_common(200) if c >= MIN_USERS]
+
+    print("Counting top words...")
+    top_word_set = set(topWords)
+    wanted_users = set(user_ids)
+    user_totals = defaultdict(Counter)
+    with open(PATH, "r", encoding="utf-8") as f:
+        for line in f:
+            try:
+                item = json.loads(line)
+                user_id = item.get("user_id")
+                if not user_id or user_id not in wanted_users:
+                    continue
+                user_totals[user_id].update(
+                    w for w in _record_words(item) if w in top_word_set)
+            except:
+                continue
 
     all_words = topWords
     word_to_idx = {w: i for i, w in enumerate(all_words)}
@@ -66,7 +85,7 @@ def main():
         # 按用户总词频归一化：原始计数会让"发帖多/写得长"的用户对所有词
         # 都有高计数，把活跃度混进词间相关；占比口径与
         # word_correlation_extended.py 一致。
-        total = float(sum(uc.values()))
+        total = float(user_token_total[uid])
         row = matrix[i]
         for j, word in enumerate(all_words):
             row[j] = uc.get(word, 0) / total if total > 0 else 0.0

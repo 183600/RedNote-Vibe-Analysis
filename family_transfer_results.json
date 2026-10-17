@@ -423,6 +423,7 @@
   }
  ],
  "composition_trend": {
+  "n_months": 30,
   "chi2": {
    "stat": 71.545,
    "p": 1.0169950912010998e-07,

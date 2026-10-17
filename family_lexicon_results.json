@@ -1625,12 +1625,12 @@
   ]
  },
  "ai_word_density_per10k": {
-  "GPT": 43.375,
-  "Gemini": 71.767,
-  "DeepSeek": 57.16,
-  "Claude": 50.678,
-  "GLM": 39.693,
-  "Qwen": 52.905
+  "GPT": 43.76,
+  "Gemini": 73.588,
+  "DeepSeek": 60.079,
+  "Claude": 51.303,
+  "GLM": 40.381,
+  "Qwen": 53.872
  },
  "human_ai_word_density_per10k": 14.002,
  "family_domain_share_pct": {

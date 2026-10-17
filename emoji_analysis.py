@@ -12,7 +12,7 @@ from collections import Counter, defaultdict
 import warnings
 import os
 
-from analysis_utils import init_plot_style, load_records_with_total
+from analysis_utils import BASE, init_plot_style, load_records_with_total
 from paper_features import EMOJI
 
 # Configure font for Chinese character support
@@ -84,7 +84,7 @@ def main():
         axes[idx].set_xlabel("Count")
 
     plt.tight_layout()
-    plt.savefig("emoji_distribution.png", dpi=150)
+    plt.savefig(BASE + "emoji_distribution.png", dpi=150)
     print("\nGenerated: emoji_distribution.png")
 
     print("\n=== Complete ===")

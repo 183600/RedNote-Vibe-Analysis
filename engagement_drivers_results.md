@@ -1,6 +1,6 @@
 # 「AI 味惩罚」的逐特征载体（Engagement Drivers）
 
-> 由 `engagement_drivers_analysis.py` 生成；数据源 `paper_features_exploring.csv.gz` + `paper_exploring_scores.csv.gz`（行序对齐，content_len 校验 mismatch=0）。分析样本自 202301 起 91,481 条，月份×领域单元 141 个（每单元 >= 100 条）。
+> 由 `engagement_drivers_analysis.py` 生成；数据源 `paper_features_exploring.csv.gz` + `paper_exploring_scores.csv.gz`（行序对齐，content_len 校验 mismatch=0）。分析样本自 202301 起 91,481 条（月份×领域单元合计 311 个）；其中每单元 >= 100 条的 141 个单元（n=85,690）进入模型。
 
 **方法**：(1) 单变量 = 单元内 Spearman(特征, log10(1+互动)) 的样本量加权均值；(2) 多元 = 特征先 z-score 再单元内去均值的固定效应 OLS，β 为每 1 SD 特征变化对应的 log10(1+互动) 变化，95% CI 来自按单元整群 bootstrap（300 次）。两种口径回答的问题不同：前者是原始关联，后者是控制其余 36 个风格特征后的偏效应。
 

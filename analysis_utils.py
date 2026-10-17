@@ -884,10 +884,14 @@ def weekday_of(value) -> int | None:
 
 
 def load_features(dataset: str, base: str = BASE) -> pd.DataFrame:
-    """读取 paper_features_{dataset}.csv.gz 并规范化 month 列。"""
+    """读取 paper_features_{dataset}.csv.gz 并规范化 month 列。
+
+    缺失月份（如 AIGC 子集无时间戳）统一为空串，避免 NaN 经 astype(str)
+    变成字面量 "nan" 后参与字符串比较（"nan" >= "202207" 为真）。
+    """
     df = pd.read_csv(base + f"paper_features_{dataset}.csv.gz")
     if "month" in df.columns:
-        df["month"] = df["month"].astype(str)
+        df["month"] = df["month"].fillna("").astype(str)
     return df
 
 

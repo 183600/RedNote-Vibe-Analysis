@@ -134,7 +134,7 @@ def main():
                 print("  " + w + ": " + str(round(v, 4)))
 
     # Save to file
-    with open("user_clustering_results.md", "wb") as f:
+    with open(BASE + "user_clustering_results.md", "wb") as f:
         f.write((u"# 基于22个跨话题文风词的用户聚类分析\n\n").encode('utf-8'))
         f.write((u"使用22个在所有话题词频都超过0.05%的跨话题词进行用户分类\n\n").encode('utf-8'))
     

@@ -980,7 +980,8 @@ def main() -> None:
             "n_raw_records": scan["n_raw"],
             "n_dedup_notes": frames["n_dedup"],
             "n_author_notes": frames["n_author"],
-            "author_share": round(frames["n_author"] / frames["n_dedup"], 4),
+            "author_share": round(frames["n_author"]
+                                  / max(len(frames["full"]), 1), 4),
             "content_len_mismatch": scan["mismatch"],
             "n_boot": N_BOOT,
             "n_boot_two_way": N_BOOT_TWO,

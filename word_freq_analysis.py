@@ -156,7 +156,9 @@ def compute_correlation(freq1, freq2, top_n=100):
     vec1 = vec1 / norm1
     vec2 = vec2 / norm2
 
-    corr = float(np.dot(vec1, vec2))
+    # 皮尔逊相关对正数线性缩放不变，归一化不影响结果；此处不能改用点积
+    # （单位向量的点积是余弦相似度，与「corr=」标注的皮尔逊口径不符）。
+    corr = float(np.corrcoef(vec1, vec2)[0, 1])
     return corr, all_words, vec1, vec2
 
 

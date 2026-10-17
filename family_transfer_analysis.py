@@ -583,6 +583,7 @@ def main() -> None:
              "ci": {f: [round(v, 4) for v in h["ci"][f]] for f in FAMILIES}}
             for h in halves],
         "composition_trend": {
+            "n_months": int(hi["month"].nunique()),
             "chi2": {"stat": round(float(chi2_stat), 3), "p": float(chi2_p),
                      "dof": int(chi2_dof)},
             "quarterly_spearman": {f: {"rho": round(v["rho"], 4), "p": float(v["p"])}
@@ -716,8 +717,8 @@ def write_markdown(out: dict) -> None:
         "",
         "与训练集先验相比，野外高 P(AI) 帖明显更偏 DeepSeek/GLM 风格、更少 "
         "GPT/Qwen 风格；Gemini 风格份额从 2023H1 的 4.8% 升到 2025H1 的 11.6%，"
-        "是唯一季度趋势显著的家族（ρ=+0.746，p=0.01），其余家族份额在 31 个月"
-        "内基本平稳。",
+        f"是唯一季度趋势显著的家族（ρ=+0.746，p=0.01），其余家族份额在 "
+        f"{trend['n_months']} 个月内基本平稳。",
         "",
         "## 4 互动回报的家族结构：AI 味惩罚并非对所有风格一视同仁",
         "",
@@ -733,8 +734,8 @@ def write_markdown(out: dict) -> None:
                      f"{eng['median']['content_len'][f]:.0f} |")
     lines += [
         "",
-        f"以「月份×领域」单元内残差（每单元 >= {out['meta']['min_cell_n']} 条高"
-        "置信帖，单元内去均值）度量的相对点赞水平（参照 "
+        f"以「月份×领域」单元内残差（单元内去均值，不设最小单元样本量；"
+        "下方固定效应回归按单元样本量过滤）度量的相对点赞水平（参照 "
         f"{FAMILY_NAME[out['meta']['reference_family']]}，Cliff's δ vs 参照）：",
         "",
         "| 家族 | 单元内残差均值 | n | Cliff's δ vs "

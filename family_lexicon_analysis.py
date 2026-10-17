@@ -82,9 +82,11 @@ def _doc_meta(doc: tuple[str, str]) -> tuple[float, Counter]:
 
     词频口径与 paper_lexicon 一致（清洗后标题+正文）；AI 味词密度口径与
     paper_features 的 ai_lex100 一致——只数清洗后正文子串，按 max(len,1)
-    归一为每万字符，因此可与人类基线的文档宏平均直接对照。
+    归一为每万字符（正文先 strip，与 paper_features.extract 的正文口径一致），
+    因此可与人类基线的文档宏平均直接对照。
     """
     full, body = doc
+    body = body.strip()
     hits = sum(body.count(w) for w in AI_WORDS)
     return (hits / max(len(body), 1) * 1e4, count_clean_words(full))
 

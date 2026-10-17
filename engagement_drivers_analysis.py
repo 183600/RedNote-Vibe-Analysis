@@ -466,8 +466,9 @@ def write_markdown(out: dict, feature_names: list[str]) -> str:
         "> 由 `engagement_drivers_analysis.py` 生成；数据源 "
         "`paper_features_exploring.csv.gz` + `paper_exploring_scores.csv.gz`"
         "（行序对齐，content_len 校验 mismatch=0）。分析样本自 "
-        f"{meta['month_from']} 起 {meta['n_obs']:,} 条，月份×领域单元 "
-        f"{meta['n_cells_used']} 个（每单元 >= {meta['min_cell_n']} 条）。",
+        f"{meta['month_from']} 起 {meta['n_obs']:,} 条（月份×领域单元合计 "
+        f"{meta['n_cells_total']} 个）；其中每单元 >= {meta['min_cell_n']} 条的 "
+        f"{meta['n_cells_used']} 个单元（n={mv['n_obs']:,}）进入模型。",
         "",
         "**方法**：(1) 单变量 = 单元内 Spearman(特征, log10(1+互动)) 的样本量"
         "加权均值；(2) 多元 = 特征先 z-score 再单元内去均值的固定效应 OLS，"

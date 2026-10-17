@@ -29,6 +29,7 @@ def select_steps(steps: list[Step], only: list[str] | None = None, *,
 
     only 非空时按其筛选（保持 STEPS 中的原始顺序）；未知脚本名抛 SystemExit。
     from_step 为 1-based；越界时不报错，返回空列表（由调用方决定行为）。
+    `from_step <= 1`（含 0/负数）视为从第 1 步开始，避免负索引绕回列表尾部。
     """
     if only:
         wanted = set(only)
@@ -36,7 +37,7 @@ def select_steps(steps: list[Step], only: list[str] | None = None, *,
         if unknown:
             raise SystemExit(f"未知步骤: {', '.join(sorted(unknown))}")
         return [(s, d) for s, d in steps if s in wanted]
-    return steps[from_step - 1:]
+    return steps[max(from_step, 1) - 1:]
 
 
 def build_parser(description: str) -> argparse.ArgumentParser:

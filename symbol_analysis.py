@@ -1111,8 +1111,8 @@ def write_markdown(out: dict) -> None:
         f"- 控制月份×领域后（{cell['n_cells']} 个单元），标签数与 log 点赞的单元内"
         f"加权 ρ={cell['weighted_rho']:+.3f}，仅 {cell['neg_cell_share']:.0%} "
         f"的单元为负——标签越多互动略好（与 P(AI) 的负向「AI 味惩罚」方向相反），"
-        f"点赞中位数从 0 标签的 {eng['bins'][0]['likes_median']:.0f} 单调上升到 "
-        f"10+ 标签的 {eng['bins'][-1]['likes_median']:.0f}。",
+        f"点赞中位数从 0 标签的 {eng['bins'][0]['likes_median']:.0f} 整体上升至 "
+        f"10+ 标签的 {eng['bins'][-1]['likes_median']:.0f}（中间 1–2 标签略有回落）。",
         "",
         "图表见 `insights/`：`symbol_hashtag.png`、`symbol_gradient.png`、"
         "`symbol_emoji.png`。",

@@ -23,6 +23,10 @@ class TestSelectSteps(unittest.TestCase):
     def test_from_beyond_end_returns_empty(self):
         self.assertEqual(select_steps(STEPS, from_step=10), [])
 
+    def test_from_zero_or_negative_starts_at_first(self):
+        self.assertEqual(select_steps(STEPS, from_step=0), STEPS)
+        self.assertEqual(select_steps(STEPS, from_step=-1), STEPS)
+
     def test_only_filters_and_keeps_order(self):
         got = select_steps(STEPS, only=["c.py", "a.py"])
         self.assertEqual(got, [STEPS[0], STEPS[2]])

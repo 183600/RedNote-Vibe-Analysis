@@ -156,7 +156,7 @@ def compute_correlation(freq1, freq2, top_n=100):
     vec1 = vec1 / norm1
     vec2 = vec2 / norm2
 
-    corr = float(np.corrcoef(vec1, vec2)[0, 1])
+    corr = float(np.dot(vec1, vec2))
     return corr, all_words, vec1, vec2
 
 

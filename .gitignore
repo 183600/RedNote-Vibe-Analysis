@@ -8,6 +8,7 @@ venv/
 debug*.txt
 debug*.log
 err.txt
+REPORT*.md
 *.log
 *.tmp
 *.bak

@@ -7,9 +7,9 @@
   python3 run_paper_pipeline.py --from 4         # 从第 4 步开始
   python3 run_paper_pipeline.py --only paper_detector.py paper_robustness.py
 """
-import argparse
-import subprocess
 import sys
+
+from pipeline_common import run_pipeline
 
 STEPS = [
     ("paper_lexicon.py", "词表发现 -> paper_lexicon_results.json"),
@@ -23,36 +23,9 @@ STEPS = [
 ]
 
 
-def select_steps(args) -> list[tuple[str, str]]:
-    if args.only:
-        wanted = set(args.only)
-        unknown = wanted - {script for script, _ in STEPS}
-        if unknown:
-            raise SystemExit(f"未知步骤: {', '.join(sorted(unknown))}")
-        return [(s, d) for s, d in STEPS if s in wanted]
-    return STEPS[args.from_step - 1:]
-
-
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--list", action="store_true", help="只列出步骤")
-    parser.add_argument("--from", dest="from_step", type=int, default=1,
-                        metavar="N", help="从第 N 步开始（1-based）")
-    parser.add_argument("--only", nargs="+", metavar="SCRIPT", help="只运行指定脚本")
-    args = parser.parse_args()
-
-    steps = select_steps(args)
-    for i, (script, desc) in enumerate(steps, 1):
-        print(f"[{i}/{len(steps)}] {script}  --  {desc}")
-
-    if args.list:
-        return 0
-
-    for i, (script, _) in enumerate(steps, 1):
-        print(f"\n===== [{i}/{len(steps)}] running {script} =====", flush=True)
-        subprocess.run([sys.executable, script], check=True)
-    print("\n论文管线全部步骤已完成。")
-    return 0
+    return run_pipeline(STEPS, __doc__ or "paper pipeline",
+                        "论文管线全部步骤已完成。")
 
 
 if __name__ == "__main__":

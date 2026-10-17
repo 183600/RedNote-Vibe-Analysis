@@ -6,7 +6,7 @@
 或全量扫描原始 JSONL，互不写坏对方输出，可以任意单独重跑。
 
 用法：
-  python3 run_fork_pipeline.py                     # 运行全部 10 步
+  python3 run_fork_pipeline.py                     # 运行全部 11 步
   python3 run_fork_pipeline.py --list              # 只打印步骤
   python3 run_fork_pipeline.py --from 3            # 从第 3 步开始
   python3 run_fork_pipeline.py --only detector_diagnostics.py family_lexicon_analysis.py
@@ -14,9 +14,9 @@
 注意：完整运行需要数分钟到数十分钟（deep_dive / framing / title_style /
 diversity 为全量扫描），建议先跑 --list 查看各步骤输出。
 """
-import argparse
-import subprocess
 import sys
+
+from pipeline_common import run_pipeline
 
 STEPS = [
     ("deep_dive_analysis.py",
@@ -33,6 +33,8 @@ STEPS = [
      "17 个 LLM 的家族/单模型词表指纹 -> family_lexicon_results.{json,md} + 1 图"),
     ("engagement_structure_analysis.py",
      "AI 味惩罚的互动结构分解（零互动/基尼/构成比）-> engagement_structure_results.{json,md} + 1 图"),
+    ("engagement_drivers_analysis.py",
+     "互动惩罚的逐特征载体（单元内秩相关 + 固定效应多元回归）-> engagement_drivers_results.{json,md} + 1 图"),
     ("user_clustering.py",
      "探索集用户风格聚类 -> user_clustering_results.md"),
     ("symbol_analysis.py",
@@ -42,36 +44,9 @@ STEPS = [
 ]
 
 
-def select_steps(args) -> list[tuple[str, str]]:
-    if args.only:
-        wanted = set(args.only)
-        unknown = wanted - {script for script, _ in STEPS}
-        if unknown:
-            raise SystemExit(f"未知步骤: {', '.join(sorted(unknown))}")
-        return [(s, d) for s, d in STEPS if s in wanted]
-    return STEPS[args.from_step - 1:]
-
-
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--list", action="store_true", help="只列出步骤")
-    parser.add_argument("--from", dest="from_step", type=int, default=1,
-                        metavar="N", help="从第 N 步开始（1-based）")
-    parser.add_argument("--only", nargs="+", metavar="SCRIPT", help="只运行指定脚本")
-    args = parser.parse_args()
-
-    steps = select_steps(args)
-    for i, (script, desc) in enumerate(steps, 1):
-        print(f"[{i}/{len(steps)}] {script}  --  {desc}")
-
-    if args.list:
-        return 0
-
-    for i, (script, _) in enumerate(steps, 1):
-        print(f"\n===== [{i}/{len(steps)}] running {script} =====", flush=True)
-        subprocess.run([sys.executable, script], check=True)
-    print("\nfork 深潜分析全部步骤已完成。")
-    return 0
+    return run_pipeline(STEPS, __doc__ or "fork deep-dive pipeline",
+                        "fork 深潜分析全部步骤已完成。")
 
 
 if __name__ == "__main__":

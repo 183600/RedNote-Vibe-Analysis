@@ -843,6 +843,58 @@ def cliff_share_test(indicator, values) -> dict:
     return {"delta": round(float(delta), 3), "p": float(p)}
 
 
+def within_cell_spearman(x, y, cell_codes, min_cell_n: int = 100) -> dict:
+    """分组单元（如月份×领域）内 Spearman 相关的加权汇总。
+
+    对每个样本量 >= `min_cell_n` 的单元分别计算 Spearman ρ，再按单元样本量
+    加权平均。x/y 为等长数值序列，cell_codes 为等长分组标签（任意可比较
+    类型）。常量序列（相关系数未定义）与样本不足的单元直接跳过。
+
+    返回 ``{"weighted_rho", "neg_cell_share", "n_cells"}``；没有任何可计算
+    单元时两个统计量均为 NaN、n_cells=0。口径与 `paper_engagement.py` 的
+    「月份×领域」单元内秩相关一致（>=100 条起算）。
+    """
+    from scipy.stats import spearmanr
+
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+    codes = np.asarray(cell_codes)
+    if not (len(x) == len(y) == len(codes)):
+        raise ValueError("x, y and cell_codes must have equal length")
+    if len(x) == 0:
+        return {"weighted_rho": float("nan"),
+                "neg_cell_share": float("nan"), "n_cells": 0}
+
+    order = np.argsort(codes, kind="stable")
+    sorted_codes = codes[order]
+    starts = np.flatnonzero(np.r_[True, sorted_codes[1:] != sorted_codes[:-1]])
+    ends = np.r_[starts[1:], len(sorted_codes)]
+
+    rhos: list[float] = []
+    weights: list[int] = []
+    for s, e in zip(starts, ends):
+        n = int(e - s)
+        if n < min_cell_n:
+            continue
+        idx = order[s:e]
+        xc, yc = x[idx], y[idx]
+        if np.unique(xc).size < 2 or np.unique(yc).size < 2:
+            continue
+        r, _ = spearmanr(xc, yc)
+        if not np.isnan(r):
+            rhos.append(float(r))
+            weights.append(n)
+    if not rhos:
+        return {"weighted_rho": float("nan"),
+                "neg_cell_share": float("nan"), "n_cells": 0}
+    rhos_arr = np.asarray(rhos)
+    return {
+        "weighted_rho": float(np.average(rhos_arr, weights=weights)),
+        "neg_cell_share": float((rhos_arr < 0).mean()),
+        "n_cells": int(len(rhos_arr)),
+    }
+
+
 def gini_coefficient(values) -> float:
     """基尼系数（0=完全均等，1=完全集中）；负值按 0 处理，空/全零返回 0。"""
     if not isinstance(values, np.ndarray):

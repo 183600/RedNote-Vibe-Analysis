@@ -1,0 +1,1031 @@
+{
+ "meta": {
+  "source": "paper_features_exploring.csv.gz + paper_exploring_scores.csv.gz",
+  "month_from": "202301",
+  "min_cell_n": 100,
+  "n_obs": 91481,
+  "n_cells_total": 311,
+  "n_cells_used": 141,
+  "n_boot": 300,
+  "boot_seed": 42,
+  "model": "unit(=month×domain) fixed effects; features z-scored; log10(1+engagement); cluster bootstrap over cells"
+ },
+ "univariate": {
+  "p_ai": {
+   "likes": {
+    "weighted_rho": -0.0907,
+    "neg_cell_share": 0.8227,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": -0.0926,
+    "neg_cell_share": 0.8156,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": -0.0194,
+    "neg_cell_share": 0.5957,
+    "n_cells": 141
+   }
+  },
+  "content_len": {
+   "likes": {
+    "weighted_rho": -0.0443,
+    "neg_cell_share": 0.6312,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": 0.0135,
+    "neg_cell_share": 0.4965,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": -0.0137,
+    "neg_cell_share": 0.5603,
+    "n_cells": 141
+   }
+  },
+  "n_lines": {
+   "likes": {
+    "weighted_rho": -0.0047,
+    "neg_cell_share": 0.5816,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": 0.0444,
+    "neg_cell_share": 0.4539,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": -0.017,
+    "neg_cell_share": 0.5532,
+    "n_cells": 141
+   }
+  },
+  "avg_line_len": {
+   "likes": {
+    "weighted_rho": -0.0883,
+    "neg_cell_share": 0.8156,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": -0.0621,
+    "neg_cell_share": 0.7518,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": 0.0028,
+    "neg_cell_share": 0.5319,
+    "n_cells": 141
+   }
+  },
+  "n_hashtags": {
+   "likes": {
+    "weighted_rho": 0.1158,
+    "neg_cell_share": 0.156,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": 0.1583,
+    "neg_cell_share": 0.0709,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": 0.0077,
+    "neg_cell_share": 0.3546,
+    "n_cells": 141
+   }
+  },
+  "colon_line_ratio": {
+   "likes": {
+    "weighted_rho": -0.0241,
+    "neg_cell_share": 0.6241,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": 0.0218,
+    "neg_cell_share": 0.4752,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": -0.0489,
+    "neg_cell_share": 0.6312,
+    "n_cells": 141
+   }
+  },
+  "list_line_ratio": {
+   "likes": {
+    "weighted_rho": -0.0067,
+    "neg_cell_share": 0.539,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": 0.0379,
+    "neg_cell_share": 0.3901,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": -0.0513,
+    "neg_cell_share": 0.695,
+    "n_cells": 141
+   }
+  },
+  "excl100": {
+   "likes": {
+    "weighted_rho": -0.0025,
+    "neg_cell_share": 0.5177,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": 0.0145,
+    "neg_cell_share": 0.4397,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": 0.007,
+    "neg_cell_share": 0.4326,
+    "n_cells": 141
+   }
+  },
+  "ques100": {
+   "likes": {
+    "weighted_rho": -0.0721,
+    "neg_cell_share": 0.8156,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": -0.0518,
+    "neg_cell_share": 0.7234,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": -0.0078,
+    "neg_cell_share": 0.5319,
+    "n_cells": 141
+   }
+  },
+  "ellip100": {
+   "likes": {
+    "weighted_rho": 0.0045,
+    "neg_cell_share": 0.4929,
+    "n_cells": 140
+   },
+   "collections": {
+    "weighted_rho": 0.0013,
+    "neg_cell_share": 0.4929,
+    "n_cells": 140
+   },
+   "comments": {
+    "weighted_rho": 0.0345,
+    "neg_cell_share": 0.3,
+    "n_cells": 140
+   }
+  },
+  "tilde100": {
+   "likes": {
+    "weighted_rho": 0.0281,
+    "neg_cell_share": 0.3759,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": 0.042,
+    "neg_cell_share": 0.2979,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": 0.0023,
+    "neg_cell_share": 0.4468,
+    "n_cells": 141
+   }
+  },
+  "comma100": {
+   "likes": {
+    "weighted_rho": -0.1229,
+    "neg_cell_share": 0.8865,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": -0.0914,
+    "neg_cell_share": 0.7872,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": -0.0024,
+    "neg_cell_share": 0.5461,
+    "n_cells": 141
+   }
+  },
+  "pause100": {
+   "likes": {
+    "weighted_rho": -0.0418,
+    "neg_cell_share": 0.6596,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": 0.0143,
+    "neg_cell_share": 0.4184,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": -0.0775,
+    "neg_cell_share": 0.7305,
+    "n_cells": 141
+   }
+  },
+  "period100": {
+   "likes": {
+    "weighted_rho": -0.0953,
+    "neg_cell_share": 0.8723,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": -0.0596,
+    "neg_cell_share": 0.7943,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": -0.064,
+    "neg_cell_share": 0.8014,
+    "n_cells": 141
+   }
+  },
+  "emoji100": {
+   "likes": {
+    "weighted_rho": -0.0032,
+    "neg_cell_share": 0.5035,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": 0.0289,
+    "neg_cell_share": 0.4255,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": -0.0373,
+    "neg_cell_share": 0.6028,
+    "n_cells": 141
+   }
+  },
+  "emoji_distinct": {
+   "likes": {
+    "weighted_rho": -0.011,
+    "neg_cell_share": 0.5603,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": 0.0265,
+    "neg_cell_share": 0.4468,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": -0.0424,
+    "neg_cell_share": 0.617,
+    "n_cells": 141
+   }
+  },
+  "xhsemo100": {
+   "likes": {
+    "weighted_rho": -0.0231,
+    "neg_cell_share": 0.5957,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": -0.0339,
+    "neg_cell_share": 0.6738,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": 0.0779,
+    "neg_cell_share": 0.156,
+    "n_cells": 141
+   }
+  },
+  "p_的": {
+   "likes": {
+    "weighted_rho": -0.0601,
+    "neg_cell_share": 0.773,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": -0.0571,
+    "neg_cell_share": 0.7943,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": 0.0144,
+    "neg_cell_share": 0.5248,
+    "n_cells": 141
+   }
+  },
+  "p_了": {
+   "likes": {
+    "weighted_rho": -0.0331,
+    "neg_cell_share": 0.695,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": -0.0421,
+    "neg_cell_share": 0.7163,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": 0.0796,
+    "neg_cell_share": 0.1986,
+    "n_cells": 141
+   }
+  },
+  "p_是": {
+   "likes": {
+    "weighted_rho": -0.0491,
+    "neg_cell_share": 0.7234,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": -0.0413,
+    "neg_cell_share": 0.7376,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": 0.0341,
+    "neg_cell_share": 0.383,
+    "n_cells": 141
+   }
+  },
+  "p_我": {
+   "likes": {
+    "weighted_rho": -0.0142,
+    "neg_cell_share": 0.5887,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": -0.0209,
+    "neg_cell_share": 0.6028,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": 0.0728,
+    "neg_cell_share": 0.2624,
+    "n_cells": 141
+   }
+  },
+  "p_你": {
+   "likes": {
+    "weighted_rho": -0.0202,
+    "neg_cell_share": 0.6099,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": 0.0082,
+    "neg_cell_share": 0.4468,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": -0.0314,
+    "neg_cell_share": 0.5603,
+    "n_cells": 141
+   }
+  },
+  "p_就": {
+   "likes": {
+    "weighted_rho": -0.0164,
+    "neg_cell_share": 0.5957,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": -0.0063,
+    "neg_cell_share": 0.5603,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": 0.0373,
+    "neg_cell_share": 0.383,
+    "n_cells": 141
+   }
+  },
+  "p_都": {
+   "likes": {
+    "weighted_rho": -0.0182,
+    "neg_cell_share": 0.5816,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": -0.0085,
+    "neg_cell_share": 0.5461,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": 0.0522,
+    "neg_cell_share": 0.2979,
+    "n_cells": 141
+   }
+  },
+  "p_很": {
+   "likes": {
+    "weighted_rho": 0.0058,
+    "neg_cell_share": 0.5319,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": 0.0149,
+    "neg_cell_share": 0.5248,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": 0.0543,
+    "neg_cell_share": 0.2837,
+    "n_cells": 141
+   }
+  },
+  "p_有": {
+   "likes": {
+    "weighted_rho": -0.0534,
+    "neg_cell_share": 0.6596,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": -0.0382,
+    "neg_cell_share": 0.6383,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": 0.054,
+    "neg_cell_share": 0.2979,
+    "n_cells": 141
+   }
+  },
+  "p_不": {
+   "likes": {
+    "weighted_rho": -0.0538,
+    "neg_cell_share": 0.6667,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": -0.0386,
+    "neg_cell_share": 0.6809,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": 0.0433,
+    "neg_cell_share": 0.3546,
+    "n_cells": 141
+   }
+  },
+  "ai_lex100": {
+   "likes": {
+    "weighted_rho": -0.0154,
+    "neg_cell_share": 0.5532,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": 0.0098,
+    "neg_cell_share": 0.4397,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": -0.029,
+    "neg_cell_share": 0.5674,
+    "n_cells": 141
+   }
+  },
+  "hum_lex100": {
+   "likes": {
+    "weighted_rho": -0.0326,
+    "neg_cell_share": 0.6312,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": -0.0164,
+    "neg_cell_share": 0.5957,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": 0.067,
+    "neg_cell_share": 0.3121,
+    "n_cells": 141
+   }
+  },
+  "uniq_char_ratio": {
+   "likes": {
+    "weighted_rho": -0.1189,
+    "neg_cell_share": 0.9078,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": -0.1488,
+    "neg_cell_share": 0.9362,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": 0.0242,
+    "neg_cell_share": 0.5035,
+    "n_cells": 141
+   }
+  },
+  "uniq_bigram_ratio": {
+   "likes": {
+    "weighted_rho": -0.1349,
+    "neg_cell_share": 0.922,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": -0.1509,
+    "neg_cell_share": 0.9504,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": 0.0182,
+    "neg_cell_share": 0.4184,
+    "n_cells": 141
+   }
+  },
+  "title_len": {
+   "likes": {
+    "weighted_rho": 0.0714,
+    "neg_cell_share": 0.2057,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": 0.124,
+    "neg_cell_share": 0.0922,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": 0.0078,
+    "neg_cell_share": 0.3901,
+    "n_cells": 141
+   }
+  },
+  "title_excl": {
+   "likes": {
+    "weighted_rho": 0.0251,
+    "neg_cell_share": 0.3191,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": 0.037,
+    "neg_cell_share": 0.2553,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": -0.0047,
+    "neg_cell_share": 0.4823,
+    "n_cells": 141
+   }
+  },
+  "title_ques": {
+   "likes": {
+    "weighted_rho": -0.0542,
+    "neg_cell_share": 0.7357,
+    "n_cells": 140
+   },
+   "collections": {
+    "weighted_rho": -0.0483,
+    "neg_cell_share": 0.7357,
+    "n_cells": 140
+   },
+   "comments": {
+    "weighted_rho": 0.0129,
+    "neg_cell_share": 0.4429,
+    "n_cells": 140
+   }
+  },
+  "title_emoji": {
+   "likes": {
+    "weighted_rho": 0.0501,
+    "neg_cell_share": 0.305,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": 0.0569,
+    "neg_cell_share": 0.2766,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": -0.0138,
+    "neg_cell_share": 0.5461,
+    "n_cells": 141
+   }
+  },
+  "title_pipe": {
+   "likes": {
+    "weighted_rho": 0.0098,
+    "neg_cell_share": 0.4326,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": 0.0126,
+    "neg_cell_share": 0.4255,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": -0.0263,
+    "neg_cell_share": 0.6099,
+    "n_cells": 141
+   }
+  },
+  "title_num": {
+   "likes": {
+    "weighted_rho": 0.0092,
+    "neg_cell_share": 0.383,
+    "n_cells": 141
+   },
+   "collections": {
+    "weighted_rho": 0.0284,
+    "neg_cell_share": 0.3688,
+    "n_cells": 141
+   },
+   "comments": {
+    "weighted_rho": 0.0229,
+    "neg_cell_share": 0.3546,
+    "n_cells": 141
+   }
+  },
+  "title_bracket": {
+   "likes": {
+    "weighted_rho": -0.0116,
+    "neg_cell_share": 0.5192,
+    "n_cells": 104
+   },
+   "collections": {
+    "weighted_rho": -0.0019,
+    "neg_cell_share": 0.4423,
+    "n_cells": 104
+   },
+   "comments": {
+    "weighted_rho": -0.0266,
+    "neg_cell_share": 0.6058,
+    "n_cells": 104
+   }
+  }
+ },
+ "multivariate_likes": {
+  "features": [
+   "content_len",
+   "n_lines",
+   "avg_line_len",
+   "n_hashtags",
+   "colon_line_ratio",
+   "list_line_ratio",
+   "excl100",
+   "ques100",
+   "ellip100",
+   "tilde100",
+   "comma100",
+   "pause100",
+   "period100",
+   "emoji100",
+   "emoji_distinct",
+   "xhsemo100",
+   "p_的",
+   "p_了",
+   "p_是",
+   "p_我",
+   "p_你",
+   "p_就",
+   "p_都",
+   "p_很",
+   "p_有",
+   "p_不",
+   "ai_lex100",
+   "hum_lex100",
+   "uniq_char_ratio",
+   "uniq_bigram_ratio",
+   "title_len",
+   "title_excl",
+   "title_ques",
+   "title_emoji",
+   "title_pipe",
+   "title_num",
+   "title_bracket"
+  ],
+  "coef": [
+   0.08071,
+   0.01192,
+   -0.04788,
+   0.08761,
+   -0.03652,
+   -0.01029,
+   0.01292,
+   -0.02999,
+   0.00447,
+   0.01102,
+   -0.1044,
+   -0.00461,
+   -0.06194,
+   0.0263,
+   -0.08561,
+   -0.03189,
+   -0.01207,
+   0.00851,
+   0.00099,
+   0.01975,
+   0.02168,
+   0.02173,
+   0.00841,
+   0.01421,
+   -0.02275,
+   0.00198,
+   -0.00481,
+   0.00712,
+   -0.03529,
+   -0.03053,
+   0.02231,
+   0.0076,
+   -0.05096,
+   0.03668,
+   -0.00617,
+   0.00257,
+   -0.01119
+  ],
+  "ci_low": [
+   0.05174,
+   -0.00978,
+   -0.06073,
+   0.05925,
+   -0.04932,
+   -0.02112,
+   0.003,
+   -0.03815,
+   -0.00714,
+   0.00389,
+   -0.12384,
+   -0.01482,
+   -0.07447,
+   0.01324,
+   -0.10441,
+   -0.04013,
+   -0.02537,
+   -0.00549,
+   -0.01273,
+   0.00822,
+   0.00849,
+   0.01186,
+   -0.00106,
+   0.00464,
+   -0.0321,
+   -0.00895,
+   -0.01616,
+   -0.00751,
+   -0.06414,
+   -0.0517,
+   0.00328,
+   -0.00293,
+   -0.06326,
+   0.02526,
+   -0.0193,
+   -0.02006,
+   -0.02063
+  ],
+  "ci_high": [
+   0.10593,
+   0.03675,
+   -0.03568,
+   0.11497,
+   -0.02196,
+   -0.00066,
+   0.0244,
+   -0.02255,
+   0.01505,
+   0.02693,
+   -0.08588,
+   0.00425,
+   -0.04971,
+   0.04034,
+   -0.06782,
+   -0.02378,
+   -0.00111,
+   0.02349,
+   0.01276,
+   0.03448,
+   0.03928,
+   0.03189,
+   0.01798,
+   0.02383,
+   -0.01259,
+   0.01577,
+   0.00672,
+   0.02265,
+   -0.01194,
+   -0.00854,
+   0.04286,
+   0.01852,
+   -0.04077,
+   0.04997,
+   0.00714,
+   0.02315,
+   0.00202
+  ],
+  "n_sig": 24,
+  "n_obs": 85690,
+  "n_cells": 141
+ },
+ "multivariate_collections": {
+  "features": [
+   "content_len",
+   "n_lines",
+   "avg_line_len",
+   "n_hashtags",
+   "colon_line_ratio",
+   "list_line_ratio",
+   "excl100",
+   "ques100",
+   "ellip100",
+   "tilde100",
+   "comma100",
+   "pause100",
+   "period100",
+   "emoji100",
+   "emoji_distinct",
+   "xhsemo100",
+   "p_的",
+   "p_了",
+   "p_是",
+   "p_我",
+   "p_你",
+   "p_就",
+   "p_都",
+   "p_很",
+   "p_有",
+   "p_不",
+   "ai_lex100",
+   "hum_lex100",
+   "uniq_char_ratio",
+   "uniq_bigram_ratio",
+   "title_len",
+   "title_excl",
+   "title_ques",
+   "title_emoji",
+   "title_pipe",
+   "title_num",
+   "title_bracket"
+  ],
+  "coef": [
+   0.11103,
+   0.03382,
+   -0.04029,
+   0.11449,
+   -0.02795,
+   -0.00326,
+   0.01123,
+   -0.02176,
+   -0.00228,
+   0.01161,
+   -0.07907,
+   0.01088,
+   -0.05775,
+   0.03135,
+   -0.07934,
+   -0.0427,
+   -0.01951,
+   -0.0053,
+   -0.00374,
+   -0.00662,
+   0.03335,
+   0.01678,
+   0.0034,
+   0.00905,
+   -0.02683,
+   0.00299,
+   -0.00034,
+   0.01317,
+   -0.02299,
+   -0.04916,
+   0.05311,
+   0.01148,
+   -0.0503,
+   0.03478,
+   -0.01357,
+   0.01292,
+   -0.00629
+  ],
+  "ci_low": [
+   0.08388,
+   0.00995,
+   -0.05352,
+   0.08624,
+   -0.04069,
+   -0.01421,
+   -0.0003,
+   -0.02962,
+   -0.01417,
+   0.00446,
+   -0.09895,
+   0.00159,
+   -0.07014,
+   0.01754,
+   -0.09971,
+   -0.05332,
+   -0.0326,
+   -0.02142,
+   -0.01889,
+   -0.01666,
+   0.02154,
+   0.00674,
+   -0.00512,
+   -0.0002,
+   -0.03784,
+   -0.00721,
+   -0.01118,
+   -1e-05,
+   -0.04618,
+   -0.07078,
+   0.0354,
+   -0.0006,
+   -0.06353,
+   0.02183,
+   -0.02669,
+   -0.00771,
+   -0.01603
+  ],
+  "ci_high": [
+   0.13386,
+   0.06169,
+   -0.0295,
+   0.14183,
+   -0.0145,
+   0.00789,
+   0.0228,
+   -0.01446,
+   0.00594,
+   0.02678,
+   -0.05797,
+   0.02009,
+   -0.0457,
+   0.04694,
+   -0.06023,
+   -0.0339,
+   -0.00891,
+   0.00994,
+   0.00973,
+   0.00728,
+   0.04867,
+   0.0268,
+   0.01322,
+   0.0192,
+   -0.0164,
+   0.0165,
+   0.01079,
+   0.02616,
+   -0.00127,
+   -0.02643,
+   0.073,
+   0.02297,
+   -0.03893,
+   0.0482,
+   -0.00215,
+   0.03556,
+   0.00727
+  ],
+  "n_sig": 23,
+  "n_obs": 85690,
+  "n_cells": 141
+ },
+ "p_ai_net_effects": {
+  "p_ai_only": {
+   "features": [
+    "p_ai"
+   ],
+   "coef": {
+    "p_ai": -0.09391694014821265
+   },
+   "ci_low": {
+    "p_ai": -0.10848996768071437
+   },
+   "ci_high": {
+    "p_ai": -0.08129295152987981
+   },
+   "n_obs": 85690,
+   "n_cells": 141
+  },
+  "p_ai_len_tags": {
+   "features": [
+    "p_ai",
+    "content_len",
+    "n_hashtags"
+   ],
+   "coef": {
+    "p_ai": -0.07926746263538367,
+    "content_len": -0.02796138624374486,
+    "n_hashtags": 0.11400825026920781
+   },
+   "ci_low": {
+    "p_ai": -0.09007943866662815,
+    "content_len": -0.04561624963449285,
+    "n_hashtags": 0.08111880815768803
+   },
+   "ci_high": {
+    "p_ai": -0.06766007722960245,
+    "content_len": -0.011646523076095695,
+    "n_hashtags": 0.14788867127877056
+   },
+   "n_obs": 85690,
+   "n_cells": 141
+  }
+ },
+ "consistency": {
+  "p_ai_likes_weighted_rho": -0.0907,
+  "paper_within_cell_weighted_rho": -0.0907,
+  "abs_diff": 0.0,
+  "n_cells": 141
+ }
+}

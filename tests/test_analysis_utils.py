@@ -465,5 +465,59 @@ class TestHashtagHelpers(unittest.TestCase):
         self.assertEqual(dedup_indices([None, None], np.array([0, 0])), [0, 1])
 
 
+class TestWithinCellSpearman(unittest.TestCase):
+    @staticmethod
+    def _make():
+        rng = np.random.default_rng(0)
+        x = np.concatenate([rng.normal(size=150), rng.normal(size=150)])
+        y = np.concatenate([x[:150] + rng.normal(scale=0.01, size=150),
+                            5 - x[150:] + rng.normal(scale=0.01, size=150)])
+        codes = np.array(["a"] * 150 + ["b"] * 150)
+        return x, y, codes
+
+    def test_positive_and_negative_cells(self):
+        from analysis_utils import within_cell_spearman
+
+        x, y, codes = self._make()
+        stat = within_cell_spearman(x, y, codes, min_cell_n=100)
+        self.assertEqual(stat["n_cells"], 2)
+        self.assertAlmostEqual(stat["weighted_rho"], 0.0, delta=0.05)
+        self.assertAlmostEqual(stat["neg_cell_share"], 0.5)
+
+    def test_single_positive_cell(self):
+        from analysis_utils import within_cell_spearman
+
+        x, y, codes = self._make()
+        stat = within_cell_spearman(x[:150], y[:150], codes[:150],
+                                    min_cell_n=100)
+        self.assertEqual(stat["n_cells"], 1)
+        self.assertGreater(stat["weighted_rho"], 0.99)
+        self.assertEqual(stat["neg_cell_share"], 0.0)
+
+    def test_small_cells_skipped(self):
+        from analysis_utils import within_cell_spearman
+
+        x, y, _ = self._make()
+        stat = within_cell_spearman(x, y, np.zeros(300, dtype=int),
+                                    min_cell_n=1000)
+        self.assertEqual(stat["n_cells"], 0)
+        self.assertTrue(np.isnan(stat["weighted_rho"]))
+        self.assertTrue(np.isnan(stat["neg_cell_share"]))
+
+    def test_constant_cell_skipped(self):
+        from analysis_utils import within_cell_spearman
+
+        x = np.zeros(150)
+        y = np.arange(150, dtype=float)
+        stat = within_cell_spearman(x, y, np.zeros(150), min_cell_n=100)
+        self.assertEqual(stat["n_cells"], 0)
+
+    def test_length_mismatch_raises(self):
+        from analysis_utils import within_cell_spearman
+
+        with self.assertRaises(ValueError):
+            within_cell_spearman([1, 2], [1, 2, 3], [0, 0])
+
+
 if __name__ == "__main__":
     unittest.main()

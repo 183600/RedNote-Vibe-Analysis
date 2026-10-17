@@ -110,14 +110,17 @@ This script will:
 | `insights/family_lexicon.png` + `family_lexicon_results.{json,md}` | Figure and result files produced by `family_lexicon_analysis.py` |
 | `engagement_structure_analysis.py` | Engagement-structure decomposition of the AI-style penalty: zero-engagement density, Gini / top-10% concentration, collection-to-like ratio, within-cell rank correlations |
 | `insights/engagement_structure.png` + `engagement_structure_results.{json,md}` | Figure and result files produced by `engagement_structure_analysis.py` |
+| `engagement_drivers_analysis.py` | Feature-level drivers of the AI-style engagement penalty: within-cell rank correlations for all 37 features + month×domain fixed-effects OLS with cluster-bootstrap CIs, plus P(AI) net-of-drivers models |
+| `insights/engagement_drivers.png` + `engagement_drivers_results.{json,md}` | Figure and result files produced by `engagement_drivers_analysis.py` |
 | `symbol_analysis.py` | Hashtag/emoji symbol ecology: structure & adoption, generator-specific tags, per-tag AI-ness, P(AI) gradient, quarterly diffusion, tag count vs engagement |
 | `insights/symbol_*.png` + `symbol_results.{json,md}` | Figures and result files produced by `symbol_analysis.py` |
 | `near_duplicate_analysis.py` | Near-duplicate / template-reuse scan: char 5-gram rolling hashes + bottom-k (K=128) candidate generation + exact Jaccard verification, within/cross-subset shares, P(AI) gradient, quarterly trend, cluster structure, brute-force recall self-check |
 | `insights/near_duplicate.png` + `near_duplicate_results.{json,md}` | Figure and result files produced by `near_duplicate_analysis.py` |
-| `run_fork_pipeline.py` | Runner for the 10-step deep-dive suite (`--list` / `--from N` / `--only SCRIPT`) |
+| `run_fork_pipeline.py` | Runner for the 11-step deep-dive suite (`--list` / `--from N` / `--only SCRIPT`) |
+| `pipeline_common.py` | Shared step-runner behind `run_paper_pipeline.py` / `run_fork_pipeline.py` (step selection, CLI, sequential execution) |
 | `*.py` (other) | Exploratory fork analyses: word frequency, particles, topics, sentiment, time, domains, user clustering, … |
 | `output/` | Figures from the joint exploratory analysis |
-| `tests/` | Unit tests for `analysis_utils.py` (incl. calibration/threshold helpers), framing helpers, and the title/diversity/symbol/near-duplicate pure functions (`python3 -m unittest discover -s tests`) |
+| `tests/` | Unit tests for `analysis_utils.py` (incl. calibration/threshold/within-cell helpers), framing helpers, the title/diversity/symbol/near-duplicate/engagement-driver pure functions, and the shared pipeline runner (`python3 -m unittest discover -s tests`) |
 | `ci_gate.py` | CI quality gate (syntax + research-data integrity) |
 
 All analyses are deterministic (fixed random seeds) and can be re-run independently; the paper pipeline order is documented in [paper.md](paper.md), Appendix A.
@@ -258,6 +261,17 @@ Run the full pipeline in order with `python3 run_paper_pipeline.py` (or `--list`
 3. **收藏/点赞比倒 U**：中位比从 0.387 爬到第 5 十分位峰值 0.450 后跌到 0.264——最像 AI 的帖子要么无人问津、要么只剩点赞，收藏价值坍缩。
 4. **方向稳健**：控制月份×领域后（141 个单元），点赞/收藏的单元内加权 ρ≈-0.09，82%/82% 的单元为负；评论 ρ=-0.019（60% 为负）——互动惩罚在所有指标上方向一致，点赞与收藏最敏感。
 
+### 互动惩罚的逐特征载体（`engagement_drivers_analysis.py`）
+
+把论文 §5.5 的「AI 味惩罚」再拆一层：对检测器的 37 个可解释特征做「月份×领域」单元内的单变量秩相关，以及控制其余风格特征后的固定效应多元回归（特征先 z-score 再单元内去均值；95% CI 来自按单元整群 bootstrap 300 次）。结果图在 `insights/engagement_drivers.png`，数据在 `engagement_drivers_results.json` 与 `engagement_drivers_results.md`。P(AI) 的单元内加权 ρ=-0.0907 与 `paper_engagement_results.json` 逐位一致（n=85,690、141 个单元、每单元 ≥100 条）：
+
+1. **强负载体是「高密度标点 + 规整句式」，而不是某个 AI 专属词**：单变量最强负关联为独特二元组比率（ρ=-0.135，92% 单元为负）、逗号密度（-0.123）、独特字比率（-0.119）、句号密度（-0.095）；多元控制后最强负偏效应为逗号密度（β=-0.104）、不同 emoji 数（-0.086）、句号密度（-0.062）、标题含问号（-0.051）、平均行长（-0.048）。
+2. **正向载体与既有结论互洽**：标签数（单变量 +0.116 / 多元 +0.088）与正文长度（多元 +0.081）是最大的正驱动——与 `symbol_analysis` 的「标签越多互动越好」、`title_style_analysis` 的「标题端无惩罚」方向一致。
+3. **P(AI) 惩罚是独立成分**：单独回归 β=-0.094（95% CI [-0.109, -0.081]），控制正文长度与标签数后仍为 -0.079（[-0.090, -0.068]）——不是长度或标签数量的间接效应。
+4. **跨指标高度一致**：点赞与收藏的 37 个偏效应 Pearson r=0.951（收藏侧 23/37 显著）——惩罚结构不是点赞独有。
+
+> 方法注记：单变量与多元回答的问题不同，个别特征会出现符号反转（如正文长度单变量 ρ 略负、偏效应显著为正），这是特征间强相关下的抑制定量（suppression）；结果文件同时给出两种口径，避免误读。
+
 ### 话题标签与表情生态（`symbol_analysis.py`）
 
 把标签与表情当作「符号系统」全量扫描六个维度：标签结构与普及率、生成器专属标签、标签级 AI 味、P(AI) 梯度与季度扩散、emoji/[xxR] 表情生态、标签数×互动。结果图在 `insights/symbol_*.png`，数据在 `symbol_results.json` 与 `symbol_results.md`。标签口径与 `paper_features.py` 的 `n_hashtags` 同源（兼容 `#标签[话题]#` 与 BOM 残留），表情正则与其完全相同（另剔除变体选择符的重复计数）；人类/探索集按 note_id 去重，探索集 p_ai 按行序对齐（content_len 校验 mismatch=0）：
@@ -302,6 +316,7 @@ Run the full pipeline in order with `python3 run_paper_pipeline.py` (or `--list`
 | `insights/detector_calibration.png`、`detector_errors.png`、`detector_uncertainty.png` | 检测器诊断图（可靠性曲线/阈值权衡、长度与领域错误切片、置信度分层时间线） |
 | `insights/family_lexicon.png` | 模型家族词表指纹（词×家族 log-odds 热力图、AI 味词密度） |
 | `insights/engagement_structure.png` | 互动结构分解（零互动密度、基尼集中度、收藏/点赞比与十分位趋势） |
+| `insights/engagement_drivers.png` | 互动惩罚的逐特征载体（单变量秩相关 ρ、多元固定效应 β 与整群 bootstrap CI、点赞-收藏偏效应一致性） |
 | `insights/symbol_hashtag.png`、`symbol_gradient.png`、`symbol_emoji.png` | 标签/表情生态图（标签结构、P(AI) 梯度与专属标签命中、emoji 与 [xxR] 偏好） |
 | `insights/near_duplicate.png` | 近重复/模板复用图（各子集最近邻相似度生存曲线、子集内近重复率、跨子集对矩阵、P(AI) 梯度、季度趋势、簇规模分布） |
 | `output/` | 领域、话题、互动等探索性图表合集 |
@@ -329,12 +344,13 @@ Run the full pipeline in order with `python3 run_paper_pipeline.py` (or `--list`
 - `detector_diagnostics.py` - 检测器概率校准 / 阈值敏感性 / 错分切片 / 探索集不确定性（输出 `insights/detector_*.png`、`detector_diagnostics_results.json/md`）
 - `family_lexicon_analysis.py` - AIGC 子集内家族/单模型词表指纹（输出 `insights/family_lexicon.png`、`family_lexicon_results.json/md`）
 - `engagement_structure_analysis.py` - 「AI 味惩罚」的互动结构分解：零互动密度 / 基尼集中度 / 互动构成比 / 单元内秩相关（输出 `insights/engagement_structure.png`、`engagement_structure_results.json/md`）
+- `engagement_drivers_analysis.py` - 「AI 味惩罚」的逐特征载体：37 个特征的单元内秩相关 + 月份×领域固定效应多元回归（整群 bootstrap CI）+ P(AI) 净效应（输出 `insights/engagement_drivers.png`、`engagement_drivers_results.json/md`）
 - `user_clustering.py` - 用户风格聚类（输出 `user_clustering_results.md`）
 - `symbol_analysis.py` - 标签/表情生态：结构普及率、AI 专属符号、P(AI) 梯度与季度扩散、标签×互动（输出 `insights/symbol_*.png`、`symbol_results.json/md`）
 - `near_duplicate_analysis.py` - 近重复/模板复用：字符 5-gram Jaccard 全量扫描（bottom-k 候选 + 精确校验）、跨子集模板迁移、P(AI) 梯度、季度与簇结构（输出 `insights/near_duplicate.png`、`near_duplicate_results.json/md`）
 - `quick_start.py` - BERT 基线训练
 
-深潜分析套件可一键顺序执行：`python3 run_fork_pipeline.py`（`--list` / `--from N` / `--only 脚本名`，编排 deep_dive / framing / title_style / diversity / detector_diagnostics / family_lexicon / engagement_structure / user_clustering / symbol / near_duplicate 共 10 步，输出统一落在 `insights/`）。
+深潜分析套件可一键顺序执行：`python3 run_fork_pipeline.py`（`--list` / `--from N` / `--only 脚本名`，编排 deep_dive / framing / title_style / diversity / detector_diagnostics / family_lexicon / engagement_structure / engagement_drivers / user_clustering / symbol / near_duplicate 共 11 步，输出统一落在 `insights/`）。两个管线运行器共用 `pipeline_common.py` 的步骤选择与顺序执行实现（含未知脚本名校验），其单元测试见 `tests/test_pipeline_common.py`。
 
 所有脚本使用 `analysis_utils.py` 中的统一数据读取、中文字体与检测器打分工具（含概率校准 `reliability_bins` / `expected_calibration_error` / `prior_corrected_proba` 与阈值指标 `threshold_metrics`）；其单元测试见 `tests/`。
 

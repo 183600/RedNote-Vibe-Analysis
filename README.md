@@ -94,7 +94,7 @@ This script will:
 |------|-------------|
 | `training_set_human.jsonl`, `training_set_aigc.jsonl`, `exploring_set.jsonl` | Research datasets (never modify) |
 | `paper_*.py` | Paper pipeline: lexicon → features → model fingerprint → detector → drift → extra figures → engagement → robustness |
-| `analysis_utils.py` | Shared helpers: streaming JSONL reader, record/content/engagement/timestamp helpers, canonical body cleaning (`paper_features` lexicon), Chinese fonts, unified plot style, detector scoring, entropy/coverage, lexical-diversity tools (burstiness, MTLD, Heaps β, prefix n-gram stats, bootstrap median CI), stats (bootstrap CI, Cliff's delta, Wilson CI) |
+| `analysis_utils.py` | Shared helpers: streaming JSONL reader, record/content/engagement/timestamp helpers, canonical body cleaning (`paper_features` lexicon), Chinese fonts, unified plot style, detector scoring, entropy/coverage, lexical-diversity tools (burstiness, MTLD, Heaps β, prefix n-gram stats, bootstrap median CI), stats (bootstrap CI, Cliff's delta, Wilson CI, length bins, decile tables, domain-standardised series) |
 | `paper_figs/` | Figures produced by the paper pipeline |
 | `deep_dive_analysis.py` | Full-scan deep dive (publish rhythm / lexicon diffusion / sentence rhythm / duplicate structure) |
 | `insights/` + `deep_dive_results.{json,md}` | Figures and result files produced by `deep_dive_analysis.py` |
@@ -124,11 +124,13 @@ This script will:
 | `insights/family_transfer.png`、`insights/family_transfer_engagement.png` + `family_transfer_results.{json,md}` | Figures and result files produced by `family_transfer_analysis.py` |
 | `stance_analysis.py` | Discourse-stance deep dive on four a priori lexicons (hedging / assertion / intensifiers / community vocatives): cross-subset rates, wild P(AI) gradient with within-cell and length-stratified ρ, month×domain FE engagement betas (cluster-bootstrap CIs), 6-family / 17-model fingerprints, quarterly trends |
 | `insights/stance_lexicon.png`、`insights/stance_gradient.png` + `stance_results.{json,md}` | Figures and result files produced by `stance_analysis.py` |
-| `run_fork_pipeline.py` | Runner for the 12-step deep-dive suite (`--list` / `--from N` / `--only SCRIPT`) |
+| `concreteness_analysis.py` | Concreteness / specificity deep dive on four a priori marker classes (bare numbers, unit-bearing quantities, vague quantifiers, gazetteer places): post-level incidence vs char-level density, domain-standardised and length-matched controls, wild P(AI) gradient with length-stratified ρ, month×domain FE engagement betas (cluster-bootstrap CIs), 6-family / 17-model fingerprints, single-marker AUCs, quarterly trends |
+| `insights/concreteness_lexicon.png`、`insights/concreteness_gradient.png` + `concreteness_results.{json,md}` | Figures and result files produced by `concreteness_analysis.py` |
+| `run_fork_pipeline.py` | Runner for the 16-step deep-dive suite (`--list` / `--from N` / `--only SCRIPT`) |
 | `pipeline_common.py` | Shared step-runner behind `run_paper_pipeline.py` / `run_fork_pipeline.py` (step selection, CLI, sequential execution) |
 | `*.py` (other) | Exploratory fork analyses: word frequency, particles, topics, sentiment, time, domains, user clustering, … |
 | `output/` | Figures from the joint exploratory analysis |
-| `tests/` | Unit tests for `analysis_utils.py` (incl. calibration/threshold/within-cell helpers), framing helpers, the title/diversity/symbol/near-duplicate/engagement-driver/author-decomposition/family-transfer/title-body-congruence/stance pure functions, and the shared pipeline runner (`python3 -m unittest discover -s tests`) |
+| `tests/` | Unit tests for `analysis_utils.py` (incl. calibration/threshold/within-cell/length-bin/decile helpers), framing helpers, the title/diversity/symbol/near-duplicate/engagement-driver/author-decomposition/family-transfer/title-body-congruence/stance/concreteness pure functions, and the shared pipeline runner (`python3 -m unittest discover -s tests`) |
 | `ci_gate.py` | CI quality gate (syntax + research-data integrity) |
 
 All analyses are deterministic (fixed random seeds) and can be re-run independently; the paper pipeline order is documented in [paper.md](paper.md), Appendix A.
@@ -339,6 +341,16 @@ Run the full pipeline in order with `python3 run_paper_pipeline.py` (or `--list`
 4. **家族指纹：DeepSeek 最不谨慎、Gemini 最外放**：DeepSeek 家族谨慎表达最低（0.065/百字）、Gemini 最高（0.180）；Gemini 的社区呼语密度（0.207）约是其余家族的 2.5–10 倍，Claude/Gemini 的程度强化约 0.61，GPT/GLM 几乎不用社区呼语（0.02/0.03）。
 5. **季度趋势：断言语气持续走低**：2023Q2→2025Q2 断言强调由 0.099 降到 0.070（ρ=-0.750，p=0.020；固定领域权重后 -0.883，p=0.002），谨慎表达/程度强化/社区呼语无显著趋势——与词汇层面的扩散曲线不同，语气层的「自信话术」在消退。
 
+### 具体性层：数字、单位量值、地名与模糊量词（`concreteness_analysis.py`）
+
+把「AI 味」再下沉到**信息具体程度**层：四个先验标记类别（具体数字 num、带单位量值 unit（金额/百分比/度量/时间）、模糊量词 vague（反向标记）、地点实指 place（固定地名表），不做数据驱动筛选），统计三子集的帖子层发生率与字符层密度、领域标准化与长度控制，以及探索集内的 P(AI) 梯度（含长度分层）、互动偏效应（与 `engagement_drivers_analysis.py` 同协议的月份×领域 FE + 整群 bootstrap）与 17 模型家族指纹。结果图在 `insights/concreteness_lexicon.png`、`concreteness_gradient.png`，数据在 `concreteness_results.json` 与 `concreteness_results.md`。人类/探索集按 note_id 去重，正文 ≥50 字，p_ai 按行序对齐（content_len mismatch=0）：
+
+1. **生成帖更少给出可核验的具体信息**：含任一具体性标记的帖子占比人类 77.4% / AIGC 61.8% / 探索集 61.8%（固定人类领域权重后 77.4% / 64.5% / 58.5%）；按人类长度分布加权的长度匹配差异为人类−AIGC +4.1 个百分点 [+2.9, +5.4]、人类−探索集 +3.7 [+3.0, +4.3]。具体数字 65.3%→50.2%（AIGC）→52.8%，带单位量值 45.5%→35.7%→32.3%，地点实指 22.6%→15.1%→14.6%；而字符层密度差距小得多（1.283/1.225/1.421 次/百字）——差异主要在「帖子里有没有具体信息」，而不是单位长度的信息密度。
+2. **模糊量词是反向标记**：人类 51.6% 的帖子使用模糊量词，AIGC 只有 34.9%、探索集 37.9%——生成集并非更「笼统」，而是更少口语化量词；探索集内模糊量词随 P(AI) 的单元内加权 ρ=-0.264（100% 单元为负，长度分层后 -0.178），是四类中最强的野外梯度。具体数字与带单位量值的野外梯度接近零（ρ=-0.023/+0.020），长度分层后转正（+0.056/+0.094）。
+3. **单标记区分度有限但方向一致**：单标记 AUC（human=1）具体数字 0.584、模糊量词 0.596、带单位量值 0.556、地点实指 0.539；四标记逻辑回归 5 折 CV AUC=0.644——「具体性」在跨语料上稳定区分人类与生成文本，但在野外与检测器 P(AI) 只是弱相关。
+4. **数字与地名是少见的「正向互动」特征**：控制 P(AI)、正文长度与标签数后（n=54,969、116 个单元、整群 bootstrap 300 次），具体数字收藏 β=+0.035 [+0.016, +0.055]、地点实指 +0.022 [+0.003, +0.039]、模糊量词 +0.016 [+0.003, +0.030]，带单位量值不显著（-0.007）；同期 P(AI) 本身为 -0.039/-0.020——给出具体数字/地名与「像人」同向且独立抬升收藏（观察性关联，不作因果解读）。
+5. **家族指纹与时间演化**：DeepSeek 数字密度最高（0.951/百字）、Gemini 最低（0.653）；GLM 的地点实指最高（0.196）。探索集季度趋势：带单位量值密度固定领域权重后显著上升（ρ=+0.900，p=0.001），模糊量词显著下降（-0.683，p=0.042），具体数字与地点实指无显著趋势——与语气层「自信话术消退」相对，量值信息的密度在上升。
+
 ### 生成的可视化图表
 
 | 文件 | 描述 |
@@ -371,6 +383,8 @@ Run the full pipeline in order with `python3 run_paper_pipeline.py` (or `--list`
 | `insights/family_transfer_engagement.png` | 家族互动回报图（单元内残差箱线图、点赞/收藏的家族偏效应森林图） |
 | `insights/stance_lexicon.png` | 语气情态图（三子集四类语气密度、逐词 AIGC−人类过量使用与探索集标记） |
 | `insights/stance_gradient.png` | 语气梯度图（P(AI) 十分位曲线、逐词单元内 ρ、互动偏效应森林图、家族语气指纹热力图） |
+| `insights/concreteness_lexicon.png` | 具体性图（三子集发生率/密度、长度分箱发生率曲线） |
+| `insights/concreteness_gradient.png` | 具体性梯度图（P(AI) 十分位曲线、单元内 ρ（含长度分层）、互动偏效应森林图、季度趋势、家族指纹热力图、单标记 AUC） |
 | `output/` | 领域、话题、互动等探索性图表合集 |
 | `paper_figs/` | 论文管线图表（检测器、漂移、互动、稳健性） |
 
@@ -404,11 +418,12 @@ Run the full pipeline in order with `python3 run_paper_pipeline.py` (or `--list`
 - `near_duplicate_analysis.py` - 近重复/模板复用：字符 5-gram Jaccard 全量扫描（bottom-k 候选 + 精确校验）、跨子集模板迁移、P(AI) 梯度、季度与簇结构（输出 `insights/near_duplicate.png`、`near_duplicate_results.json/md`）
 - `family_transfer_analysis.py` - 家族风格迁移：6 路家族分类器（5 折 CV）迁移到探索集，高 P(AI) 帖的家族构成/半年度演化与互动回报的家族结构（月份×领域 FE + 整群 bootstrap，输出 `insights/family_transfer*.png`、`family_transfer_results.json/md`）
 - `stance_analysis.py` - 语气情态：谨慎/断言/强化/呼语四类先验词表的跨子集密度、P(AI) 梯度（含长度分层）、互动偏效应（月份×领域 FE + 整群 bootstrap）与家族指纹（输出 `insights/stance_*.png`、`stance_results.json/md`）
+- `concreteness_analysis.py` - 具体性/实指表达：数字/单位量值/模糊量词/地名的跨子集发生率与密度、领域标准化与长度匹配控制、P(AI) 梯度（含长度分层）、互动偏效应与单标记 AUC（输出 `insights/concreteness_*.png`、`concreteness_results.json/md`）
 - `quick_start.py` - BERT 基线训练
 
-深潜分析套件可一键顺序执行：`python3 run_fork_pipeline.py`（`--list` / `--from N` / `--only 脚本名`，编排 deep_dive / framing / title_style / title_body_congruence / diversity / detector_diagnostics / family_lexicon / engagement_structure / engagement_drivers / author_style / user_clustering / symbol / near_duplicate / family_transfer / stance 共 15 步，输出统一落在 `insights/`）。两个管线运行器共用 `pipeline_common.py` 的步骤选择与顺序执行实现（含未知脚本名校验），其单元测试见 `tests/test_pipeline_common.py`。
+深潜分析套件可一键顺序执行：`python3 run_fork_pipeline.py`（`--list` / `--from N` / `--only 脚本名`，编排 deep_dive / framing / title_style / title_body_congruence / diversity / detector_diagnostics / family_lexicon / engagement_structure / engagement_drivers / author_style / user_clustering / symbol / near_duplicate / family_transfer / stance / concreteness 共 16 步，输出统一落在 `insights/`）。两个管线运行器共用 `pipeline_common.py` 的步骤选择与顺序执行实现（含未知脚本名校验），其单元测试见 `tests/test_pipeline_common.py`。
 
-所有脚本使用 `analysis_utils.py` 中的统一数据读取、中文字体与检测器打分工具（含概率校准 `reliability_bins` / `expected_calibration_error` / `prior_corrected_proba` 与阈值指标 `threshold_metrics`）；其单元测试见 `tests/`。
+所有脚本使用 `analysis_utils.py` 中的统一数据读取、中文字体、检测器打分与统计工具（含概率校准 `reliability_bins` / `expected_calibration_error` / `prior_corrected_proba`、阈值指标 `threshold_metrics`，以及长度分箱 `length_bin_codes` / 十分位表 `decile_table` / 固定权重时间序列 `domain_standardized_series` 等跨脚本复用的统计辅助）；其单元测试见 `tests/`。
 
 中文字体由 `setup_chinese_fonts()` 自动解析：依次扫描 `REDNOTE_FONT_DIR`、`assets/fonts/`、系统字体目录（Noto Sans CJK/SC、思源黑体、文泉驿等），找不到时回退下载 Noto Sans SC（另含单色 emoji 字体）并缓存到 `~/.cache/rednote-vibe/fonts`；也可用 `REDNOTE_FONT_PATH` 直接指定字体文件，或设 `REDNOTE_FONT_DOWNLOAD=0` 禁用联网下载。写回 CSV 时使用内容比较（`write_csv_gz_if_changed`），内容未变则不触碰文件；`paper_drift.py --figs-only` 可只重绘图表、完全不写 `paper_exploring_scores.csv.gz`。
 

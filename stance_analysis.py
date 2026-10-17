@@ -40,7 +40,6 @@
 """
 from __future__ import annotations
 
-import json
 import re
 from collections import Counter, defaultdict
 
@@ -53,8 +52,10 @@ from scipy.stats import spearmanr
 
 from analysis_utils import (BASE, INSIGHTS, PALETTE, init_plot_style, save_fig,
                             save_json, cliffs_delta, cell_rank_cache, cell_groups,
-                            clean_body, content_of, dedup_indices, engagement_of,
-                            iter_jsonl, parse_local_time, within_cell_spearman)
+                            clean_body, content_of, decile_table,
+                            dedup_indices, domain_standardized_series,
+                            engagement_of, iter_jsonl, length_bin_codes,
+                            parse_local_time, within_cell_spearman)
 from engagement_drivers_analysis import (cluster_bootstrap_fe_ols, fe_ols,
                                          prepare_fe)
 
@@ -73,9 +74,7 @@ N_BOOT = 300             # 整群 bootstrap 次数
 BOOT_SEED = 42
 MIN_QUARTER_N = 300
 MIN_FAMILY_N = 100
-LENGTH_BINS = [(50, 150, "50–150字"), (150, 300, "150–300字"),
-               (300, 500, "300–500字"), (500, 800, "500–800字"),
-               (800, 10 ** 9, "≥800字")]
+
 
 CATEGORY_WORDS = {
     "hedge": ("谨慎表达", ["可能", "也许", "或许", "大概", "大约", "好像", "似乎",
@@ -142,70 +141,6 @@ def word_counts(text: str) -> dict:
 def density_per_100(count: int, body_len: int) -> float:
     """次数 / 正文字数 * 100；空正文返回 0。"""
     return count / body_len * 100 if body_len > 0 else 0.0
-
-
-def decile_table(values, scores, n_bins: int = 10) -> list[dict]:
-    """按 `scores` 的等频分位（quantile 切分）聚合 `values` 的均值与 95% CI。"""
-    values = np.asarray(values, dtype=float)
-    scores = np.asarray(scores, dtype=float)
-    edges = np.quantile(scores, np.linspace(0, 1, n_bins + 1))
-    edges = np.unique(edges)
-    if len(edges) < 2:
-        return []
-    idx = np.clip(np.searchsorted(edges, scores, side="right") - 1,
-                  0, len(edges) - 2)
-    rows = []
-    for b in range(len(edges) - 1):
-        sel = idx == b
-        n = int(sel.sum())
-        if n == 0:
-            continue
-        v = values[sel]
-        se = float(v.std(ddof=1) / np.sqrt(n)) if n > 1 else 0.0
-        rows.append({
-            "decile": b + 1, "n": n,
-            "mean": float(v.mean()),
-            "ci_low": float(max(v.mean() - 1.96 * se, 0.0)),
-            "ci_high": float(v.mean() + 1.96 * se),
-            "p_range": [float(edges[b]), float(edges[b + 1])],
-        })
-    return rows
-
-
-def length_bin_codes(lengths, bins=LENGTH_BINS) -> np.ndarray:
-    """把正文字数映射到分箱编号（0..len(bins)-1）。"""
-    arr = np.asarray(lengths, dtype=float)
-    codes = np.zeros(len(arr), dtype=int)
-    for i, (lo, hi, _) in enumerate(bins):
-        codes[(arr >= lo) & (arr < hi)] = i
-    return codes
-
-
-def standardize_weights(shares: dict) -> dict:
-    """把 {key: 占比} 归一化为和为 1 的固定权重（空/全零返回等权）。"""
-    total = sum(shares.values())
-    if total <= 0:
-        n = max(len(shares), 1)
-        return {k: 1.0 / n for k in shares}
-    return {k: v / total for k, v in shares.items()}
-
-
-def domain_standardized_series(df: pd.DataFrame, value_col: str,
-                               group_col: str) -> pd.Series:
-    """按固定领域权重加权的分组均值（domain-standardized 时间序列）。
-
-    每个分组内，先算该组各领域的均值，再按 `df` 全样本的领域记录占比加权；
-    某组缺失的领域按剩余权重重新归一化（与 paper_drift 的固定权重思路一致，
-    但权重来自同一份数据而非外部先验）。
-    """
-    dom_share = df["domain"].value_counts(normalize=True).to_dict()
-    out = {}
-    for key, g in df.groupby(group_col, sort=True):
-        means = g.groupby("domain", sort=False)[value_col].mean().to_dict()
-        w = {d: dom_share.get(d, 0.0) for d in means}
-        w = standardize_weights(w)
-        out[key] = float(sum(means[d] * w[d] for d in means))
-    return pd.Series(out)
 
 
 # --------------------------------------------------------------------------

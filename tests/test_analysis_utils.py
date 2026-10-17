@@ -8,6 +8,7 @@ import tempfile
 import unittest
 
 import numpy as np
+import pandas as pd
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
@@ -22,7 +23,9 @@ from analysis_utils import (post_text, content_of, clean_body,
                             split_sentences, burstiness, mtld,
                             prefix_ngram_stats, bootstrap_median_ci,
                             DATASETS, linear_score, prior_corrected_proba,
-                            reliability_bins, expected_calibration_error)
+                            reliability_bins, expected_calibration_error,
+                            LENGTH_BINS, decile_table, length_bin_codes,
+                            standardize_weights, domain_standardized_series)
 
 
 class TestJsonlHelpers(unittest.TestCase):
@@ -354,7 +357,7 @@ class TestFontSetup(unittest.TestCase):
         self.assertTrue(name is None or isinstance(name, str))
 
     def test_discover_cjk_font_name_matching(self):
-        from analysis_utils import discover_cjk_font, _font_search_dirs
+        from analysis_utils import discover_cjk_font
 
         with tempfile.TemporaryDirectory() as tmp:
             base = pathlib.Path(tmp)
@@ -517,6 +520,64 @@ class TestWithinCellSpearman(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             within_cell_spearman([1, 2], [1, 2, 3], [0, 0])
+
+
+class TestLengthBinCodes(unittest.TestCase):
+    def test_boundaries(self):
+        codes = length_bin_codes([49, 50, 149, 150, 799, 800, 10_000])
+        np.testing.assert_array_equal(codes, [0, 0, 0, 1, 3, 4, 4])
+
+    def test_default_bins_cover_all_lengths(self):
+        codes = length_bin_codes([50, 999_999_999])
+        self.assertEqual(codes[0], 0)
+        self.assertEqual(codes[1], len(LENGTH_BINS) - 1)
+
+
+class TestDecileTable(unittest.TestCase):
+    def test_monotone_signal(self):
+        scores = np.linspace(0, 1, 1000)
+        rows = decile_table(scores * 2.0, scores)
+        self.assertEqual(len(rows), 10)
+        means = [r["mean"] for r in rows]
+        self.assertEqual(means, sorted(means))
+        self.assertEqual(sum(r["n"] for r in rows), 1000)
+        self.assertLessEqual(rows[0]["ci_low"], rows[0]["mean"])
+
+    def test_constant_scores_returns_empty(self):
+        self.assertEqual(decile_table([1.0, 2.0], [0.5, 0.5]), [])
+
+
+class TestStandardizeWeights(unittest.TestCase):
+    def test_normalize(self):
+        w = standardize_weights({"a": 2.0, "b": 2.0})
+        self.assertAlmostEqual(w["a"], 0.5)
+        self.assertAlmostEqual(sum(w.values()), 1.0)
+
+    def test_all_zero_equal_weights(self):
+        w = standardize_weights({"a": 0.0, "b": 0.0})
+        self.assertAlmostEqual(w["a"], 0.5)
+        self.assertAlmostEqual(w["b"], 0.5)
+
+
+class TestDomainStandardizedSeries(unittest.TestCase):
+    def test_weights_follow_domain_shares(self):
+        df = pd.DataFrame({
+            "quarter": ["Q1", "Q1", "Q1", "Q2", "Q2", "Q2"],
+            "domain": ["a", "a", "b", "a", "a", "b"],
+            "v": [1.0, 1.0, 5.0, 3.0, 3.0, 7.0],
+        })
+        s = domain_standardized_series(df, "v", "quarter")
+        self.assertAlmostEqual(s["Q1"], 1.0 * (2 / 3) + 5.0 * (1 / 3))
+        self.assertAlmostEqual(s["Q2"], 3.0 * (2 / 3) + 7.0 * (1 / 3))
+
+    def test_missing_domain_renormalizes(self):
+        df = pd.DataFrame({
+            "quarter": ["Q1", "Q1", "Q1", "Q2", "Q2"],
+            "domain": ["a", "a", "b", "a", "a"],
+            "v": [1.0, 1.0, 5.0, 3.0, 3.0],
+        })
+        s = domain_standardized_series(df, "v", "quarter")
+        self.assertAlmostEqual(s["Q2"], 3.0)
 
 
 if __name__ == "__main__":

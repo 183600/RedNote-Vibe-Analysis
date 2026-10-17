@@ -9,9 +9,9 @@ import pandas as pd
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
-from stance_analysis import (CATEGORY_WORDS, decile_table, density_per_100,
-                             domain_standardized_series, length_bin_codes,
-                             standardize_weights, word_counts)
+from analysis_utils import (decile_table, domain_standardized_series,
+                            length_bin_codes, standardize_weights)
+from stance_analysis import CATEGORY_WORDS, density_per_100, word_counts
 
 
 class TestWordCounts(unittest.TestCase):

@@ -118,11 +118,13 @@ This script will:
 | `insights/symbol_*.png` + `symbol_results.{json,md}` | Figures and result files produced by `symbol_analysis.py` |
 | `near_duplicate_analysis.py` | Near-duplicate / template-reuse scan: char 5-gram rolling hashes + bottom-k (K=128) candidate generation + exact Jaccard verification, within/cross-subset shares, P(AI) gradient, quarterly trend, cluster structure, brute-force recall self-check |
 | `insights/near_duplicate.png` + `near_duplicate_results.{json,md}` | Figure and result files produced by `near_duplicate_analysis.py` |
+| `family_transfer_analysis.py` | 6-way family-style classifier transfer: 5-fold CV separability, wild high-P(AI) family composition (Wilson CI, half-year evolution, χ²), family-level engagement returns (month×domain FE + cluster-bootstrap CIs) |
+| `insights/family_transfer.png`、`insights/family_transfer_engagement.png` + `family_transfer_results.{json,md}` | Figures and result files produced by `family_transfer_analysis.py` |
 | `run_fork_pipeline.py` | Runner for the 12-step deep-dive suite (`--list` / `--from N` / `--only SCRIPT`) |
 | `pipeline_common.py` | Shared step-runner behind `run_paper_pipeline.py` / `run_fork_pipeline.py` (step selection, CLI, sequential execution) |
 | `*.py` (other) | Exploratory fork analyses: word frequency, particles, topics, sentiment, time, domains, user clustering, … |
 | `output/` | Figures from the joint exploratory analysis |
-| `tests/` | Unit tests for `analysis_utils.py` (incl. calibration/threshold/within-cell helpers), framing helpers, the title/diversity/symbol/near-duplicate/engagement-driver/author-decomposition pure functions, and the shared pipeline runner (`python3 -m unittest discover -s tests`) |
+| `tests/` | Unit tests for `analysis_utils.py` (incl. calibration/threshold/within-cell helpers), framing helpers, the title/diversity/symbol/near-duplicate/engagement-driver/author-decomposition/family-transfer pure functions, and the shared pipeline runner (`python3 -m unittest discover -s tests`) |
 | `ci_gate.py` | CI quality gate (syntax + research-data integrity) |
 
 All analyses are deterministic (fixed random seeds) and can be re-run independently; the paper pipeline order is documented in [paper.md](paper.md), Appendix A.
@@ -305,6 +307,15 @@ Run the full pipeline in order with `python3 run_paper_pipeline.py` (or `--list`
 4. **季度趋势不显著**：J ≥ 0.7 占比从 2023Q1 的 5.13% 回落到 2024Q3 的 1.35%、2025Q2 回到 3.26%，整体无显著单调趋势（ρ=-0.297, p=0.405）。
 5. **簇结构**：J ≥ 0.7 连通分量 657 个（最大 26 篇，为 2024Q1 的三元锂电池安全科普改写群；另有 2025-03 手机发布文案 17 篇）。
 
+### 风格家族迁移：野外高 AI 味帖的构成与互动回报（`family_transfer_analysis.py`）
+
+把 AIGC 训练子集上训练的 6 路家族分类器（GPT/Gemini/DeepSeek/Claude/GLM/Qwen，37 个可解释特征）迁移到探索集，量化「野外的高 AI 味帖更接近哪个家族原型」以及「AI 味惩罚是否存在家族结构」。结果图在 `insights/family_transfer.png`、`insights/family_transfer_engagement.png`，数据在 `family_transfer_results.json` 与 `family_transfer_results.md`。分类器与 `paper_detector.py` 同协议（`StandardScaler` + 多项式逻辑回归、5 折分层 CV、同一随机种子），探索集为纯分布外打分：
+
+1. **家族风格可分**：5 折 CV 准确率 0.566、macro-F1 0.553（多数类基线 23.8%）；Gemini 最易识别（F1 0.757），GPT 与 GLM 互相混淆最多（GLM 15.7% 被判成 GPT、GPT 24.1% 被判成 GLM）——与 `family_lexicon_analysis.py` 的家族口癖差异互洽。
+2. **家族归因是「最近原型」而非来源**：分类器没有「人类」类别，低 P(AI) 帖会被强制归入最近原型（<0.4 带中 76% 落到 Claude/GLM 原型）；因此构成与互动分析限定在 P(AI)≥0.9 的高置信样本（n=16,066）。
+3. **野外构成与训练先验显著不同**：高 P(AI) 帖中 DeepSeek（30.4%）与 GLM（25.2%）风格合计过半，远高于训练集先验（22.0% / 10.9%），GPT（14.4%）与 Qwen（8.5%）则明显低配；半年度构成 χ²=71.5（p=1.0e-07），Gemini 风格份额从 2023H1 的 4.8% 升到 2025H1 的 11.6%（季度 ρ=+0.746，p=0.01），是唯一趋势显著的家族，其余家族在 31 个月内基本平稳。
+4. **互动惩罚存在家族结构**：控制月份×领域、正文长度、P(AI) 与标签数后（整群 bootstrap 300 次），Claude 与 Gemini 风格帖相对 GLM 的点赞偏效应为 +0.268 [+0.184, +0.361] 与 +0.216 [+0.113, +0.324]（约 1.9× / 1.6×），Qwen 风格点估计最低（收藏端显著为负 -0.092 [-0.179, -0.007]），GPT/DeepSeek 与 GLM 差异不显著；把高置信阈值换成 0.7/0.95 重跑，排序不变——互动惩罚的家族结构与像人度排名（Gemini 全系最不像人）不同，风格来源与阅读体验是互动层面的独立维度。
+
 ### 生成的可视化图表
 
 | 文件 | 描述 |
@@ -332,6 +343,8 @@ Run the full pipeline in order with `python3 run_paper_pipeline.py` (or `--list`
 | `insights/author_structure.png`、`author_within.png` | 作者层分解图（选择检查 ECDF、作者发文集中度、作者间梯度、斜率森林图、人内配对散点与 Δ 分布） |
 | `insights/symbol_hashtag.png`、`symbol_gradient.png`、`symbol_emoji.png` | 标签/表情生态图（标签结构、P(AI) 梯度与专属标签命中、emoji 与 [xxR] 偏好） |
 | `insights/near_duplicate.png` | 近重复/模板复用图（各子集最近邻相似度生存曲线、子集内近重复率、跨子集对矩阵、P(AI) 梯度、季度趋势、簇规模分布） |
+| `insights/family_transfer.png` | 家族迁移图（家族分类器混淆矩阵、分带归属构成、野外构成 vs 训练先验、半年度演化） |
+| `insights/family_transfer_engagement.png` | 家族互动回报图（单元内残差箱线图、点赞/收藏的家族偏效应森林图） |
 | `output/` | 领域、话题、互动等探索性图表合集 |
 | `paper_figs/` | 论文管线图表（检测器、漂移、互动、稳健性） |
 
@@ -362,9 +375,10 @@ Run the full pipeline in order with `python3 run_paper_pipeline.py` (or `--list`
 - `user_clustering.py` - 用户风格聚类（输出 `user_clustering_results.md`）
 - `symbol_analysis.py` - 标签/表情生态：结构普及率、AI 专属符号、P(AI) 梯度与季度扩散、标签×互动（输出 `insights/symbol_*.png`、`symbol_results.json/md`）
 - `near_duplicate_analysis.py` - 近重复/模板复用：字符 5-gram Jaccard 全量扫描（bottom-k 候选 + 精确校验）、跨子集模板迁移、P(AI) 梯度、季度与簇结构（输出 `insights/near_duplicate.png`、`near_duplicate_results.json/md`）
+- `family_transfer_analysis.py` - 家族风格迁移：6 路家族分类器（5 折 CV）迁移到探索集，高 P(AI) 帖的家族构成/半年度演化与互动回报的家族结构（月份×领域 FE + 整群 bootstrap，输出 `insights/family_transfer*.png`、`family_transfer_results.json/md`）
 - `quick_start.py` - BERT 基线训练
 
-深潜分析套件可一键顺序执行：`python3 run_fork_pipeline.py`（`--list` / `--from N` / `--only 脚本名`，编排 deep_dive / framing / title_style / diversity / detector_diagnostics / family_lexicon / engagement_structure / engagement_drivers / author_style / user_clustering / symbol / near_duplicate 共 12 步，输出统一落在 `insights/`）。两个管线运行器共用 `pipeline_common.py` 的步骤选择与顺序执行实现（含未知脚本名校验），其单元测试见 `tests/test_pipeline_common.py`。
+深潜分析套件可一键顺序执行：`python3 run_fork_pipeline.py`（`--list` / `--from N` / `--only 脚本名`，编排 deep_dive / framing / title_style / diversity / detector_diagnostics / family_lexicon / engagement_structure / engagement_drivers / author_style / user_clustering / symbol / near_duplicate / family_transfer 共 13 步，输出统一落在 `insights/`）。两个管线运行器共用 `pipeline_common.py` 的步骤选择与顺序执行实现（含未知脚本名校验），其单元测试见 `tests/test_pipeline_common.py`。
 
 所有脚本使用 `analysis_utils.py` 中的统一数据读取、中文字体与检测器打分工具（含概率校准 `reliability_bins` / `expected_calibration_error` / `prior_corrected_proba` 与阈值指标 `threshold_metrics`）；其单元测试见 `tests/`。
 

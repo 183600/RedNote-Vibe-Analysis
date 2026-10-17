@@ -155,6 +155,12 @@ def cluster_bootstrap_fe_ols(X_demeaned: np.ndarray, y_demeaned: np.ndarray,
 
     同一单元内的帖子一起被抽中/丢弃，避免把「同月同领域」的强相关观测
     当作独立样本而低估不确定性。
+
+    重采样只改变各单元被抽中的重复次数，故每次重抽的 OLS 等价于对原始
+    样本的加权最小二乘（权重=该单元的重复次数）。这里先按单元累计
+    X'X 与 X'y 充分统计量，每次重抽用「单元重抽次数 × 单元统计量」合成
+    正规方程再求解：与对重抽后展开矩阵做最小二乘是同一个估计量，但省去
+    每次重抽拼接 O(n) 行并做一次 SVD 的开销（n_boot 次 → 一次预计算）。
     """
     z = np.asarray(X_demeaned, dtype=float)
     y = np.asarray(y_demeaned, dtype=float)
@@ -162,13 +168,26 @@ def cluster_bootstrap_fe_ols(X_demeaned: np.ndarray, y_demeaned: np.ndarray,
     # 预分组一次（稳定排序，单元按编码升序、单元内按行号升序），等价于逐单元
     # flatnonzero 但避免了 O(单元数 × 样本数) 的布尔扫描。
     idx_by_cell = cell_groups(codes, 1)
+    n_cells = len(idx_by_cell)
+    n_feat = z.shape[1]
+    xtx_cell = np.empty((n_cells, n_feat, n_feat))
+    xty_cell = np.empty((n_cells, n_feat))
+    for c, rows in enumerate(idx_by_cell):
+        zc = z[rows]
+        xtx_cell[c] = zc.T @ zc
+        xty_cell[c] = zc.T @ y[rows]
+    xtx_flat = xtx_cell.reshape(n_cells, n_feat * n_feat)
     rng = np.random.default_rng(seed)
-    boots = np.empty((n_boot, z.shape[1]))
+    boots = np.empty((n_boot, n_feat))
     for b in range(n_boot):
-        pick = rng.integers(0, len(idx_by_cell), len(idx_by_cell))
-        rows = np.concatenate([idx_by_cell[i] for i in pick])
-        coef, *_ = np.linalg.lstsq(z[rows], y[rows], rcond=None)
-        boots[b] = coef
+        pick = rng.integers(0, n_cells, n_cells)
+        mult = np.bincount(pick, minlength=n_cells).astype(float)
+        lhs = (mult @ xtx_flat).reshape(n_feat, n_feat)
+        rhs = mult @ xty_cell
+        try:
+            boots[b] = np.linalg.solve(lhs, rhs)
+        except np.linalg.LinAlgError:
+            boots[b] = np.linalg.lstsq(lhs, rhs, rcond=None)[0]
     return boots
 
 

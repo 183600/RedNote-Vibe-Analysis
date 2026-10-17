@@ -78,19 +78,41 @@ def factorize_codes(codes) -> tuple[np.ndarray, int]:
     return out.astype(np.int64), len(uniques)
 
 
-def demean_group(values, codes, weights=None) -> np.ndarray:
-    """按组去均值；weights 非空时为加权均值（残差 = 值 - 组加权均值）。"""
+def group_denominators(codes, weights=None) -> np.ndarray:
+    """逐观测的组样本量/组权重和（值 - Σw·v / denom 中的 denom）。
+
+    同一组编码与权重下 denom 固定不变：demean_group 在迭代中被调用数百次，
+    预先算一次即可避免每轮重复 bincount；加权时 counts==0 的组记为 1.0，
+    与 `demean_group` 内 `np.where(counts > 0, counts, 1.0)` 完全一致。
+    """
+    codes = np.asarray(codes)
+    if weights is None:
+        counts = np.bincount(codes)
+        return counts[codes].astype(float)
+    w = np.asarray(weights, dtype=float)
+    counts = np.bincount(codes, weights=w)
+    safe = np.where(counts > 0, counts, 1.0)
+    return safe[codes]
+
+
+def demean_group(values, codes, weights=None, denom=None) -> np.ndarray:
+    """按组去均值；weights 非空时为加权均值（残差 = 值 - 组加权均值）。
+
+    `denom` 可传入 `group_denominators(codes, weights)` 的结果复用（同一
+    codes/weights 的迭代场景），取值与内部现算完全一致。
+    """
     arr = np.asarray(values, dtype=float)
     codes = np.asarray(codes)
     if weights is None:
         sums = np.bincount(codes, weights=arr)
-        counts = np.bincount(codes)
-        return arr - sums[codes] / counts[codes]
+        if denom is None:
+            denom = group_denominators(codes)
+        return arr - sums[codes] / denom
     w = np.asarray(weights, dtype=float)
     sums = np.bincount(codes, weights=arr * w)
-    counts = np.bincount(codes, weights=w)
-    safe = np.where(counts > 0, counts, 1.0)
-    return arr - sums[codes] / safe[codes]
+    if denom is None:
+        denom = group_denominators(codes, w)
+    return arr - sums[codes] / denom
 
 
 def demean_two_way(values, codes_a, codes_b, weights=None,
@@ -98,13 +120,16 @@ def demean_two_way(values, codes_a, codes_b, weights=None,
     """交替投影去均值（作者+月份固定效应的吸收）。
 
     对无权重情形，两个因素交替去均值收敛到联合最小二乘残差；带权重时
-    为加权去均值迭代（bootstrap 重抽后的加权拟合近似）。
+    为加权去均值迭代（bootstrap 重抽后的加权拟合近似）。两个因素的分母
+    只与编码/权重有关，预先算一次供全部迭代复用。
     """
     v = np.asarray(values, dtype=float)
+    den_a = group_denominators(codes_a, weights)
+    den_b = group_denominators(codes_b, weights)
     for _ in range(max_iter):
         prev = v.copy()
-        v = demean_group(v, codes_a, weights)
-        v = demean_group(v, codes_b, weights)
+        v = demean_group(v, codes_a, weights, denom=den_a)
+        v = demean_group(v, codes_b, weights, denom=den_b)
         if float(np.max(np.abs(v - prev))) < tol:
             break
     return v
@@ -194,16 +219,30 @@ def paired_style_deltas(ids, p_ai, log_likes,
     """逐作者 Δ = 高风格半组均值(log 点赞) - 低风格半组均值(log 点赞)。
 
     只保留两半都非空（p_ai < split 与 p_ai >= split 各至少一条）的作者。
+    用稳定排序 + 分组求和实现，与逐作者 pandas 分组的取值完全一致，但把
+    O(作者数) 次 DataFrame 布尔筛选/求均值降为几次 O(n) 的数组运算。
     """
-    frame = pd.DataFrame({"id": np.asarray(ids), "p": np.asarray(p_ai, float),
-                          "y": np.asarray(log_likes, float)})
-    deltas = []
-    for _, g in frame.groupby("id", sort=True):
-        lo = g.loc[g["p"] < split, "y"]
-        hi = g.loc[g["p"] >= split, "y"]
-        if len(lo) and len(hi):
-            deltas.append(float(hi.mean() - lo.mean()))
-    return np.asarray(deltas, dtype=float)
+    ids = np.asarray(ids)
+    p = np.asarray(p_ai, dtype=float)
+    y = np.asarray(log_likes, dtype=float)
+    if ids.size == 0:
+        return np.empty(0, dtype=float)
+    order = np.argsort(ids, kind="stable")
+    ids_s, p_s, y_s = ids[order], p[order], y[order]
+    change = np.empty(ids_s.shape, dtype=bool)
+    change[0] = True
+    if ids_s.size > 1:
+        change[1:] = ids_s[1:] != ids_s[:-1]
+    g = np.cumsum(change) - 1
+    n_groups = int(g[-1]) + 1
+    hi = p_s >= split
+    lo = ~hi
+    n_hi = np.bincount(g[hi], minlength=n_groups)
+    n_lo = np.bincount(g[lo], minlength=n_groups)
+    keep = (n_hi > 0) & (n_lo > 0)
+    sum_hi = np.bincount(g[hi], weights=y_s[hi], minlength=n_groups)
+    sum_lo = np.bincount(g[lo], weights=y_s[lo], minlength=n_groups)
+    return (sum_hi[keep] / n_hi[keep] - sum_lo[keep] / n_lo[keep]).astype(float)
 
 
 def top_author_shares(counts, indicator, frac: float = TOP_AUTHOR_FRAC) -> dict:
@@ -316,8 +355,10 @@ def cluster_bootstrap_slope(x, y, codes, n_boot: int = N_BOOT,
             continue
         cc, _ = factorize_codes(codes[m])
         if second_codes is None:
-            xr = demean_group(x[m], cc, w[m])
-            yr = demean_group(y[m], cc, w[m])
+            wm = w[m]
+            den = group_denominators(cc, wm)
+            xr = demean_group(x[m], cc, wm, denom=den)
+            yr = demean_group(y[m], cc, wm, denom=den)
         else:
             c2, _ = factorize_codes(np.asarray(second_codes)[m])
             xr = demean_two_way(x[m], cc, c2, w[m])
@@ -358,9 +399,11 @@ def scan_users(scores: pd.DataFrame) -> dict:
     uid: list = []
     meta: list = []
     mismatch = 0
+    content_len = scores["content_len"].to_numpy()
+    n_scores = content_len.size
     for i, rec in enumerate(iter_jsonl(EXPLORING_PATH)):
         body = clean_body(content_of(rec))
-        if i >= len(scores) or len(body) != int(scores["content_len"].iloc[i]):
+        if i >= n_scores or len(body) != int(content_len[i]):
             mismatch += 1
         lk, cl, cm = engagement_of(rec)
         user = rec.get("user_id") or ""

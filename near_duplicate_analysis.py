@@ -123,7 +123,8 @@ def jaccard_sorted(a: np.ndarray, b: np.ndarray) -> float:
     if la > lb:
         a, b, la, lb = b, a, lb, la
     pos = np.searchsorted(a, b)
-    np.clip(pos, 0, la - 1, out=pos)
+    # searchsorted 结果天然 >= 0，只需上界截断（np.minimum 比 np.clip 少一趟下界比较）
+    np.minimum(pos, la - 1, out=pos)
     inter = int(np.count_nonzero(a[pos] == b))
     return inter / (la + lb - inter)
 
@@ -147,10 +148,11 @@ def candidate_pair_keys(sketches: np.ndarray, n_docs: int,
         return np.empty(0, dtype=np.int64), np.empty(0, dtype=np.int64)
     # C 顺序展平：flat_idx = doc * K + 槽位，故 doc = flat_idx // K，
     # 与 np.repeat(arange(n_docs), K)[idx] 完全一致但省下 13M 元素的临时数组。
-    docs = (idx // sketches.shape[1]).astype(np.int64)
+    docs = idx // sketches.shape[1]
     hv = flat[idx]
     order = np.argsort(hv, kind="stable")
-    docs, hv = docs[order], hv[order]
+    docs = docs[order]
+    hv.sort()  # 与 hv = hv[order] 等价，但原地排序省一份 gather 临时数组
     starts = np.concatenate(([0], np.flatnonzero(hv[1:] != hv[:-1]) + 1))
     ends = np.concatenate((starts[1:], [hv.size]))
     df = ends - starts
@@ -159,13 +161,17 @@ def candidate_pair_keys(sketches: np.ndarray, n_docs: int,
         return np.empty(0, dtype=np.int64), np.empty(0, dtype=np.int64)
     tri = {int(m): np.triu_indices(int(m), 1)
            for m in np.unique(df[keep])}
-    parts = []
+    total = int(sum(int(df[g]) * (int(df[g]) - 1) // 2 for g in keep))
+    keys_arr = np.empty(total, dtype=np.int64)
+    pos = 0
     for g in keep.tolist():
         start, end = int(starts[g]), int(ends[g])
         grp = docs[start:end]
         tri_i, tri_j = tri[end - start]
-        parts.append(grp[tri_i] * n_docs + grp[tri_j])
-    keys_arr = np.concatenate(parts)
+        nxt = pos + tri_i.size
+        np.multiply(grp[tri_i], n_docs, out=keys_arr[pos:nxt])
+        keys_arr[pos:nxt] += grp[tri_j]
+        pos = nxt
     return np.unique(keys_arr, return_counts=True)
 
 
@@ -586,7 +592,7 @@ def recall_check(sets: list[np.ndarray], pairs, n_sample: int = RECALL_SAMPLE,
         if h.size < MIN_SHINGLES:
             continue
         pos = np.searchsorted(uniq_h, h)
-        np.clip(pos, 0, uniq_h.size - 1, out=pos)
+        np.minimum(pos, uniq_h.size - 1, out=pos)
         match = uniq_h[pos] == h
         if not match.any():
             continue

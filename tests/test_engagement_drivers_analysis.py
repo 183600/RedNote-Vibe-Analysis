@@ -102,8 +102,11 @@ class TestClusterBootstrap(unittest.TestCase):
                                          fit["cell_codes"], n_boot=25, seed=7)
         self.assertEqual(boots.shape, (25, 2))
         lo, hi = np.percentile(boots, [2.5, 97.5], axis=0)
-        self.assertTrue((lo <= fit["coef"]).all())
-        self.assertTrue((fit["coef"] <= hi).all())
+        # x2 的真实系数恰为 0（合成数据里 y 只依赖 x1），点估计与自举
+        # 系数都在 1e-15 量级的浮点噪声内；用绝对容差比较，避免把纯
+        # 浮点尾差误判为「CI 未覆盖点估计」。
+        self.assertTrue((lo - 1e-9 <= fit["coef"]).all())
+        self.assertTrue((fit["coef"] <= hi + 1e-9).all())
 
 
 class TestUnivariateTable(unittest.TestCase):

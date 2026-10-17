@@ -408,7 +408,54 @@ def count_jsonl_lines(path: str) -> int:
     return n
 
 
-def _stream_sample(factory, sample: int | None, seed: int, count=None):
+def iter_jsonl_sparse(path: str, wanted) -> Iterator[tuple[int, dict]]:
+    """只解析并产出索引在 `wanted` 中的记录（(索引, 记录) 对）。
+
+    行/空行规则与 `iter_jsonl` 完全一致；未被抽中的行不调用 `json.loads`，
+    数据文件每行均为合法 JSON 时结果与整份解析后按索引取子集完全相同。
+    """
+    if not wanted:
+        return
+    remaining = len(wanted)
+    with open(path, encoding="utf-8") as f:
+        i = -1
+        for line in f:
+            if not line or line.isspace():
+                continue
+            i += 1
+            if i not in wanted:
+                continue
+            yield i, json.loads(line)
+            remaining -= 1
+            if remaining == 0:
+                break
+
+
+def iter_jsonl_relaxed_sparse(path: str, wanted) -> Iterator[tuple[int, dict]]:
+    """`iter_jsonl_sparse` 的容错版本（跳过无法解析的行，口径同 relaxed）。"""
+    if not wanted:
+        return
+    remaining = len(wanted)
+    with open(path, encoding="utf-8") as f:
+        i = -1
+        for line in f:
+            if not line or line.isspace():
+                continue
+            i += 1
+            if i not in wanted:
+                continue
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            yield i, rec
+            remaining -= 1
+            if remaining == 0:
+                break
+
+
+def _stream_sample(factory, sample: int | None, seed: int, count=None,
+                   sparse_factory=None):
     """两遍流式抽样，结果与 `random.Random(seed).sample(list(items), sample)` 完全一致。
 
     第一遍只计数（O(1) 内存），第二遍仅解析被抽中的记录。索引抽样使用
@@ -416,6 +463,9 @@ def _stream_sample(factory, sample: int | None, seed: int, count=None):
     传入 `count`（返回记录数的无参函数）时用它替代第一遍迭代——调用方须
     保证计数口径与 `factory` 产出的条目一一对应（如 `count_jsonl_lines`
     对应 `iter_jsonl`），否则会改变抽样索引。
+    传入 `sparse_factory(wanted) -> Iterator[(索引, 记录)]` 时，第二遍只
+    解析被抽中的行（未抽中的行不调用 `json.loads`）；仅在数据文件每行都能
+    按 `factory` 的口径产出记录时，其结果与逐条解析后取子集完全一致。
     """
     n = 0
     if sample is None:
@@ -430,12 +480,15 @@ def _stream_sample(factory, sample: int | None, seed: int, count=None):
         return list(factory()), n
     idx = random.Random(seed).sample(range(n), sample)
     wanted = set(idx)
-    picked: dict[int, dict] = {}
-    for i, item in enumerate(factory()):
-        if i in wanted:
-            picked[i] = item
-            if len(picked) == len(wanted):
-                break
+    if sparse_factory is not None:
+        picked = dict(sparse_factory(wanted))
+    else:
+        picked = {}
+        for i, item in enumerate(factory()):
+            if i in wanted:
+                picked[i] = item
+                if len(picked) == len(wanted):
+                    break
     return [picked[i] for i in idx], n
 
 
@@ -727,16 +780,20 @@ def topk_coverage(counts, k: int) -> float:
 def load_posts(path: str, with_title: bool = True, sample: int | None = None,
                seed: int = 42) -> list[str]:
     """读取一个 JSONL 数据集为文本列表；可复现地随机抽样（流式，仅解析抽中记录）。"""
-    recs, _ = _stream_sample(lambda: iter_jsonl(path), sample, seed,
-                             count=lambda: count_jsonl_lines(path))
+    recs, _ = _stream_sample(
+        lambda: iter_jsonl(path), sample, seed,
+        count=lambda: count_jsonl_lines(path),
+        sparse_factory=lambda wanted: iter_jsonl_sparse(path, wanted))
     return [post_text(rec, with_title) for rec in recs]
 
 
 def load_records(path: str, sample: int | None = None,
                  seed: int = 42) -> list[dict]:
     """读取一个 JSONL 数据集为记录列表；可复现地随机抽样（同 load_posts 的抽样口径）。"""
-    return _stream_sample(lambda: iter_jsonl(path), sample, seed,
-                          count=lambda: count_jsonl_lines(path))[0]
+    return _stream_sample(
+        lambda: iter_jsonl(path), sample, seed,
+        count=lambda: count_jsonl_lines(path),
+        sparse_factory=lambda wanted: iter_jsonl_sparse(path, wanted))[0]
 
 
 def load_records_with_total(path: str, sample: int | None = None,
@@ -751,13 +808,17 @@ def load_records_with_total(path: str, sample: int | None = None,
     默认的 `iter_jsonl_relaxed` 只会在行无法解析时少产出一条记录，而本仓库
     的研究数据文件每行都是合法 JSON（无坏行），因此计数可以直接走
     `count_jsonl_lines` 的无解析扫描（与 `load_posts`/`load_records` 同一
-    口径），把两遍全量 JSON 解析减为一遍。传入自定义 `iterator`（如
-    `iter_jsonl_codecs`，其切行语义不同）时仍按迭代器逐条计数。
+    口径），第二遍也只解析被抽中的行，把两遍全量 JSON 解析减为按行扫描 +
+    解析 sample 条记录。传入自定义 `iterator`（如 `iter_jsonl_codecs`，
+    其切行/丢弃碎片的口径不同、解析成功条数与行数并不一一对应）时仍按
+    迭代器逐条计数、逐条解析。
     """
-    count = None
+    count = sparse = None
     if iterator is iter_jsonl_relaxed:
         count = lambda: count_jsonl_lines(path)
-    return _stream_sample(lambda: iterator(path), sample, seed, count=count)
+        sparse = lambda wanted: iter_jsonl_relaxed_sparse(path, wanted)
+    return _stream_sample(lambda: iterator(path), sample, seed, count=count,
+                          sparse_factory=sparse)
 
 
 def to_int(v, default: int = 0) -> int:

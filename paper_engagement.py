@@ -24,7 +24,9 @@ setup_chinese_fonts()
 
 
 def main():
-    df = pd.read_csv(BASE + "paper_exploring_scores.csv.gz")
+    df = pd.read_csv(BASE + "paper_exploring_scores.csv.gz",
+                     usecols=["month", "domain", "likes", "collections",
+                              "comments", "p_ai"])
     df["month"] = df["month"].astype(str)
     df = df[df["month"] >= "202301"].copy()
     df["log_likes"] = np.log10(1 + df["likes"])

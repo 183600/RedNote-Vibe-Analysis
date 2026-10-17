@@ -261,14 +261,22 @@ def load_particle_data(files, particles):
                 if not text or text_len == 0:
                     ratios_flat.extend([0.0] * k)
                 else:
-                    cached = text_cache.get(text)
-                    if cached is None:
-                        cached = array.array(
-                            "d",
-                            (text.count(p) / text_len for p in stored_particles),
+                    # 缓存存「首次出现的行号」而不是整段 ratio 数组：重复文本
+                    # 命中时从 ratios_flat 拷贝该行，省掉每个唯一文本一份
+                    # float64 副本（探索集约 6 万个唯一文本 → 省约 30MB）。
+                    cached_row = text_cache.get(text)
+                    if cached_row is None:
+                        text_cache[text] = len(text_lens)
+                        ratios_flat.extend(
+                            array.array(
+                                "d",
+                                (text.count(p) / text_len
+                                 for p in stored_particles),
+                            )
                         )
-                        text_cache[text] = cached
-                    ratios_flat.extend(cached)
+                    else:
+                        start = cached_row * k
+                        ratios_flat.extend(ratios_flat[start:start + k])
 
                 text_lens.append(text_len)
                 dom = item.get("domain", "")

@@ -682,41 +682,46 @@ def plot_sentence_features(results, output_dir):
     print("Saved: " + os.path.join(output_dir, "sentence_features.png"))
 
 
-def analyze_keyword_cooccurrence(grouped, word_counters):
+def compute_keyword_cooccurrence(ds_grouped, ds_counters):
+    """计算单个数据集的域内关键词共现；顺带弹出 `_tokens` 即时释放。
+
+    必须在对应数据集加载完成后立即调用（top words 由该数据集的词频计数
+    决定）：弹掉逐帖令牌串后，后续分析阶段不再长期驻留这份大对象。
+    """
+    out = {}
+    for domain in DOMAINS:
+        domain_items = ds_grouped[domain]
+        if not domain_items or len(domain_items) < 10:
+            continue
+
+        top_words = [w for w, c in ds_counters[domain][:30]]
+        top_set = set(top_words)
+
+        co_word_counts = defaultdict(Counter)
+        for item in domain_items:
+            cached = item.pop("_tokens", "")
+            words = set(cached.split(_TOKSEP)) if cached else set()
+            hits = words & top_set
+            for w in hits:
+                co_word_counts[w].update(hits - {w})
+
+        strong_pairs = []
+        for w1, counter in co_word_counts.items():
+            for w2, count in counter.most_common(3):
+                if count >= 5:
+                    strong_pairs.append((w1, w2, count))
+
+        out[domain] = {
+            "top_words": top_words[:10],
+            "strong_pairs": strong_pairs[:10],
+        }
+    return out
+
+
+def analyze_keyword_cooccurrence(cooccurrence):
     print("\n" + "=" * 80)
     print("5. KEYWORD CO-OCCURRENCE ANALYSIS")
     print("=" * 80)
-
-    cooccurrence = {}
-    for ds_name, ds_grouped in grouped.items():
-        cooccurrence[ds_name] = {}
-        for domain in DOMAINS:
-            domain_items = ds_grouped[domain]
-            if not domain_items or len(domain_items) < 10:
-                continue
-
-            top_words = [w for w, c in word_counters[ds_name][domain][:30]]
-            top_set = set(top_words)
-
-            co_word_counts = defaultdict(Counter)
-            for item in domain_items:
-                # pop：令牌串仅此处需要，用完即释放，避免后续阶段继续驻留
-                cached = item.pop("_tokens", "")
-                words = set(cached.split(_TOKSEP)) if cached else set()
-                hits = words & top_set
-                for w in hits:
-                    co_word_counts[w].update(hits - {w})
-
-            strong_pairs = []
-            for w1, counter in co_word_counts.items():
-                for w2, count in counter.most_common(3):
-                    if count >= 5:
-                        strong_pairs.append((w1, w2, count))
-
-            cooccurrence[ds_name][domain] = {
-                "top_words": top_words[:10],
-                "strong_pairs": strong_pairs[:10],
-            }
 
     for domain in DOMAINS:
         print("")
@@ -1264,6 +1269,7 @@ def main():
     grouped = {}
     word_counters = {}
     token_totals = {}
+    cooccurrence = {}
     for ds_name, filepath in [
         ("Human", "training_set_human.jsonl"),
         ("AIGC", "training_set_aigc.jsonl"),
@@ -1271,6 +1277,10 @@ def main():
     ]:
         (grouped[ds_name], word_counters[ds_name],
          token_totals[ds_name], n_records) = load_grouped_with_counts(filepath)
+        # 数据集一加载完就算共现并释放逐帖 `_tokens`：等价于原先在第 5 个
+        # 分析里弹出令牌串，但不必让三个数据集的令牌串同时驻留到那时。
+        cooccurrence[ds_name] = compute_keyword_cooccurrence(
+            grouped[ds_name], word_counters[ds_name])
         print("  " + ds_name + ": " + str(n_records) + " records")
 
     print("\n" + "=" * 80)
@@ -1289,7 +1299,7 @@ def main():
     sentence_results = analyze_sentence_features(grouped)
     plot_sentence_features(sentence_results, output_dir)
 
-    analyze_keyword_cooccurrence(grouped, word_counters)
+    analyze_keyword_cooccurrence(cooccurrence)
 
     consistency_results = analyze_content_consistency(grouped)
     plot_content_consistency(consistency_results, output_dir)

@@ -408,7 +408,8 @@ def plot_engagement(resid_table: dict, cliffs: dict, fe_likes: dict,
 def main() -> None:
     aigc = load_features("aigc")
     exploring = load_features("exploring")
-    scores = pd.read_csv(BASE + "paper_exploring_scores.csv.gz")
+    scores = pd.read_csv(BASE + "paper_exploring_scores.csv.gz",
+                         usecols=["content_len", "p_ai"])
     if len(scores) != len(exploring) or not np.array_equal(
             scores["content_len"].to_numpy(), exploring["content_len"].to_numpy()):
         raise SystemExit("paper_features_exploring 与 paper_exploring_scores "

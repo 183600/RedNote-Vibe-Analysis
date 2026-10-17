@@ -183,6 +183,8 @@ EMOJI_PATTERN = re.compile(
 RE_TOPIC_TAG = re.compile(r"#\w+\[话题\]")
 RE_HASHTAG = re.compile(r"#(\w+)")
 RE_DIGITS = re.compile(r"\d+")
+RE_SENTENCE_SPLIT = re.compile(r"[。！？.!?]")
+RE_HHMM = re.compile(r"(\d{2}):(\d{2})")
 # 连续的非 \w 字符（标点/空白）直接作为分隔符切词，等价于原先「标点→空格再 split」，
 # 但省去一次全量替换与一次 split 的结果组装。
 RE_NONWORD = re.compile(r"[^\w]+")
@@ -563,7 +565,7 @@ def analyze_sentence_features(grouped):
     print("=" * 80)
 
     def count_sentences(text):
-        sentences = re.split(r"[。！？.!?]", str(text))
+        sentences = RE_SENTENCE_SPLIT.split(str(text))
         return len([s for s in sentences if s.strip()])
 
     results = {}
@@ -698,7 +700,8 @@ def analyze_keyword_cooccurrence(grouped, word_counters):
 
             co_word_counts = defaultdict(Counter)
             for item in domain_items:
-                cached = item["_tokens"]
+                # pop：令牌串仅此处需要，用完即释放，避免后续阶段继续驻留
+                cached = item.pop("_tokens", "")
                 words = set(cached.split(_TOKSEP)) if cached else set()
                 hits = words & top_set
                 for w in hits:
@@ -749,14 +752,15 @@ def analyze_content_consistency(grouped):
                 len(item.get("note_title", "") or "") for item in domain_items
             ]
 
+            # 每个统计量只算一次（旧实现里 np.mean 最多被重复算 3 次）
+            len_mean = np.mean(lengths)
+            len_std = np.std(lengths)
+            title_mean = np.mean(title_lens)
+            title_std = np.std(title_lens)
             results[ds_name][domain] = {
-                "length_cv": np.std(lengths) / np.mean(lengths)
-                if np.mean(lengths) > 0
-                else 0,
-                "title_cv": np.std(title_lens) / np.mean(title_lens)
-                if np.mean(title_lens) > 0
-                else 0,
-                "length_std": np.std(lengths),
+                "length_cv": len_std / len_mean if len_mean > 0 else 0,
+                "title_cv": title_std / title_mean if title_mean > 0 else 0,
+                "length_std": len_std,
                 "sample_size": len(domain_items),
             }
 
@@ -966,7 +970,7 @@ def extract_hour(item):
     time_str = str(item.get("local_time", "") or "").strip()
     if len(time_str) == 10 and time_str.isdigit() and time_str[:2] in ("19", "20"):
         return int(time_str[8:10])
-    match = re.search(r"(\d{2}):(\d{2})", time_str)
+    match = RE_HHMM.search(time_str)
     if match:
         return int(match.group(1))
     ts = item.get("time")
@@ -1062,7 +1066,7 @@ def analyze_hashtag_usage(grouped):
     def extract_hashtags(text):
         if not text:
             return []
-        hashtags = re.findall(r"#(\w+)", str(text))
+        hashtags = RE_HASHTAG.findall(str(text))
         return [h for h in hashtags if "话题" not in h]
 
     results = {}

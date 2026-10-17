@@ -112,6 +112,7 @@ def main():
 
     # ---- 数值输出 ----
     model_counts = aigc["model"].value_counts().to_dict()  # 一次分组计数
+    aigc_overall = aigc[feats].mean()  # 一次按列求均值
     out = {
         "model_distance_rank": [
             {"model": m, "family": FAMILY_NAME.get(fam_of[m], fam_of[m]),
@@ -123,7 +124,7 @@ def main():
         "model_feature_z": {m: {f: round(float(zdf.loc[m, f]), 2) for f in feats}
                             for m in order},
         "human_baseline_mean": {f: round(float(h_mean[f]), 3) for f in feats},
-        "aigc_overall_mean": {f: round(float(aigc[f].mean()), 3) for f in feats},
+        "aigc_overall_mean": {f: round(float(aigc_overall[f]), 3) for f in feats},
     }
     with open(BASE + "paper_model_results.json", "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, indent=1)

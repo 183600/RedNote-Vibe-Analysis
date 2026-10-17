@@ -24,6 +24,7 @@
 from __future__ import annotations
 
 import os
+from collections import Counter
 
 # 单线程 BLAS：小矩阵下多线程同步开销大于收益
 os.environ.setdefault("OMP_NUM_THREADS", "1")
@@ -46,7 +47,7 @@ from analysis_utils import (BASE, INSIGHTS, init_plot_style, save_fig,
                             save_json, engagement_of, iter_jsonl,
                             linear_score, load_detector_model, parse_local_time,
                             title_of, detector_score, content_of, compact_text,
-                            prefix_ngram_counts, shannon_entropy, topk_coverage,
+                            shannon_entropy, topk_coverage,
                             bootstrap_median_ci, cliffs_delta, wilson_ci)
 from framing_analysis import dedup_indices, specific_templates
 
@@ -128,7 +129,7 @@ def scan_titles(path: str) -> tuple[list[str], list, np.ndarray]:
 
     主流程只用标题的紧凑前缀（TITLE_PREFIX_LEN 字符）做 n-gram 计数，
     因此扫描时就地截断前缀，避免长期驻留全量标题字符串；过短标题存 None
-    （下游 compact_text 会把 None 视为空串，自动跳过）。
+    （下游计数时直接跳过 None）。
     """
     prefixes, ids, metas = [], [], []
     for rec in iter_jsonl(path):
@@ -272,15 +273,16 @@ def main() -> None:
     col_idx = {c: i for i, c in enumerate(feats_all)}
     X_full = df[feats_all].fillna(0).values
     X_of = lambda cols: X_full[:, [col_idx[c] for c in cols]]
+    X_title = X_of(title_feats)
     ablation = {
         "body_only": cv_auc(df, body_feats, cv, X_of(body_feats)),
-        "title_only": cv_auc(df, title_feats, cv, X_of(title_feats)),
+        "title_only": cv_auc(df, title_feats, cv, X_title),
         "full": cv_auc(df, feats_all, cv, X_full),
     }
     print("消融 AUC:", {k: round(v["auc"], 4) for k, v in ablation.items()})
 
     # ---- 2. 标题全量模型与三个子集打分 ----
-    model = fit_title_model(df, title_feats, X_of(title_feats))
+    model = fit_title_model(df, title_feats, X_title)
     coefs = pd.Series(model["coef"], index=title_feats).sort_values()
     exploring = pd.read_csv(BASE + "paper_features_exploring.csv.gz")
 
@@ -363,12 +365,14 @@ def main() -> None:
             eng[f"{name}_{label}"] = {"rho": float(rho), "p": float(p)}
 
     cell_rhos, cell_ns = [], []
-    for (_, _), g in exp.groupby(["month", "domain"]):
-        if len(g) >= MIN_CELL_N:
-            r, _ = spearmanr(g["title_p_ai"], g["log_likes"])
+    title_np = exp["title_p_ai"].to_numpy()
+    log_likes_np = exp["log_likes"].to_numpy()
+    for (_, _), idx in exp.groupby(["month", "domain"]).indices.items():
+        if len(idx) >= MIN_CELL_N:
+            r, _ = spearmanr(title_np[idx], log_likes_np[idx])
             if not np.isnan(r):
                 cell_rhos.append(r)
-                cell_ns.append(len(g))
+                cell_ns.append(len(idx))
     cell_rhos = np.asarray(cell_rhos)
     cell_ns = np.asarray(cell_ns)
     w_mean = float(np.average(cell_rhos, weights=cell_ns))
@@ -391,8 +395,10 @@ def main() -> None:
     for name, path in SCORES_INPUTS.items():
         titles, ids, metas = scan_titles(path)
         keep = dedup_indices(ids, metas) if name != "aigc" else range(len(titles))
-        counts[name] = prefix_ngram_counts((titles[i] for i in keep),
-                                           TITLE_PREFIX_LEN)
+        # 标题在 scan_titles 中已紧凑化并截断到 TITLE_PREFIX_LEN，直接计数即可
+        # （旧路径的 compact_text 对它们是不变的恒等变换）。
+        counts[name] = Counter(title for i in keep
+                               if (title := titles[i]) is not None)
         print(f"{name}: {len(titles)} 条标题，去重后 {len(keep)}")
     tpl_stats = {}
     for k, c in counts.items():

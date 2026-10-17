@@ -159,11 +159,16 @@ def main(with_scores: bool = True):
                  ("uniq_char_ratio", "独特字比率"), ("content_len", "正文长度")]
     fig, axes = plt.subplots(2, 3, figsize=(14, 7))
     quarters = sorted(expl_q["quarter"].unique())
+    # 季度均值与两套基线一次性按列算好（与逐特征单独算完全等价）。
+    feat_cols = [f for f, _ in feat_show]
+    qm_all = expl_q.groupby("quarter")[feat_cols].mean().reindex(quarters)
+    h_bases = human[feat_cols].mean()
+    a_bases = aigc_feats[feat_cols].mean()
     for ax, (f, lab) in zip(axes.flat, feat_show):
-        qm = expl_q.groupby("quarter")[f].mean().reindex(quarters)
+        qm = qm_all[f]
         ax.plot(range(len(quarters)), qm.values, "o-", color="#C44E52", lw=1.4)
-        h_base = human[f].mean()
-        a_base = aigc_feats[f].mean()
+        h_base = float(h_bases[f])
+        a_base = float(a_bases[f])
         ax.axhline(h_base, color="#4C72B0", ls="--", lw=1.1, label="人类基线")
         ax.axhline(a_base, color="#937860", ls=":", lw=1.3, label="AIGC基线")
         ax.set_xticks(range(len(quarters)))

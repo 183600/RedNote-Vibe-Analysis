@@ -230,7 +230,7 @@ def extract_emojis(text):
     emojis = EMOJI_PATTERN.findall(str(text))
     result = []
     for e in emojis:
-        result.extend(list(e))
+        result.extend(e)
     return result
 
 
@@ -252,12 +252,12 @@ def analyze_unique_words(freqs, files, word_sets=None):
             keys_j = word_sets[j]
             sorted1 = heapq.nsmallest(
                 30,
-                ((w, freq1[w]) for w in keys_i - keys_j),
+                ((w, freq1[w]) for w in keys_i if w not in keys_j),
                 key=lambda x: (-x[1], x[0]),
             )
             sorted2 = heapq.nsmallest(
                 30,
-                ((w, freq2[w]) for w in keys_j - keys_i),
+                ((w, freq2[w]) for w in keys_j if w not in keys_i),
                 key=lambda x: (-x[1], x[0]),
             )
             key1 = f1 + "_unique_in_" + f2

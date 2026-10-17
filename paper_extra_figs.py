@@ -106,12 +106,16 @@ groups = {
     "新帖/低互动层": (late["p_ai"], fresh_post),
     "热帖层": (hot_pre, hot_post),
 }
+# 柱状图直接复用上面已算好的 stats（mean / >0.9 占比各只算一次）
+pre_stats = [stats["late"], stats["hot_pre"]]
+post_stats = [stats["fresh_post"], stats["hot_post"]]
 fig, axes = plt.subplots(1, 2, figsize=(11, 4.2))
 for i, metric in enumerate(["mean", "hi"]):
     ax = axes[i]
     labels = list(groups)
-    pre = [g[0].mean() if metric == "mean" else (g[0] > 0.9).mean() * 100 for g in groups.values()]
-    post = [g[1].mean() if metric == "mean" else (g[1] > 0.9).mean() * 100 for g in groups.values()]
+    scale = 100.0 if metric == "hi" else 1.0
+    pre = [s[i] * scale for s in pre_stats]
+    post = [s[i] * scale for s in post_stats]
     x = np.arange(len(labels))
     ax.bar(x - 0.18, pre, 0.36, label="前LLM (≤2022.11)", color="#4C72B0")
     ax.bar(x + 0.18, post, 0.36, label="后LLM (2023.01–2025.06)", color="#C44E52")

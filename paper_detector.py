@@ -43,13 +43,12 @@ _FAM_CTX: dict = {}
 
 def _family_fit(fam: str) -> tuple[str, float]:
     """单个家族 vs 人类的 5 折 CV AUC（口径与串行主循环完全一致）。"""
-    aigc = _FAM_CTX["aigc"]
-    feats = _FAM_CTX["feats"]
     pipe = _FAM_CTX["pipe"]
     cv = _FAM_CTX["cv"]
     X_human = _FAM_CTX["X_human"]
-    g = aigc[aigc["model_family"] == fam]
-    Xs = np.vstack([X_human, g[feats].fillna(0).values])
+    # 家族行号与 X_aigc 都是 fork 前算好的只读切片，避免每个 worker 重复
+    # 做整表布尔筛选 + fillna。
+    Xs = np.vstack([X_human, _FAM_CTX["X_aigc"][_FAM_CTX["fam_rows"][fam]]])
     ys = np.zeros(Xs.shape[0], dtype=int)
     ys[X_human.shape[0]:] = 1
     ps = cross_val_predict(pipe, Xs, ys, cv=cv, method="predict_proba")[:, 1]
@@ -125,7 +124,9 @@ def main():
     # ---- 3. 各家族检测难度（相互独立，多进程并行，结果与串行一致）----
     fam_auc = {}
     families = sorted(aigc["model_family"].unique())
-    _FAM_CTX.update(aigc=aigc, feats=feats, pipe=pipe, cv=cv,
+    _FAM_CTX.update(X_aigc=X[len(human):],
+                    fam_rows=aigc.groupby("model_family").indices,
+                    pipe=pipe, cv=cv,
                     X_human=X[:len(human)])  # df 前段即人类集，直接切片复用
     pool = make_pool()
     try:

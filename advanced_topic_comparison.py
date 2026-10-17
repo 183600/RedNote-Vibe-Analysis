@@ -304,7 +304,7 @@ def analyze_domain_stats(items):
     exclaim = sum(t.count("!") + t.count("！") for t in texts)
     question = sum(t.count("?") + t.count("？") for t in texts)
 
-    first_person = sum(1 for t in texts if "我" in t or "我们" in t)
+    first_person = sum(1 for t in texts if "我" in t)
 
     has_numbers = sum(1 for t in texts if RE_HAS_DIGIT.search(t))
 

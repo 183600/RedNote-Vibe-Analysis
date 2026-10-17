@@ -123,16 +123,19 @@ def scan(path: str, content_len_ref: np.ndarray | None = None) -> dict:
             month = month_pool.get(ym)
             if month is None:
                 month = month_pool[ym] = f"{dt.year:04d}{dt.month:02d}"
-        row = (n_raw, extract_hashtags(content),
-               clean_emojis(EMOJI.findall(body)), XHS_EMO.findall(body),
-               month, meta, len(body), lk, cl, cm)
         nid = rec.get("note_id")
         if nid is None:
-            rows.append(row)
+            rows.append((n_raw, extract_hashtags(content),
+                         clean_emojis(EMOJI.findall(body)), XHS_EMO.findall(body),
+                         month, meta, len(body), lk, cl, cm))
         else:
             cur = best.get(nid)
+            # 仅当该 note_id 首次出现或被更完整的记录覆盖时才做标签/表情抽取，
+            # 探索集一半以上原始记录会被去重丢弃，这里省掉它们的无用抽取。
             if cur is None or meta > cur[5]:
-                best[nid] = row
+                best[nid] = (n_raw, extract_hashtags(content),
+                             clean_emojis(EMOJI.findall(body)), XHS_EMO.findall(body),
+                             month, meta, len(body), lk, cl, cm)
         n_raw += 1
     rows.extend(best.values())
     rows.sort(key=lambda r: r[0])
@@ -251,12 +254,16 @@ def decile_gradient(p: np.ndarray, note_tags: list[list[str]],
                     body_lens: np.ndarray, *,
                     tag_sets: list[set] | None = None,
                     tags_n: np.ndarray | None = None,
-                    decile: np.ndarray | None = None) -> dict:
+                    decile: np.ndarray | None = None,
+                    hit_a: np.ndarray | None = None,
+                    hit_h: np.ndarray | None = None,
+                    hit_top: np.ndarray | None = None) -> dict:
     """P(AI) 十分位上的标签用量与专属标签命中率梯度。
 
     `body_lens` 为清洗后正文长度：用于报告各十分位「纯标签/空正文」帖占比，
     并给出剔除这类帖子后的稳健性检验（它们会同时拉低正文长度与 P(AI)）。
-    `tag_sets` / `tags_n` / `decile` 可传入调用方已算好的等价中间量，避免重复。
+    `tag_sets` / `tags_n` / `decile` / `hit_*` 可传入调用方已算好的等价中间量，
+    避免重复。
     """
     n = p.size
     if decile is None:
@@ -267,9 +274,12 @@ def decile_gradient(p: np.ndarray, note_tags: list[list[str]],
         tags_n = np.asarray([len(t) for t in note_tags], dtype=np.int64)
     if tag_sets is None:
         tag_sets = [set(t) for t in note_tags]
-    hit_a = np.asarray([bool(s & ai_set) for s in tag_sets])
-    hit_h = np.asarray([bool(s & h_set) for s in tag_sets])
-    hit_top = np.asarray([bool(s & top_set) for s in tag_sets])
+    if hit_a is None:
+        hit_a = np.asarray([bool(s & ai_set) for s in tag_sets])
+    if hit_h is None:
+        hit_h = np.asarray([bool(s & h_set) for s in tag_sets])
+    if hit_top is None:
+        hit_top = np.asarray([bool(s & top_set) for s in tag_sets])
     short = body_lens < MIN_BODY_LEN
     rows = []
     for d in range(N_DECILES):
@@ -825,22 +835,25 @@ def main() -> None:
     decile_e = np.empty(p_e.size, dtype=np.int64)
     decile_e[order_e] = np.minimum(
         np.arange(p_e.size) * N_DECILES // p_e.size, N_DECILES - 1)
-    grad = decile_gradient(p_e, note_tags["exploring"], ai_tag_set, h_tag_set,
-                           top_tag_set, body_lens_e, tag_sets=tag_sets_e,
-                           tags_n=tags_n_e, decile=decile_e)
+    # 命中数组只算一次：梯度与季度扩散共用（避免重复的集合求交）。
     hit_a = np.asarray([bool(s & ai_tag_set) for s in tag_sets_e])
     hit_top = np.asarray([bool(s & top_tag_set) for s in tag_sets_e])
     hit_h = np.asarray([bool(s & h_tag_set) for s in tag_sets_e])
+    grad = decile_gradient(p_e, note_tags["exploring"], ai_tag_set, h_tag_set,
+                           top_tag_set, body_lens_e, tag_sets=tag_sets_e,
+                           tags_n=tags_n_e, decile=decile_e,
+                           hit_a=hit_a, hit_h=hit_h, hit_top=hit_top)
     diff = quarterly_diffusion(m_e, hit_a, hit_top, hit_h)
     h_tags = note_tags["human"]
     h_months = note_months["human"]
-    clean = [ts for ts, m in zip(h_tags, h_months) if m and m <= "202206"]
+    h_tag_sets = [set(ts) for ts in h_tags]
+    clean_sets = [s for s, m in zip(h_tag_sets, h_months) if m and m <= "202206"]
     baselines = {
         "human_all_aigc_tag": round(
-            sum(1 for ts in h_tags if set(ts) & ai_tag_set) / max(n_h, 1), 4),
+            sum(1 for s in h_tag_sets if s & ai_tag_set) / max(n_h, 1), 4),
         "human_clean_aigc_tag": round(
-            sum(1 for ts in clean if set(ts) & ai_tag_set)
-            / max(len(clean), 1), 4),
+            sum(1 for s in clean_sets if s & ai_tag_set)
+            / max(len(clean_sets), 1), 4),
         "aigc_aigc_tag": round(
             sum(1 for ts in note_tags["aigc"] if set(ts) & ai_tag_set)
             / max(n_a, 1), 4),

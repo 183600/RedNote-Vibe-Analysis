@@ -36,12 +36,14 @@ def main():
     print(f"总体 Spearman(p_ai, likes): rho={rho_all:.3f} p={p_all:.2e} n={len(df)}")
 
     cell_rhos, cell_ns = [], []
-    for (m, d), g in df.groupby(["month", "domain"]):
-        if len(g) >= 100:
-            r, _ = spearmanr(g["p_ai"], g["log_likes"])
+    p_ai_np = df["p_ai"].to_numpy()
+    log_likes_np = df["log_likes"].to_numpy()
+    for (m, d), idx in df.groupby(["month", "domain"]).indices.items():
+        if len(idx) >= 100:
+            r, _ = spearmanr(p_ai_np[idx], log_likes_np[idx])
             if not np.isnan(r):
                 cell_rhos.append(r)
-                cell_ns.append(len(g))
+                cell_ns.append(len(idx))
     cell_rhos = np.array(cell_rhos)
     cell_ns = np.array(cell_ns)
     w_mean = float(np.average(cell_rhos, weights=cell_ns))
@@ -97,10 +99,10 @@ def main():
 
     # ---- 3. 按月 rho 时间线（互动惩罚是否随时间变化）----
     mr = []
-    for m, g in df.groupby("month"):
-        if len(g) >= 300:
-            r, _ = spearmanr(g["p_ai"], g["log_likes"])
-            mr.append((m, r, len(g)))
+    for m, idx in df.groupby("month").indices.items():
+        if len(idx) >= 300:
+            r, _ = spearmanr(p_ai_np[idx], log_likes_np[idx])
+            mr.append((m, r, len(idx)))
     fig, ax = plt.subplots(figsize=(9, 4))
     ax.bar([m for m, _, _ in mr], [r for _, r, _ in mr], color="#4C72B0")
     ax.axhline(0, color="k", lw=0.8)

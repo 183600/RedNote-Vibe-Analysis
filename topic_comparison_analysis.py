@@ -15,15 +15,15 @@ import os
 RE_TOPIC_TAG = re.compile(r"#\w+\[话题\]")
 RE_HASHTAG = re.compile(r"#(\w+)")
 RE_DIGITS = re.compile(r"\d+")
-# 连续的非 \w 字符（标点/空白）作为分隔符直接切词，等价于原先「标点→空格再 split」。
-RE_NONWORD = re.compile(r"[^\w]+")
-RE_BRACKET = re.compile(r"\[.*?\]")
+# 直接匹配长度 >1 的 \w 串，等价于原先「非 \w 切分后过滤长度 >1」。
+RE_WORD2 = re.compile(r"\w{2,}")
+# 方括号表情：负向前瞻剔除 [话题]，等价于原「匹配全部方括号再排除」。
+RE_FACE_EMOJI = re.compile(r"\[(?!话题\])[^\]\n]*\]")
 
 
 def extract_face_emojis(text):
     """Extract emoji count excluding [话题] topic tags"""
-    all_emojis = RE_BRACKET.findall(text)
-    return len([e for e in all_emojis if e != "[话题]"])
+    return len(RE_FACE_EMOJI.findall(text))
 
 
 init_plot_style()
@@ -211,7 +211,7 @@ def clean_tokenize(text):
     text = RE_TOPIC_TAG.sub(" ", text)
     text = RE_HASHTAG.sub(r"\1", text)
     text = RE_DIGITS.sub("", text)
-    return [w for w in RE_NONWORD.split(text) if len(w) > 1 and w not in STOPWORDS]
+    return [w for w in RE_WORD2.findall(text) if w not in STOPWORDS]
 
 
 def load_aggregates(filepath):

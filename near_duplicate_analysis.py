@@ -550,9 +550,8 @@ def recall_check(sets: list[np.ndarray], pairs, n_sample: int = RECALL_SAMPLE,
     """采样暴力基准，估计候选生成对真实 J ≥ min_j 对的召回率。
 
     随机抽 n_sample 篇文档，对全库逐篇计算与其共享的 5-gram 数（对样本
-    shingle 建反向索引 + one-hot 位掩码累加），得到所有涉及样本文档的真实
-    J ≥ min_j 对；再与主流程验证出的对求交集。位掩码把单篇文档的匹配
-    向量化，全量扫描只增加一次 O(全库 shingle 数) 的 numpy 搜索，代价可控。
+    shingle 建反向索引，单篇文档的共享数由一次 bincount 得到），得到所有
+    涉及样本文档的真实 J ≥ min_j 对；再与主流程验证出的对求交集。
     """
     n_docs = len(sets)
     if n_docs == 0:
@@ -568,12 +567,18 @@ def recall_check(sets: list[np.ndarray], pairs, n_sample: int = RECALL_SAMPLE,
         return {"n_sample": 0, "true_pairs": 0, "found_pairs": 0,
                 "recall_pct": 0.0}
 
-    offs = np.cumsum(np.concatenate(([0], sizes)))
-    uniq_h, inverse = np.unique(np.concatenate([sets[i] for i in nonempty]),
-                                return_inverse=True)
-    mask = np.zeros((uniq_h.size, nonempty.size), dtype=np.uint8)
-    for s_pos in range(nonempty.size):
-        mask[inverse[offs[s_pos]:offs[s_pos + 1]], s_pos] = 1
+    all_h = np.concatenate([sets[i] for i in nonempty])
+    uniq_h, inverse = np.unique(all_h, return_inverse=True)
+    # 反向索引（CSR 风格）：uniq_h 的每个唯一 shingle -> 含它的样本文档 id 列表。
+    # 与旧的 (uniq_h 数 × 样本数) one-hot 位掩码逐位等价，但内存从 O(K×样本)
+    # 降到 O(全部样本 shingle 数)（~430K vs ~430MB），且单篇文档的共享数
+    # 由一次 bincount 直接得到。
+    doc_pos = np.repeat(np.arange(nonempty.size, dtype=np.int64), sizes)
+    order = np.argsort(inverse, kind="stable")
+    inv_sorted = inverse[order]
+    sample_ids = doc_pos[order]
+    starts = np.flatnonzero(np.r_[True, inv_sorted[1:] != inv_sorted[:-1]])
+    counts = np.diff(np.r_[starts, all_h.size]).astype(np.int64)
 
     true_pairs: set[tuple[int, int]] = set()
     for d in range(n_docs):
@@ -585,7 +590,12 @@ def recall_check(sets: list[np.ndarray], pairs, n_sample: int = RECALL_SAMPLE,
         match = uniq_h[pos] == h
         if not match.any():
             continue
-        shared = mask[pos[match]].sum(axis=0)
+        sel = pos[match]
+        rs, rl = starts[sel], counts[sel]
+        total = int(rl.sum())
+        idx = np.repeat(rs, rl) + (np.arange(total)
+                                   - np.repeat(np.cumsum(rl) - rl, rl))
+        shared = np.bincount(sample_ids[idx], minlength=nonempty.size)
         nz = np.flatnonzero(shared)
         if nz.size == 0:
             continue

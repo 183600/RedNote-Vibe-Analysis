@@ -78,7 +78,7 @@ def main():
             ts = get_time_features(item)
             if ts:
                 ts_list.append(ts)
-        valid_ts = [t for t in ts_list if t]
+        valid_ts = ts_list  # ts_list 仅在真值时才追加，无需再复制过滤
         dates = None
         if valid_ts:
             ts_arr = np.array(valid_ts)

@@ -109,6 +109,7 @@ RE_DIGITS = re.compile(r"\d+")
 RE_NONWORD = re.compile(r"[^\w]+")
 # 小红书表情占位符（如 [笑哭R]）不是词，先删掉再分词（口径同 word_freq_analysis）。
 RE_XHS_EMO = re.compile(r"\[[^\[\]]{1,8}R\]")
+RE_HASHTAG = re.compile(r"#(\w+)")
 
 
 def tokenize(text):
@@ -142,13 +143,13 @@ def stream_stats(filepath):
             freq_desc.update(tokenize(text))
             if text:
                 lengths_desc.append(len(text))
-                hashtags_desc.update(re.findall(r"#(\w+)", text))
+                hashtags_desc.update(RE_HASHTAG.findall(text))
 
             title = item.get("note_title", "")
             freq_title.update(tokenize(title))
             if title:
                 lengths_title.append(len(title))
-                hashtags_title.update(re.findall(r"#(\w+)", title))
+                hashtags_title.update(RE_HASHTAG.findall(title))
 
             domain = item.get("domain", "unknown")
             if domain:
@@ -211,12 +212,12 @@ def analyze_unique_words(freqs, files, word_sets=None):
 
             unique1_top = heapq.nsmallest(
                 20,
-                ((w, freq1[w]) for w in keys1 - keys2),
+                ((w, freq1[w]) for w in keys1 if w not in keys2),
                 key=lambda x: (-x[1], x[0]),
             )
             unique2_top = heapq.nsmallest(
                 20,
-                ((w, freq2[w]) for w in keys2 - keys1),
+                ((w, freq2[w]) for w in keys2 if w not in keys1),
                 key=lambda x: (-x[1], x[0]),
             )
 

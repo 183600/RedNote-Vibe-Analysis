@@ -29,7 +29,7 @@ def main():
         for line in f:
             if not line or line.isspace():
                 continue
-            if '"user_id": "' in line and '"user_id": ""' in line:
+            if '"user_id": ""' in line:
                 continue
             item = json.loads(line)
             user_id = item.get("user_id")

@@ -71,11 +71,16 @@ def part_length_matched(human: pd.DataFrame, aigc: pd.DataFrame) -> dict:
                         labels=LENGTH_LABELS)
     aigc_bins = pd.cut(aigc["content_len"], LENGTH_EDGES, right=False,
                        labels=LENGTH_LABELS)
+    # 一次分组拿行号，避免每个长度区间都对整表做一次布尔扫描/拷贝。
+    h_groups = human.groupby(human_bins, observed=True).indices
+    a_groups = aigc.groupby(aigc_bins, observed=True).indices
     for lab in LENGTH_LABELS:
-        gh = human[human_bins == lab]
-        ga = aigc[aigc_bins == lab]
-        if len(gh) < MIN_BIN_N or len(ga) < MIN_BIN_N:
+        h_idx = h_groups.get(lab, [])
+        a_idx = a_groups.get(lab, [])
+        if len(h_idx) < MIN_BIN_N or len(a_idx) < MIN_BIN_N:
             continue
+        gh = human.iloc[h_idx]
+        ga = aigc.iloc[a_idx]
         rows[lab] = {"n_human": int(len(gh)), "n_aigc": int(len(ga)), "features": {}}
         for f in CONSISTENCY_FEATS:
             delta, p = cliffs_delta(ga[f].values, gh[f].values)

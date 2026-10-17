@@ -144,21 +144,28 @@ def scan_sentence_stats(path: str) -> dict:
             rec = json.loads(line)
             offsets.append(start)
             body = clean_body(content_of(rec))
-            m = doc_metrics(body)
             likes, colls, comms = engagement_of(rec)
             dt = parse_local_time(rec.get("local_time"))
             has_meta = bool(rec.get("user_id")) and rec.get("domain") not in (None, "", "未知")
-            m["score"] = (int(has_meta) + int(bool(likes)) + int(bool(colls))
-                          + int(bool(comms)) + int(dt is not None) + int(bool(body)))
+            score = (int(has_meta) + int(bool(likes)) + int(bool(colls))
+                     + int(bool(comms)) + int(dt is not None) + int(bool(body)))
             nid = rec.get("note_id")
             if nid is None:
+                m = doc_metrics(body)
+                m["score"] = score
                 metrics.append(m)
                 continue
             slot = slot_of.get(nid)
+            # 只有确定要保留这份记录时才做句法指标（探索集约一半的重复
+            # 记录会在去重时被丢弃，省掉它们的 split/burstiness 计算）。
             if slot is None:
+                m = doc_metrics(body)
+                m["score"] = score
                 slot_of[nid] = len(metrics)
                 metrics.append(m)
-            elif m["score"] > metrics[slot]["score"]:
+            elif score > metrics[slot]["score"]:
+                m = doc_metrics(body)
+                m["score"] = score
                 metrics[slot] = m
     sent_lens = [l for m in metrics for l in m["sent_lens"]]
     bursts = [m["burst"] for m in metrics if m["burst"] is not None]

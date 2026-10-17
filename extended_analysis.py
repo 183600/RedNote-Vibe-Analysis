@@ -38,6 +38,9 @@ EMOJI_PATTERN = re.compile(
 
 EMOJI_FACE = re.compile("[\U0001f600-\U0001f64f]+", flags=re.UNICODE)
 
+# 标点计数一次编译，避免每条文本重复查 re 缓存
+RE_PUNCT = re.compile(r"([!?。.,，:：！？\"\'\-\(\)【】{}《》])")
+
 POSITIVE_WORDS = set(
     [
         "喜欢",
@@ -162,7 +165,7 @@ def extract_punctuation(text):
         return {}
     # ASCII 与对应全角标点都要统计：中文语料里 ！？：远超其半角形式，
     # 只统计半角会让热图低估主要句末标点（与各脚本统一的「半角+全角」口径一致）。
-    punctuation = re.findall(r"([!?。.,，:：！？\"\'\-\(\)【】{}《》])", str(text))
+    punctuation = RE_PUNCT.findall(str(text))
     return Counter(punctuation)
 
 
@@ -301,17 +304,16 @@ def plot_time_distribution(timestamps, files, output_dir):
     fig, axes = plt.subplots(1, 3, figsize=(18, 6))
 
     for idx, (f, ts_list) in enumerate(zip(files, timestamps)):
-        valid_ts = [t for t in ts_list if t]
-        if not valid_ts:
+        # ts_list 只在解析成功时追加，天然全为有效值
+        if not ts_list:
             continue
 
-        ts_arr = np.array(valid_ts)
+        ts_arr = np.array(ts_list)
         if ts_arr.max() > 1e10:
             ts_arr = ts_arr / 1000
-        dates = [pd.Timestamp(ts, unit="s") for ts in ts_arr]
 
         try:
-            idx_dt = DatetimeIndex(dates)
+            idx_dt = pd.to_datetime(ts_arr, unit="s")
             axes[idx].hist(idx_dt.hour, bins=24, alpha=0.7, color="steelblue")
             axes[idx].set_title(f.replace(".jsonl", "") + " Post Hour Distribution")
             axes[idx].set_xlabel("Hour of Day")
@@ -385,14 +387,12 @@ def main():
 
     print("\n=== 1. Emoji Analysis ===")
     emoji_counts = []
-    emoji_face_counts = []
     punc_counts = []
     sentiments = []
     timestamps = []
 
     for f in files:
         all_emojis = []
-        face_counts = []
         all_punct = defaultdict(int)
         pos_scores = []
         neg_scores = []
@@ -402,10 +402,6 @@ def main():
         for item in texts_data[f]:
             text = item.get("desc", "") or item.get("note_content", "")
             all_emojis.extend(extract_emojis(text))
-
-            face, count = extract_emoji_face(text)
-            if face:
-                face_counts.append(count)
 
             for p, c in extract_punctuation(text).items():
                 all_punct[p] += c
@@ -420,7 +416,6 @@ def main():
                 ts_list.append(ts)
 
         emoji_counts.append(Counter(all_emojis))
-        emoji_face_counts.append(face_counts)
         punc_counts.append(dict(all_punct))
         sentiments.append(list(zip(pos_scores, neg_scores, net_scores)))
         timestamps.append(ts_list)

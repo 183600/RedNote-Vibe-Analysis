@@ -159,7 +159,9 @@ def cluster_bootstrap_fe_ols(X_demeaned: np.ndarray, y_demeaned: np.ndarray,
     z = np.asarray(X_demeaned, dtype=float)
     y = np.asarray(y_demeaned, dtype=float)
     codes = np.asarray(cell_codes)
-    idx_by_cell = [np.flatnonzero(codes == c) for c in range(int(codes.max()) + 1)]
+    # 预分组一次（稳定排序，单元按编码升序、单元内按行号升序），等价于逐单元
+    # flatnonzero 但避免了 O(单元数 × 样本数) 的布尔扫描。
+    idx_by_cell = cell_groups(codes, 1)
     rng = np.random.default_rng(seed)
     boots = np.empty((n_boot, z.shape[1]))
     for b in range(n_boot):

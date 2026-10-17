@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import heapq
 import json
 import re
 import numpy as np
@@ -159,7 +160,9 @@ def compute_correlation(freq1, freq2, top_n=100):
         )
     else:
         combined = dict((w, freq1.get(w, 0) + freq2.get(w, 0)) for w in common)
-    all_words = sorted(combined.keys(), key=lambda w: (-combined[w], w))[:top_n]
+    # 只取 Top-N，避免对全词表做完整排序（nsmallest 的键唯一，结果与排序后切片一致）
+    all_words = heapq.nsmallest(
+        top_n, combined, key=lambda w: (-combined[w], w))
 
     vec1 = np.array([freq1.get(w, 0) for w in all_words], dtype=float)
     vec2 = np.array([freq2.get(w, 0) for w in all_words], dtype=float)

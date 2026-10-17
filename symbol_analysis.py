@@ -489,7 +489,7 @@ def plot_hashtag(structs: dict, specific: dict, ai_ness: dict) -> None:
     diffs = ([t["rate_diff_ppt"] for t in tops]
              + [-t["rate_diff_ppt"] for t in bots])
     colors = [PALETTE["aigc"]] * len(tops) + [PALETTE["human"]] * len(bots)
-    ypos = np.arange(len(labels))
+    ypos = np.arange(len(labels))[::-1]
     ax.barh(ypos, diffs, color=colors, alpha=0.85, height=0.68)
     for y, d in zip(ypos, diffs):
         off = 4 if d >= 0 else -4
@@ -511,11 +511,11 @@ def plot_hashtag(structs: dict, specific: dict, ai_ness: dict) -> None:
     labels = [f"#{t['tag']}" for t in top8] + [f"#{t['tag']}" for t in bot8]
     vals = [t["mean_resid"] for t in top8] + [t["mean_resid"] for t in bot8]
     colors = [PALETTE["aigc"]] * len(top8) + [PALETTE["human"]] * len(bot8)
-    ypos = np.arange(len(labels))
+    ypos = np.arange(len(labels))[::-1]
     ax.barh(ypos, vals, color=colors, alpha=0.85, height=0.68)
     ax.axvline(0, color="#666666", lw=0.8)
     meta_top = {t["tag"]: t for t in top8 + bot8}
-    for y, (lab, v) in enumerate(zip(labels, vals)):
+    for y, lab, v in zip(ypos, labels, vals):
         t = meta_top[lab[1:]]
         off = 4 if v >= 0 else -4
         ax.annotate(f"P̄={t['mean_p']:.2f} n={t['n']:,}", (v, y),
@@ -688,7 +688,7 @@ def plot_emoji(structs: dict, grad_emoji: dict, emoji_diff: dict,
     labels = [t["word"] for t in tops]
     h_rate = [t["human_per1k"] for t in tops]
     a_rate = [t["aigc_per1k"] for t in tops]
-    ypos = np.arange(len(labels))
+    ypos = np.arange(len(labels))[::-1]
     for y, h, a in zip(ypos, h_rate, a_rate):
         ax.plot([h, a], [y, y], color="#CCCCCC", lw=1.1, zorder=1)
     ax.scatter(h_rate, ypos, s=40, color=PALETTE["human"], zorder=3,
@@ -708,7 +708,7 @@ def plot_emoji(structs: dict, grad_emoji: dict, emoji_diff: dict,
     labels = [t["word"] for t in tops]
     h_rate = [t["human_per1k"] for t in tops]
     a_rate = [t["aigc_per1k"] for t in tops]
-    ypos = np.arange(len(labels))
+    ypos = np.arange(len(labels))[::-1]
     for y, h, a in zip(ypos, h_rate, a_rate):
         ax.plot([h, a], [y, y], color="#CCCCCC", lw=1.1, zorder=1)
     ax.scatter(h_rate, ypos, s=40, color=PALETTE["human"], zorder=3,

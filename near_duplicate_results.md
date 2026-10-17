@@ -24,8 +24,8 @@
 | human-human | 730 | 475 | 1.20% |
 | aigc-human | 33 | 9 | 0.10% |
 | aigc-aigc | 0 | 0 | 0.00% |
-| aigc-exploring | 5 | 1 | 0.09% |
-| exploring-human | 1 | 0 | 0.03% |
+| aigc-exploring | 5 | 1 | 0.02% |
+| exploring-human | 1 | 0 | 0.00% |
 | exploring-exploring | 2383 | 1496 | 3.49% |
 
 生成集与人类集之间存在 33 对 J ≥ 0.5、9 对 J ≥ 0.7 的近重复对，且多为「同模板换日期/换词」的改写（见 JSON examples），提示生成集的构造可能以真实人类帖为底本；生成集与探索集之间只有少量（5 对 ≥ 0.5）。

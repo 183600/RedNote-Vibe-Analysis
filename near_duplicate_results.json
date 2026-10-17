@@ -79,7 +79,7 @@
    "aigc-human": {
     "pairs_0.5": 33,
     "pairs_0.7": 9,
-    "doc_share_0.5_pct": 0.105
+    "doc_share_0.5_pct": 0.095
    },
    "aigc-aigc": {
     "pairs_0.5": 0,
@@ -89,12 +89,12 @@
    "aigc-exploring": {
     "pairs_0.5": 5,
     "pairs_0.7": 1,
-    "doc_share_0.5_pct": 0.085
+    "doc_share_0.5_pct": 0.019
    },
    "exploring-human": {
     "pairs_0.5": 1,
     "pairs_0.7": 0,
-    "doc_share_0.5_pct": 0.031
+    "doc_share_0.5_pct": 0.002
    },
    "exploring-exploring": {
     "pairs_0.5": 2383,

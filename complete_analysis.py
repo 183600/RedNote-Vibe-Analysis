@@ -167,11 +167,6 @@ def compute_correlation(freq1, freq2, top_n=100):
     vec1 = np.array([freq1.get(w, 0) for w in all_words], dtype=float)
     vec2 = np.array([freq2.get(w, 0) for w in all_words], dtype=float)
 
-    norm1 = np.linalg.norm(vec1) + 1e-10
-    norm2 = np.linalg.norm(vec2) + 1e-10
-    vec1 = vec1 / norm1
-    vec2 = vec2 / norm2
-
     corr = float(np.corrcoef(vec1, vec2)[0, 1])
     return corr, all_words, vec1, vec2
 

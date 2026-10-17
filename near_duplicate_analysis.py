@@ -684,7 +684,7 @@ def collect_stats(docs: list, dataset: np.ndarray, within_j: np.ndarray,
     pair_counts: dict[str, dict[str, int]] = {
         str(t): {k: 0 for k in combos} for t in THRESHOLDS}
     touched: dict = {n: set() for n in ds_names}          # 子集内近重复文档
-    cross_touched: dict = {n: set() for n in ds_names}    # 跨子集近重复文档
+    cross_touched: dict = {}    # 跨子集近重复文档（按组合分别去重）
     for j, a, b in pairs:
         na, nb = sorted((str(dataset[a]), str(dataset[b])))
         key = f"{na}-{nb}"
@@ -695,8 +695,7 @@ def collect_stats(docs: list, dataset: np.ndarray, within_j: np.ndarray,
             if na == nb:
                 touched[na].update((a, b))
             else:
-                cross_touched[na].add(a)
-                cross_touched[nb].add(b)
+                cross_touched.setdefault(key, set()).update((a, b))
     for key, rec in combos.items():
         na, nb = key.split("-")
         rec["pairs_0.5"] = pair_counts["0.5"][key]
@@ -705,8 +704,8 @@ def collect_stats(docs: list, dataset: np.ndarray, within_j: np.ndarray,
             share = len(touched[na]) / within[na]["n_docs"] * 100
         else:
             denom = within[na]["n_docs"] + within[nb]["n_docs"]
-            share = ((len(cross_touched[na]) + len(cross_touched[nb]))
-                     / denom * 100) if denom else 0.0
+            share = (len(cross_touched.get(key, ())) / denom * 100
+                     if denom else 0.0)
         rec["doc_share_0.5_pct"] = round(share, 3)
 
     # 探索集 p_ai 梯度

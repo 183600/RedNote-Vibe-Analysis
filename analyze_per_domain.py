@@ -47,7 +47,7 @@ def main():
                 words = _CJK_RUN_RE.findall(text)
             
                 domain_total[domain] += 1
-                for w in words:
+                for w in set(words):
                     if w in _CROSS_TOPIC_WORDS:
                         domain_word_freq[domain][w] += 1
             except:

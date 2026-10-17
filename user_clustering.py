@@ -6,6 +6,7 @@
 """
 import json
 import random
+import re
 from collections import defaultdict, Counter
 
 from analysis_utils import BASE, post_text
@@ -17,6 +18,11 @@ cross_topic_words = [
     u'记录吧就现在', u'我的日常', u'日常', u'捂脸', u'所以', u'大学生',
     u'汗颜', u'最后', u'总结', u'但是'
 ]
+
+# 按词长降序排列后做单一交替匹配：扫描时不重叠，且在同一位置优先取最长词，
+# 避免 "日常" 在 "我的日常" 内被重复计数。
+_CROSS_TOPIC_RE = re.compile(
+    "|".join(re.escape(w) for w in sorted(cross_topic_words, key=len, reverse=True)))
 
 def main():
     print("Loading...")
@@ -36,10 +42,8 @@ def main():
             if not user_id:
                 continue
             text = post_text(item)
-            for w in cross_topic_words:
-                c = text.count(w)
-                if c:
-                    note_by_user[user_id][w] += c
+            for w in _CROSS_TOPIC_RE.findall(text):
+                note_by_user[user_id][w] += 1
 
     print("Total users: " + str(len(note_by_user)))
 

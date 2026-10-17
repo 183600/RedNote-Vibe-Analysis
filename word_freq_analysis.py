@@ -153,13 +153,6 @@ def compute_correlation(freq1, freq2, top_n=100):
     vec1 = np.array([freq1.get(w, 0) for w in all_words], dtype=float)
     vec2 = np.array([freq2.get(w, 0) for w in all_words], dtype=float)
 
-    norm1 = np.linalg.norm(vec1) + 1e-10
-    norm2 = np.linalg.norm(vec2) + 1e-10
-    vec1 = vec1 / norm1
-    vec2 = vec2 / norm2
-
-    # 皮尔逊相关对正数线性缩放不变，归一化不影响结果；此处不能改用点积
-    # （单位向量的点积是余弦相似度，与「corr=」标注的皮尔逊口径不符）。
     corr = float(np.corrcoef(vec1, vec2)[0, 1])
     return corr, all_words, vec1, vec2
 

@@ -6,7 +6,7 @@ import math
 from collections import defaultdict, Counter
 import numpy as np
 
-from analysis_utils import BASE
+from analysis_utils import BASE, clean_body
 
 
 exclude = set([u"话题", u"时尚薯", u"生活薯", u"知识薯", u"美食薯", u"校园薯",
@@ -18,15 +18,11 @@ _CJK_RUN_RE = re.compile(r"[\u4e00-\u9fff]+")
 PATH = BASE + "exploring_set_fixed.jsonl"
 
 
-def _qualifying_words(text):
-    return [w for w in set(_CJK_RUN_RE.findall(text))
-            if len(w) >= 2 and w not in exclude]
-
-
 def _record_words(item):
-    text = item.get("note_title", "") + " " + (
-        item.get("desc") or item.get("note_content") or "")
-    return _qualifying_words(text)
+    text = clean_body(item.get("note_title", "") + " " + (
+        item.get("desc") or item.get("note_content") or ""))
+    return [w for w in _CJK_RUN_RE.findall(text)
+            if len(w) >= 2 and w not in exclude]
 
 
 def main():
@@ -45,7 +41,7 @@ def main():
                 words = _record_words(item)
                 if words:
                     user_word_total[user_id] += len(words)
-                    word_doc_freq.update(words)
+                    word_doc_freq.update(set(words))
             except:
                 pass
 

@@ -149,6 +149,8 @@ def candidate_pair_keys(sketches: np.ndarray, n_docs: int,
     排序缓冲）、分组元数据算完后立即释放哈希与下标数组；同尺寸的哈希组
     按大小分桶、用广播的三角索引一次向量化生成（避免 ~80 万次逐组
     Python 循环），单批 pair 数受 `_PAIR_BLOCK` 限制以控制临时内存。
+    分组元数据（`ends`/`df`/`starts`/`docs`）用完后立即 `del`，
+    使峰值内存集中在最终 `np.unique` 而非与其叠加。
     """
     flat = sketches.ravel()
     idx = np.flatnonzero(flat)
@@ -156,9 +158,11 @@ def candidate_pair_keys(sketches: np.ndarray, n_docs: int,
         return np.empty(0, dtype=np.int64), np.empty(0, dtype=np.int64)
     # C 顺序展平：flat_idx = doc * K + 槽位，故 doc = flat_idx // K，
     # 与 np.repeat(arange(n_docs), K)[idx] 完全一致但省下 13M 元素的临时数组。
-    docs = (idx // sketches.shape[1]).astype(np.int32)
+    # 先取 hv 再原地整除，避免多一份 idx // K 的 int64 临时数组。
     hv = flat[idx]
-    del idx
+    idx //= sketches.shape[1]
+    docs = idx.astype(np.int32)
+    del idx, flat
     order = np.argsort(hv)
     docs = docs[order]
     del order
@@ -170,9 +174,10 @@ def candidate_pair_keys(sketches: np.ndarray, n_docs: int,
     keep = np.flatnonzero((df >= 2) & (df <= cap))
     if keep.size == 0:
         return np.empty(0, dtype=np.int64), np.empty(0, dtype=np.int64)
-    tri = {int(m): np.triu_indices(int(m), 1)
-           for m in np.unique(df[keep])}
     sizes = df[keep].astype(np.int64)
+    tri = {int(m): np.triu_indices(int(m), 1)
+           for m in np.unique(sizes)}
+    del ends, df
     total = int((sizes * (sizes - 1) // 2).sum())
     keys_arr = np.empty(total, dtype=np.int64)
     nd = np.int64(n_docs)
@@ -197,6 +202,7 @@ def candidate_pair_keys(sketches: np.ndarray, n_docs: int,
             np.multiply(lo, nd, out=keys_arr[pos:nxt])
             keys_arr[pos:nxt] += np.maximum(a, b)
             pos = nxt
+    del starts, docs, keep, sizes, order_m, unique_m, m_counts, tri
     return np.unique(keys_arr, return_counts=True)
 
 

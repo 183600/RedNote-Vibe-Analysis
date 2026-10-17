@@ -185,13 +185,16 @@ def load_title_model() -> dict:
 
 def add_scores(df: pd.DataFrame, title_model: dict, detector_model: dict
                ) -> pd.DataFrame:
-    """按已保存参数给 DataFrame 打标题/正文得分（不重新训练）。"""
-    out = df.copy()
-    out["title_p_ai"] = linear_score(
-        out, title_model["features"], title_model["scaler_mean"],
+    """按已保存参数给 DataFrame 打标题/正文得分（不重新训练）。
+
+    就地写入两列并返回同一对象：调用方只使用返回值，省去整表 copy
+    （探索集 ~24 万行 × 数十列）。
+    """
+    df["title_p_ai"] = linear_score(
+        df, title_model["features"], title_model["scaler_mean"],
         title_model["scaler_scale"], title_model["coef"], title_model["intercept"])
-    out["body_p_ai"] = detector_score(out, detector_model, robust=True)
-    return out
+    df["body_p_ai"] = detector_score(df, detector_model, robust=True)
+    return df
 
 
 # --------------------------------------------------------------------------

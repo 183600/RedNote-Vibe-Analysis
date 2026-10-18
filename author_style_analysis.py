@@ -125,15 +125,55 @@ def demean_two_way(values, codes_a, codes_b, weights=None,
     对无权重情形，两个因素交替去均值收敛到联合最小二乘残差；带权重时
     为加权去均值迭代（bootstrap 重抽后的加权拟合近似）。两个因素的分母
     只与编码/权重有关，预先算一次供全部迭代复用。
+
+    热循环用预分配缓冲区做原地版本：每轮只更新一个输出数组、复用 3 块
+    工作缓冲区（与 `demean_group` 的逐轮「乘权重 → 分组求和 → 取回 →
+    除以分母 → 相减」逐一对应，浮点运算顺序与分配临时数组的实现完全
+    一致，结果逐位相同），省去每轮 6 次临时数组分配/释放。输入数组
+    只读，返回值始终是新数组。
     """
-    v = np.asarray(values, dtype=float)
+    codes_a = np.asarray(codes_a)
+    codes_b = np.asarray(codes_b)
     den_a = group_denominators(codes_a, weights)
     den_b = group_denominators(codes_b, weights)
+    v = np.array(values, dtype=float, copy=True)
+    n = v.size
+    buf = np.empty(n, dtype=float)
+    prev = np.empty(n, dtype=float)
+    diff = np.empty(n, dtype=float)
+    if weights is None:
+        for _ in range(max_iter):
+            np.copyto(prev, v)
+            s = np.bincount(codes_a, weights=v)
+            np.take(s, codes_a, out=buf)
+            buf /= den_a
+            v -= buf
+            s = np.bincount(codes_b, weights=v)
+            np.take(s, codes_b, out=buf)
+            buf /= den_b
+            v -= buf
+            np.subtract(v, prev, out=diff)
+            np.abs(diff, out=diff)
+            if float(diff.max()) < tol:
+                break
+        return v
+    w = np.asarray(weights, dtype=float)
+    vw = np.empty(n, dtype=float)
     for _ in range(max_iter):
-        prev = v.copy()
-        v = demean_group(v, codes_a, weights, denom=den_a)
-        v = demean_group(v, codes_b, weights, denom=den_b)
-        if float(np.max(np.abs(v - prev))) < tol:
+        np.copyto(prev, v)
+        np.multiply(v, w, out=vw)
+        s = np.bincount(codes_a, weights=vw)
+        np.take(s, codes_a, out=buf)
+        buf /= den_a
+        v -= buf
+        np.multiply(v, w, out=vw)
+        s = np.bincount(codes_b, weights=vw)
+        np.take(s, codes_b, out=buf)
+        buf /= den_b
+        v -= buf
+        np.subtract(v, prev, out=diff)
+        np.abs(diff, out=diff)
+        if float(diff.max()) < tol:
             break
     return v
 
@@ -353,11 +393,14 @@ def _cluster_boot_slopes_segment(payload) -> list[float]:
 
     先重放 RNG 到第 start 次重抽再计算本段，抽样序列与串行循环逐次一致
     （`default_rng(seed)` 每次循环恰好调用一次 `integers(0, k, k)`），
-    因此分段并行与串行结果逐位相同。`codes` 为已编码的 0..k-1 整数。
+    因此分段并行与串行结果逐位相同。`codes` 与 `second_codes` 均为已
+    编码的整数（后者可为 None；调用方在进入本函数前编码一次，避免每次
+    重抽重复做标签编码）。
     payload = (x, y, codes, second_codes, k, seed, start, end)。
     """
     x, y, codes, second_codes, k, seed, start, end = payload
     rng = np.random.default_rng(seed)
+    second = None if second_codes is None else np.asarray(second_codes)
     slopes: list[float] = []
     for i in range(end):
         samp = rng.integers(0, k, k)
@@ -368,14 +411,14 @@ def _cluster_boot_slopes_segment(payload) -> list[float]:
         m = w > 0
         if m.sum() < 2:
             continue
-        cc, _ = factorize_codes(codes[m])
-        if second_codes is None:
+        cc = codes[m]
+        if second is None:
             wm = w[m]
             den = group_denominators(cc, wm)
             xr = demean_group(x[m], cc, wm, denom=den)
             yr = demean_group(y[m], cc, wm, denom=den)
         else:
-            c2, _ = factorize_codes(np.asarray(second_codes)[m])
+            c2 = second[m]
             xr = demean_two_way(x[m], cc, c2, w[m])
             yr = demean_two_way(y[m], cc, c2, w[m])
         # 每组仅一条观测（去均值后全为浮点噪声）时跳过，避免把噪声当斜率
@@ -413,6 +456,7 @@ def cluster_bootstrap_slope(x, y, codes, n_boot: int = N_BOOT,
         c2, _ = factorize_codes(second_codes)
         point = ols_slope(demean_two_way(x, codes, c2),
                           demean_two_way(y, codes, c2))
+        second_codes = c2
     slopes: list[float] = []
     parallel = second_codes is not None and n_boot >= 64 and k >= 64
     pool = make_pool(4) if parallel else None

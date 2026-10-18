@@ -30,6 +30,7 @@ from __future__ import annotations
 import json
 import random
 import re
+from collections import Counter
 
 import jieba
 
@@ -230,17 +231,36 @@ def sample_lexical(path: str, pool=None, offsets=None) -> dict:
         bodies.append(clean_body(content_of(rec)))
     del recs, seen_ids  # 正文已提取，抽样记录与去重集合不再需要
 
+    # 每个保留的 token 至少含 1 个字（TOKEN_KEEP 要求），故正文长度不足
+    # MIN_TOKENS_MTLD 时 token 数必然不足，跳过其分词与统计不影响结果。
+    bodies = [b for b in bodies if len(b) >= MIN_TOKENS_MTLD]
+
     mtld_values: list[float] = []
     seen: set[str] = set()
     heap_tokens: list[int] = []
     heap_types: list[int] = []
     n_tokens = 0
     batch = 512
+    # 重复正文（同一文本多帖）分词结果相同，缓存其 token 列表复用；
+    # 仅缓存确实重复出现的正文，避免内存随抽样规模增长。
+    body_counts = Counter(bodies)
+    tok_cache: dict[str, list[str]] = {}
     for start in range(0, len(bodies), batch):
         chunk = bodies[start:start + batch]
-        tok_lists = (pool.map(tokenize, chunk) if pool is not None
-                     else [tokenize(t) for t in chunk])
-        for toks in tok_lists:
+        need: list[str] = []
+        need_index: dict[str, int] = {}
+        for b in chunk:
+            if b in tok_cache or b in need_index:
+                continue
+            need_index[b] = len(need)
+            need.append(b)
+        tok_lists = (pool.map(tokenize, need) if pool is not None
+                     else [tokenize(t) for t in need])
+        for b, i in need_index.items():
+            if body_counts[b] > 1:
+                tok_cache[b] = tok_lists[i]
+        for b in chunk:
+            toks = tok_cache[b] if b in tok_cache else tok_lists[need_index[b]]
             if len(toks) < MIN_TOKENS_MTLD:
                 continue
             mtld_values.append(mtld(toks))
@@ -340,6 +360,15 @@ def plot_lexical(mtld_stats: dict, heaps: dict, mtld_dist: dict) -> None:
 # --------------------------------------------------------------------------
 # 主流程
 # --------------------------------------------------------------------------
+def _boot_median_ci(payload) -> dict:
+    """`bootstrap_median_ci` 的进程池任务包装（供分段并行调用）。
+
+    bootstrap 只依赖固定种子的 numpy RNG，在任何进程里结果都逐位相同。
+    """
+    values, n_boot, seed = payload
+    return bootstrap_median_ci(values, n_boot=n_boot, seed=seed)
+
+
 def main() -> None:
     init_plot_style()
 
@@ -356,21 +385,39 @@ def main() -> None:
                  else [scan_sentence_stats(DATASET_PATHS[n]) for n in names])
         for name, s in zip(names, scans):
             stats[name] = s
-            bursts[name] = bootstrap_median_ci(s["burst"], n_boot=BOOT, seed=BOOT_SEED)
-            print(f"{name}: {s['n_reps']} 篇（去重后），burstiness 中位数 "
+        # burst 的中位数 CI 三个子集互不依赖：扫描结束后进程池空闲，
+        # 复用同一进程池并行；固定种子使结果与串行逐位一致。
+        boot_results = (pool.map(_boot_median_ci,
+                                 [(stats[n]["burst"], BOOT, BOOT_SEED)
+                                  for n in names])
+                        if pool is not None
+                        else [bootstrap_median_ci(stats[n]["burst"], n_boot=BOOT,
+                                                  seed=BOOT_SEED) for n in names])
+        for name, b in zip(names, boot_results):
+            bursts[name] = b
+            print(f"{name}: {stats[name]['n_reps']} 篇（去重后），burstiness 中位数 "
                   f"{bursts[name]['median']:.3f}")
 
         mtld_dist, mtld_stats, heaps = {}, {}, {}
+        mtld_samples = []
         for name, path in DATASET_PATHS.items():
             smp = sample_lexical(path, pool, offsets=stats[name].pop("offsets"))
             vals = smp["mtld"]
             mtld_dist[name] = vals
-            mtld_stats[name] = bootstrap_median_ci(vals, n_boot=BOOT, seed=BOOT_SEED)
+            mtld_samples.append(vals)
             tokens, types = smp["tokens"], smp["types"]
             heaps[name] = {"curve": (tokens, types), "beta": heaps_beta(tokens, types),
                            "n_docs": smp["n_docs"],
                            "n_docs_in_curve": smp["n_docs_in_curve"],
                            "n_tokens": smp["n_tokens"]}
+        # MTLD 的中位数 CI 同样互相独立，且只需固定规模样本；一次并行算完。
+        mtld_results = (pool.map(_boot_median_ci,
+                                 [(v, BOOT, BOOT_SEED) for v in mtld_samples])
+                        if pool is not None
+                        else [bootstrap_median_ci(v, n_boot=BOOT, seed=BOOT_SEED)
+                              for v in mtld_samples])
+        for name, b in zip(DATASET_PATHS, mtld_results):
+            mtld_stats[name] = b
             print(f"{name}: MTLD 中位数 {mtld_stats[name]['median']:.1f}, "
                   f"Heaps β={heaps[name]['beta']:.3f}")
     finally:

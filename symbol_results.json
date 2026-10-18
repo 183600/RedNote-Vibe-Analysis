@@ -90,7 +90,7 @@
    "unique_tag_ratio": 0.22893037820395218,
    "singleton_tag_share": 0.6514551063199148,
    "top20_coverage": 0.04784613705639154,
-   "entropy_mm": 14.376597444249356,
+   "entropy_mm": 14.376597444249354,
    "tag_len_mean": 4.849623153148851,
    "bins_pct": {
     "0": 8.114891707252207,
@@ -1963,74 +1963,74 @@
    {
     "bin": "0",
     "n": 4879,
-    "likes_median": 10.0,
-    "zero_like_share": 0.23734371797499487,
+    "likes_median": 30.0,
+    "zero_like_share": 0.09489649518343923,
     "zero_like_ci": [
-     0.2256,
-     0.2495
+     0.087,
+     0.1034
     ],
-    "coll_per_like": 0.13349064981857858
+    "coll_per_like": 0.21806656101426308
    },
    {
     "bin": "1",
     "n": 2573,
-    "likes_median": 8.0,
-    "zero_like_share": 0.23902059852312477,
+    "likes_median": 19.0,
+    "zero_like_share": 0.10765643218033424,
     "zero_like_ci": [
-     0.2229,
-     0.2559
+     0.0963,
+     0.1202
     ],
-    "coll_per_like": 0.08787346221441125
+    "coll_per_like": 0.16666666666666666
    },
    {
     "bin": "2",
     "n": 3975,
-    "likes_median": 9.0,
-    "zero_like_share": 0.24,
+    "likes_median": 30.0,
+    "zero_like_share": 0.09207547169811321,
     "zero_like_ci": [
-     0.227,
-     0.2535
+     0.0835,
+     0.1015
     ],
-    "coll_per_like": 0.1111111111111111
+    "coll_per_like": 0.18823529411764706
    },
    {
     "bin": "3–4",
     "n": 10959,
-    "likes_median": 16.0,
-    "zero_like_share": 0.25029655990510086,
+    "likes_median": 84.0,
+    "zero_like_share": 0.07217811844146364,
     "zero_like_ci": [
-     0.2423,
-     0.2585
+     0.0675,
+     0.0772
     ],
-    "coll_per_like": 0.16071428571428573
+    "coll_per_like": 0.2557887568103021
    },
    {
     "bin": "5–9",
     "n": 21218,
-    "likes_median": 59.0,
-    "zero_like_share": 0.2387124139881233,
+    "likes_median": 262.0,
+    "zero_like_share": 0.03619568291073617,
     "zero_like_ci": [
-     0.233,
-     0.2445
+     0.0338,
+     0.0388
     ],
-    "coll_per_like": 0.27476721751530914
+    "coll_per_like": 0.3936293198868528
    },
    {
     "bin": "10+",
     "n": 16521,
-    "likes_median": 179.0,
-    "zero_like_share": 0.21245687307063738,
+    "likes_median": 490.0,
+    "zero_like_share": 0.022032564614732766,
     "zero_like_ci": [
-     0.2063,
-     0.2188
+     0.0199,
+     0.0244
     ],
-    "coll_per_like": 0.4
+    "coll_per_like": 0.5132203389830509
    }
   ],
   "within_cell": {
-   "weighted_rho": 0.1184,
-   "neg_cell_share": 0.2,
-   "n_cells": 100
+   "weighted_rho": 0.1291,
+   "neg_cell_share": 0.152,
+   "n_cells": 125
   }
  }
 }

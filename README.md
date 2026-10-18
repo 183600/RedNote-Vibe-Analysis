@@ -10,7 +10,7 @@
 - [🗂 Repository Layout](#-repository-layout)
 - [📄 Paper](#-paper)
 - [📊 Fork 分析](#-fork-分析) — [数据集概览](#数据集概览) · [词频相关性矩阵](#词频相关性矩阵) · [关键发现](#关键发现) · [常见词分析](#常见词助词虚词分析)
-  - 深潜分析：[deep_dive](#深潜分析deep_dive_analysispy) · [framing](#框架模板化分析framing_analysispy) · [title_style](#标题端ai-味分析title_style_analysispy) · [title_body](#标题正文-ai-味组合title_body_congruence_analysispy) · [diversity](#文本多样性与节奏深潜diversity_analysispy) · [detector](#检测器诊断detector_diagnosticspy) · [family_lexicon](#模型家族词表指纹family_lexicon_analysispy) · [engagement_structure](#互动结构与ai-味惩罚分解engagement_structure_analysispy) · [engagement_drivers](#互动惩罚的逐特征载体engagement_drivers_analysispy) · [author_style](#作者层分解作者间-vs-人内author_style_analysispy) · [symbol](#话题标签与表情生态symbol_analysispy) · [near_duplicate](#近重复内容与模板复用near_duplicate_analysispy) · [family_transfer](#风格家族迁移野外高-ai-味帖的构成与互动回报family_transfer_analysispy) · [stance](#语气情态层谨慎断言强化与呼语stance_analysispy) · [concreteness](#具体性层数字单位量值地名与模糊量词concreteness_analysispy) · [cta](#互动引导语层评论点赞收藏关注转发与催购cta_analysispy) · [typography](#标点与排版层感叹号结构与短行排版typography_analysispy) · [discourse](#篇章连接层因果转折递进序列举例与总结discourse_analysispy)
+  - 深潜分析：[deep_dive](#深潜分析deep_dive_analysispy) · [framing](#框架模板化分析framing_analysispy) · [title_style](#标题端ai-味分析title_style_analysispy) · [title_body](#标题正文-ai-味组合title_body_congruence_analysispy) · [diversity](#文本多样性与节奏深潜diversity_analysispy) · [detector](#检测器诊断detector_diagnosticspy) · [family_lexicon](#模型家族词表指纹family_lexicon_analysispy) · [engagement_structure](#互动结构与ai-味惩罚分解engagement_structure_analysispy) · [engagement_drivers](#互动惩罚的逐特征载体engagement_drivers_analysispy) · [author_style](#作者层分解作者间-vs-人内author_style_analysispy) · [symbol](#话题标签与表情生态symbol_analysispy) · [near_duplicate](#近重复内容与模板复用near_duplicate_analysispy) · [family_transfer](#风格家族迁移野外高-ai-味帖的构成与互动回报family_transfer_analysispy) · [stance](#语气情态层谨慎断言强化与呼语stance_analysispy) · [concreteness](#具体性层数字单位量值地名与模糊量词concreteness_analysispy) · [cta](#互动引导语层评论点赞收藏关注转发与催购cta_analysispy) · [typography](#标点与排版层感叹号结构与短行排版typography_analysispy) · [discourse](#篇章连接层因果转折递进序列举例与总结discourse_analysispy) · [axis_synthesis](#跨轴综合五轴风格指标的共现结构独立信号与互动堆叠axis_synthesis_analysispy)
   - [生成的可视化图表](#生成的可视化图表) · [分析脚本](#分析脚本)
 - [Supported Tasks](#supported-tasks)
 - [Citation](#citation)
@@ -146,7 +146,9 @@ This script will:
 | `insights/typography_lexicon.png`、`insights/typography_gradient.png`、`insights/typography_layout.png` + `typography_results.{json,md}` | Figures and result files produced by `typography_analysis.py` |
 | `discourse_analysis.py` | Discourse-connective deep dive on 6 a priori connective classes (causal / contrast / addition / sequence / exemplification / summary, 37 words) plus a spoken-vs-written register split: cross-subset densities and per-word AIGC over-use, post-level category richness, wild P(AI) gradient with length-stratified ρ, month×domain FE engagement betas for likes/collections/comments (cluster-bootstrap CIs), 6-family fingerprints, quarterly trends |
 | `insights/discourse_lexicon.png`、`insights/discourse_gradient.png`、`insights/discourse_register.png` + `discourse_results.{json,md}` | Figures and result files produced by `discourse_analysis.py` |
-| `run_fork_pipeline.py` | Runner for the 19-step deep-dive suite (`--list` / `--from N` / `--only SCRIPT`) |
+| `axis_synthesis_analysis.py` | Cross-axis synthesis of the five style axes (30 a priori category densities reusing each axis script's pure counter functions): within-cell co-occurrence matrices for categories and axis composites, joint month×domain FE P(AI) betas with cluster-bootstrap CIs (5-composite and full 30-category models), human-vs-AIGC separability of the axis space (5-fold CV AUC per axis and combined), AI-direction axis stacking (0–5 co-traveling axes) vs P(AI) and joint engagement models |
+| `insights/axis_synthesis_structure.png`、`insights/axis_synthesis_signal.png` + `axis_synthesis_results.{json,md}` | Figures and result files produced by `axis_synthesis_analysis.py` |
+| `run_fork_pipeline.py` | Runner for the 20-step deep-dive suite (`--list` / `--from N` / `--only SCRIPT`) |
 | `pipeline_common.py` | Shared step-runner behind `run_paper_pipeline.py` / `run_fork_pipeline.py` (step selection, CLI, sequential execution) |
 | `*.py` (other) | Exploratory fork analyses: word frequency, particles, topics, sentiment, time, domains, user clustering, … |
 | `output/` | Figures from the joint exploratory analysis |
@@ -330,7 +332,7 @@ Run the full pipeline in order with `python3 run_paper_pipeline.py` (or `--list`
 3. **专属标签没有迁移到真实流量**：探索集内 AI 专属标签命中率随 P(AI) 分位从 12.2% 降到 3.7%（δ=-0.154），人类专属标签 4.1%→2.3%——高 P(AI) 帖是整体少用标签，而非在标签层面更像生成集。
 4. **标签层面的季度扩散不显著**：AI 专属标签季度 ρ=+0.588（p=0.07）、AIGC 高频 Top-50 ρ=-0.042（p=0.91）；对照词汇层面的显著扩散，标签没有出现同样的传染曲线。
 5. **表情偏好分化**：AIGC 更多用 Unicode emoji（58.5% vs 人类 40.8%）且偏好 `➕⭐❤❗` 一类清单/要点符号；人类更常用 `[爱心R][开心R][比心R]` 社区表情（29.0% vs 13.9%）与 `✨🌟😭💪` 情绪 emoji；探索集 emoji 帖占比随 P(AI) 上升（ρ=+0.169）。
-6. **标签越多互动越好（方向与 AI 味相反）**：控制月份×领域后（100 个单元），标签数与 log 点赞的单元内加权 ρ=+0.118（仅 20% 单元为负），点赞中位数从 0 标签的 10 升到 10+ 标签的 179。
+6. **标签越多互动越好（方向与 AI 味相反）**：控制月份×领域后（125 个单元），标签数与 log 点赞的单元内加权 ρ=+0.129（仅 15% 单元为负），点赞中位数从 0 标签的 30 升到 10+ 标签的 490。
 
 ### 近重复内容与模板复用（`near_duplicate_analysis.py`）
 
@@ -402,6 +404,16 @@ Run the full pipeline in order with `python3 run_paper_pipeline.py` (or `--list`
 4. **家族指纹**：GPT 最书面（书面连接 0.233/百字 vs 口语 0.229），Qwen 次之（0.245/0.206），DeepSeek 连接词总量最低（口语 0.129 / 书面 0.099），Gemini 最口语（0.329），Claude 居中（0.244/0.141）。
 5. **季度趋势：连接词密度整体下降，因果与递进最系统**：2023Q2→2025Q2 因果解释密度 0.193→0.113（ρ=-0.917，p=0.001；固定领域权重 -0.967，p<0.001）、递进并列 0.119→0.071（-0.950→-0.817）、书面连接 -0.783（-0.683）、合计 -0.650（p=0.058，边缘）；转折让步、序列、举例、总结与口语连接（-0.517，p=0.154）无显著趋势——野外帖子的显式句间逻辑在持续变稀疏（观察性关联，不作因果解读）。
 
+### 跨轴综合：五轴风格指标的共现结构、独立信号与互动堆叠（`axis_synthesis_analysis.py`）
+
+前十九条深潜分析把「AI 味」拆成五条独立风格轴，但轴与轴之间从未同场比较。本分析把五轴的 30 个先验类别密度放进同一张桌子（全部复用各轴脚本的纯计数函数与口径）：单元内共现相关、五轴联合的 P(AI) 固定效应偏效应、仅用轴词表的 human vs AIGC 判别力（5 折 CV AUC），以及「与 P(AI) 同向的轴数」（0–5）分层下的 P(AI) 与互动。结果图在 `insights/axis_synthesis_structure.png`、`insights/axis_synthesis_signal.png`，数据在 `axis_synthesis_results.json` 与 `axis_synthesis_results.md`。人类/探索集按 note_id 去重，正文 ≥50 字，p_ai 按行序对齐（content_len mismatch=0）：
+
+1. **五轴不是一束，而是一族松散相关的信号**：单元内复合相关全部为正但幅度中等（+0.08 到 +0.37，最强为语气×篇章 +0.37、标点×具体性 +0.33、标点×篇章 +0.31；最弱为互动引导×篇章 +0.08）——「AI 腔」没有单一总分，五轴各自携带独立信息，联合建模不会退化成同一变量。
+2. **联合 P(AI) 独立信号高度不对称**：控制其余轴、正文长度与标签数后（n=33,571、94 个单元、整群 bootstrap 300 次），标点排版是唯一大幅正向的轴（β=+0.091 [+0.083, +0.099]/1 SD），篇章连接反向为 -0.090 [-0.095, -0.085]，具体性 -0.023 [-0.028, -0.019]，互动引导 +0.020 [+0.017, +0.023]；语气情态不再显著（+0.002 [-0.003, +0.007]）——其单轴 ρ 主要由与标点/篇章的共现承载。高 P(AI) 帖的轴画像因此是「标点密集 + 结构排版 + 少连接词」的组合；30 类别全模型的组内 R²（0.358）约为五轴复合（0.207）的 1.7 倍，轴内类别结构仍有独立信息（观察性关联，不作因果解读）。
+3. **仅轴词表就有可观判别力**：30 个先验类别密度直接做 human vs AIGC 逻辑回归（5 折 CV，与 `paper_detector.py` 同折同协议）AUC=0.810；单轴最强为标点排版 0.776，其后篇章连接 0.665、语气情态 0.626、具体性 0.590、互动引导 0.549——标点/版式是五轴中最「一眼可辨」的风格层，对照论文检测器（37 特征，CV AUC=0.940）可见先验风格轴已恢复其判别力的相当一部分。
+4. **轴叠加单调推高 P(AI)**：以五轴联合 β 的符号定义「同向轴数」，同向轴数从 0 到 5 时平均 P(AI) 由 0.340 单调升到 0.750（单元内 ρ=+0.193，94 个单元无一为负）；37.1% 的帖子同向 2 轴、23.1% 同向 3 轴，五轴全同向仅 0.6%——AI 腔在野外以「多轴叠加」形态出现（观察性关联）。
+5. **轴数本身不加重互动惩罚**：五轴同场进入互动 FE（点赞/收藏），可见负载体集中在标点排版（点赞 β=-0.098 [-0.114, -0.081]、收藏 -0.072 [-0.090, -0.054]）与 P(AI) 本身（点赞 -0.022 [-0.039, -0.005]），语气情态点赞端略正（+0.018 [+0.005, +0.032]）；而「每多 1 个同向轴」的点赞 β=-0.005 [-0.020, +0.012]、收藏 +0.000 [-0.015, +0.017] 均不显著——互动惩罚由具体风格因子承载，而非「轴数」这一计数（观察性关联，不作因果解读）。
+
 ### 生成的可视化图表
 
 | 文件 | 描述 |
@@ -444,6 +456,8 @@ Run the full pipeline in order with `python3 run_paper_pipeline.py` (or `--list`
 | `insights/discourse_lexicon.png` | 篇章连接图（三子集 6 类连接词密度、逐词 AIGC−人类过量使用与探索集标记、口语/书面语域对比） |
 | `insights/discourse_gradient.png` | 连接梯度图（P(AI) 十分位曲线、逐词单元内 ρ、互动偏效应森林图（点赞/收藏/评论）、季度趋势、家族指纹热力图） |
 | `insights/discourse_register.png` | 语域图（口语/书面连接跨子集密度与书面占比、P(AI) 梯度、季度趋势） |
+| `insights/axis_synthesis_structure.png` | 跨轴结构图（30 类别单元内共现热力图、五轴复合相关矩阵、跨子集 log2 使用率比画像） |
+| `insights/axis_synthesis_signal.png` | 跨轴信号图（五轴联合 P(AI) 偏效应森林图、轴空间 CV AUC、轴堆叠分层与 P(AI)、联合互动偏效应森林图） |
 | `output/` | 领域、话题、互动等探索性图表合集 |
 | `paper_figs/` | 论文管线图表（检测器、漂移、互动、稳健性） |
 
@@ -481,9 +495,10 @@ Run the full pipeline in order with `python3 run_paper_pipeline.py` (or `--list`
 - `cta_analysis.py` - 互动引导语：评论征集/点赞收藏/关注转发/催购催促四类先验短语的跨子集普及率与密度、P(AI) 梯度（含长度分层）、互动偏效应（含评论端）、P(AI)×CTA 交互模型与家族指纹（输出 `insights/cta_*.png`、`cta_results.json/md`）
 - `typography_analysis.py` - 标点与排版：12 个先验标点族/34 个标记的跨子集密度与逐标记过量使用、7 个排版指标画像、P(AI) 梯度（含长度分层）、互动偏效应（月份×领域 FE + 整群 bootstrap）、家族指纹与季度趋势（输出 `insights/typography_*.png`、`typography_results.json/md`）
 - `discourse_analysis.py` - 篇章连接：因果/转折/递进/序列/举例/总结 6 类先验连接词（37 词）+ 口语/书面语域，跨子集密度与逐词过量使用、帖均类别数、P(AI) 梯度（含长度分层）、互动偏效应（点赞/收藏/评论）、家族指纹与季度趋势（输出 `insights/discourse_*.png`、`discourse_results.json/md`）
+- `axis_synthesis_analysis.py` - 跨轴综合：五轴 30 类别的单元内共现、联合 P(AI) 独立信号（复合 + 30 类别全模型 FE，整群 bootstrap CI）、轴空间 CV AUC（human vs AIGC）、轴堆叠（0–5 同向轴）与联合互动偏效应（输出 `insights/axis_synthesis_*.png`、`axis_synthesis_results.json/md`）
 - `quick_start.py` - BERT 基线训练
 
-深潜分析套件可一键顺序执行：`python3 run_fork_pipeline.py`（`--list` / `--from N` / `--only 脚本名`，编排 deep_dive / framing / title_style / title_body_congruence / diversity / detector_diagnostics / family_lexicon / engagement_structure / engagement_drivers / author_style / user_clustering / symbol / near_duplicate / family_transfer / stance / concreteness / cta / typography / discourse 共 19 步，输出统一落在 `insights/`）。两个管线运行器共用 `pipeline_common.py` 的步骤选择与顺序执行实现（含未知脚本名校验），其单元测试见 `tests/test_pipeline_common.py`。
+深潜分析套件可一键顺序执行：`python3 run_fork_pipeline.py`（`--list` / `--from N` / `--only 脚本名`，编排 deep_dive / framing / title_style / title_body_congruence / diversity / detector_diagnostics / family_lexicon / engagement_structure / engagement_drivers / author_style / user_clustering / symbol / near_duplicate / family_transfer / stance / concreteness / cta / typography / discourse / axis_synthesis 共 20 步，输出统一落在 `insights/`）。两个管线运行器共用 `pipeline_common.py` 的步骤选择与顺序执行实现（含未知脚本名校验），其单元测试见 `tests/test_pipeline_common.py`。
 
 所有脚本使用 `analysis_utils.py` 中的统一数据读取、中文字体、检测器打分与统计工具（含概率校准 `reliability_bins` / `expected_calibration_error` / `prior_corrected_proba`、阈值指标 `threshold_metrics`，以及长度分箱 `length_bin_codes` / 十分位表 `decile_table` / 固定权重时间序列 `domain_standardized_series` 等跨脚本复用的统计辅助）；其单元测试见 `tests/`。
 

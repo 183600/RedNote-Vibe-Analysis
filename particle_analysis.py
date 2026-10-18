@@ -2,8 +2,10 @@
 import array
 import json
 import re
+from functools import partial
+
 import numpy as np
-from analysis_utils import init_plot_style, engagement_of
+from analysis_utils import init_plot_style, engagement_of, run_parallel
 import matplotlib
 
 matplotlib.use("Agg")
@@ -223,6 +225,72 @@ def _group_indices(labels):
     return groups
 
 
+def _load_particle_file(f, stored_particles, particle_index):
+    """流式读取单个数据集并统计各粒子的占比（供 load_particle_data 并行调用）。"""
+    k = len(stored_particles)
+    ratios_flat = array.array("d")
+    text_lens = array.array("q")
+    domain_cache = {}
+    month_cache = {}
+    domains = []
+    months = []
+    liked_vals = []
+    text_cache = {}
+    total = 0
+    with open(f, "r", encoding="utf-8") as fh:
+        for line in fh:
+            try:
+                item = json.loads(line)
+            except Exception:
+                continue
+            total += 1
+            title = item.get("note_title", "")
+            desc = item.get("desc", "") or item.get("note_content", "")
+            text = title + " " + (desc if desc else "")
+            text_len = len(text)
+
+            if not text or text_len == 0:
+                ratios_flat.extend([0.0] * k)
+            else:
+                # 缓存存「首次出现的行号」而不是整段 ratio 数组：重复文本
+                # 命中时从 ratios_flat 拷贝该行，省掉每个唯一文本一份
+                # float64 副本（探索集约 6 万个唯一文本 → 省约 30MB）。
+                cached_row = text_cache.get(text)
+                if cached_row is None:
+                    text_cache[text] = len(text_lens)
+                    ratios_flat.extend(
+                        array.array(
+                            "d",
+                            [text.count(p) / text_len
+                             for p in stored_particles],
+                        )
+                    )
+                else:
+                    start = cached_row * k
+                    ratios_flat.extend(ratios_flat[start:start + k])
+
+            text_lens.append(text_len)
+            dom = item.get("domain", "")
+            domains.append(domain_cache.setdefault(dom, dom))
+            local_time = item.get("local_time", "")
+            month = local_time[:6] if len(local_time) >= 6 else "unknown"
+            months.append(month_cache.setdefault(month, month))
+            liked_vals.append(engagement_of(item)[0])
+    ratios = np.frombuffer(ratios_flat, dtype=np.float64).reshape(total, k)
+    return {
+        "n": total,
+        "ratios": ratios,
+        "zeros": np.zeros(total),
+        "particle_index": particle_index,
+        "stored_particles": stored_particles,
+        "text_len": np.frombuffer(text_lens, dtype=np.int64),
+        "domain": domains,
+        "domain_index": _group_indices(domains),
+        "month_index": _group_indices(months),
+        "liked": np.asarray(liked_vals, dtype=np.int64),
+    }
+
+
 def load_particle_data(files, particles):
     # 去重后仅保留下游真正访问的粒子：分布/相关分析取前 30/20/10 个，
     # 热力图取 key_particles[:60]，其最大索引落在去重序列的第 65 个之前。
@@ -232,74 +300,17 @@ def load_particle_data(files, particles):
     # 存储改为按记录连续排布的 float64 数组（array('d') + frombuffer 零拷贝），
     # 不再为每条记录构造 dict，内存从逐记录 dict 的数倍降为 ~8 字节/粒子。
     stored_particles = list(dict.fromkeys(particles))[:65]
-    k = len(stored_particles)
     particle_index = {p: i for i, p in enumerate(stored_particles)}
 
-    particle_stats = {}
-    for f in files:
-        ratios_flat = array.array("d")
-        text_lens = array.array("q")
-        domain_cache = {}
-        month_cache = {}
-        domains = []
-        months = []
-        liked_vals = []
-        text_cache = {}
-        total = 0
-        with open(f, "r", encoding="utf-8") as fh:
-            for line in fh:
-                try:
-                    item = json.loads(line)
-                except Exception:
-                    continue
-                total += 1
-                title = item.get("note_title", "")
-                desc = item.get("desc", "") or item.get("note_content", "")
-                text = title + " " + (desc if desc else "")
-                text_len = len(text)
-
-                if not text or text_len == 0:
-                    ratios_flat.extend([0.0] * k)
-                else:
-                    # 缓存存「首次出现的行号」而不是整段 ratio 数组：重复文本
-                    # 命中时从 ratios_flat 拷贝该行，省掉每个唯一文本一份
-                    # float64 副本（探索集约 6 万个唯一文本 → 省约 30MB）。
-                    cached_row = text_cache.get(text)
-                    if cached_row is None:
-                        text_cache[text] = len(text_lens)
-                        ratios_flat.extend(
-                            array.array(
-                                "d",
-                                (text.count(p) / text_len
-                                 for p in stored_particles),
-                            )
-                        )
-                    else:
-                        start = cached_row * k
-                        ratios_flat.extend(ratios_flat[start:start + k])
-
-                text_lens.append(text_len)
-                dom = item.get("domain", "")
-                domains.append(domain_cache.setdefault(dom, dom))
-                local_time = item.get("local_time", "")
-                month = local_time[:6] if len(local_time) >= 6 else "unknown"
-                months.append(month_cache.setdefault(month, month))
-                liked_vals.append(engagement_of(item)[0])
-        ratios = np.frombuffer(ratios_flat, dtype=np.float64).reshape(total, k)
-        particle_stats[f] = {
-            "n": total,
-            "ratios": ratios,
-            "zeros": np.zeros(total),
-            "particle_index": particle_index,
-            "stored_particles": stored_particles,
-            "text_len": np.frombuffer(text_lens, dtype=np.int64),
-            "domain": domains,
-            "domain_index": _group_indices(domains),
-            "month_index": _group_indices(months),
-            "liked": np.asarray(liked_vals, dtype=np.int64),
-        }
-        print("Loaded {}: {} records".format(f, total))
-    return particle_stats
+    # 三个数据集互不依赖，进程池并行统计（返回 numpy 数组与列表，结果与
+    # 串行执行完全一致）。
+    results = run_parallel([
+        partial(_load_particle_file, f, stored_particles, particle_index)
+        for f in files
+    ])
+    for f, stats_data in zip(files, results):
+        print("Loaded {}: {} records".format(f, stats_data["n"]))
+    return dict(zip(files, results))
 
 
 def _ratios_for(stats, particle):

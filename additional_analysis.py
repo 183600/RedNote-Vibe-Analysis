@@ -2,8 +2,10 @@
 import heapq
 import json
 import re
+from functools import partial
+
 import numpy as np
-from analysis_utils import init_plot_style
+from analysis_utils import init_plot_style, run_parallel
 import matplotlib
 
 matplotlib.use("Agg")
@@ -210,16 +212,17 @@ def analyze_unique_words(freqs, files, word_sets=None):
                                           start=i + 1):
             keys2 = word_sets[j]
 
-            unique1_top = heapq.nsmallest(
+            # 直接对 (-count, word) 元组做 nsmallest：与原先 key=lambda x:
+            # (-x[1], x[0]) 的排序完全一致（单词互不相同），但省掉了堆比较时
+            # 每次调用 lambda 的 Python 开销。
+            unique1_top = [(w, -neg) for neg, w in heapq.nsmallest(
                 20,
-                ((w, freq1[w]) for w in keys1 if w not in keys2),
-                key=lambda x: (-x[1], x[0]),
-            )
-            unique2_top = heapq.nsmallest(
+                ((-freq1[w], w) for w in keys1 if w not in keys2),
+            )]
+            unique2_top = [(w, -neg) for neg, w in heapq.nsmallest(
                 20,
-                ((w, freq2[w]) for w in keys2 if w not in keys1),
-                key=lambda x: (-x[1], x[0]),
-            )
+                ((-freq2[w], w) for w in keys2 if w not in keys1),
+            )]
 
             results[f"{f1}_unique_in_{f2}"] = unique1_top
             results[f"{f2}_unique_in_{f1}"] = unique2_top
@@ -315,9 +318,10 @@ def main():
     print("Additional Analysis Results")
     print("=" * 60)
 
-    stats = {}
+    # 三个数据集互不依赖，进程池并行统计；结果与串行执行完全一致。
+    stats = dict(zip(files, run_parallel(
+        [partial(stream_stats, f) for f in files])))
     for f in files:
-        stats[f] = stream_stats(f)
         print(f"Loaded {f}: {stats[f]['total']} records")
 
     print("\n--- Top Words (Content/Desc) ---")

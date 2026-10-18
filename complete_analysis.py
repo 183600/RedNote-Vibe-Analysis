@@ -2,8 +2,10 @@
 import heapq
 import json
 import re
+from functools import partial
+
 import numpy as np
-from analysis_utils import init_plot_style
+from analysis_utils import init_plot_style, run_parallel
 import matplotlib
 
 matplotlib.use("Agg")
@@ -156,15 +158,14 @@ def compute_correlation(freq1, freq2, top_n=100):
     words2 = set(freq2.keys())
     common = words1 & words2
 
-    if len(common) < 10:
-        combined = dict(
-            (w, freq1.get(w, 0) + freq2.get(w, 0)) for w in (words1 | words2)
-        )
-    else:
-        combined = dict((w, freq1.get(w, 0) + freq2.get(w, 0)) for w in common)
-    # 只取 Top-N，避免对全词表做完整排序（nsmallest 的键唯一，结果与排序后切片一致）
-    all_words = heapq.nsmallest(
-        top_n, combined, key=lambda w: (-combined[w], w))
+    candidates = (words1 | words2) if len(common) < 10 else common
+    # 只取 Top-N，避免对全词表做完整排序；直接对 (-合并频次, 词) 元组做
+    # nsmallest（键唯一，结果与原先 key=(-combined[w], w) 的后排序切片一致），
+    # 省掉中间 combined 字典与堆比较时的 lambda 调用。
+    all_words = [w for _, w in heapq.nsmallest(
+        top_n,
+        ((-(freq1.get(w, 0) + freq2.get(w, 0)), w) for w in candidates),
+    )]
 
     vec1 = np.array([freq1.get(w, 0) for w in all_words], dtype=float)
     vec2 = np.array([freq2.get(w, 0) for w in all_words], dtype=float)
@@ -303,9 +304,10 @@ def main():
     file_names = ["training_set_human", "training_set_aigc", "exploring_set"]
 
     print("Loading data...")
-    stats = {}
+    # 三个数据集互不依赖，进程池并行统计；结果与串行执行完全一致。
+    stats = dict(zip(files, run_parallel(
+        [partial(stream_stats, f) for f in files])))
     for f in files:
-        stats[f] = stream_stats(f)
         print(f"  {f}: {stats[f]['total']} records")
 
     results = {"content": {}, "title": {}}

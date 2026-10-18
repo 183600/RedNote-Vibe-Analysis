@@ -5,6 +5,9 @@ import random
 import re
 import codecs
 from collections import Counter
+from functools import partial
+
+from analysis_utils import run_parallel
 
 RE_DIGITS = re.compile(r"\d+")
 # 连续的非 \w 字符（标点/空白）作为分隔符直接切词，等价于原先「标点→空格再 split」。
@@ -250,27 +253,26 @@ def analyze_unique_words(freqs, files, word_sets=None):
             f1, f2 = files[i], files[j]
             freq1, freq2 = freqs[i], freqs[j]
             keys_j = word_sets[j]
-            sorted1 = heapq.nsmallest(
+            # 直接对 (-count, word) 元组做 nsmallest：与原先 key=lambda x:
+            # (-x[1], x[0]) 的排序完全一致（单词互不相同），但省掉了堆比较时
+            # 每次调用 lambda 的 Python 开销。
+            sorted1 = [(w, -neg) for neg, w in heapq.nsmallest(
                 30,
-                ((w, freq1[w]) for w in keys_i if w not in keys_j),
-                key=lambda x: (-x[1], x[0]),
-            )
-            sorted2 = heapq.nsmallest(
+                ((-freq1[w], w) for w in keys_i if w not in keys_j),
+            )]
+            sorted2 = [(w, -neg) for neg, w in heapq.nsmallest(
                 30,
-                ((w, freq2[w]) for w in keys_j if w not in keys_i),
-                key=lambda x: (-x[1], x[0]),
-            )
+                ((-freq2[w], w) for w in keys_j if w not in keys_i),
+            )]
             key1 = f1 + "_unique_in_" + f2
             key2 = f2 + "_unique_in_" + f1
             results[key1] = sorted1
             results[key2] = sorted2
     common = set.intersection(*word_sets)
-    totals = {w: sum(f.get(w, 0) for f in freqs) for w in common}
-    results["common_words"] = heapq.nsmallest(
+    results["common_words"] = [(w, -neg) for neg, w in heapq.nsmallest(
         50,
-        ((w, totals[w]) for w in common),
-        key=lambda x: (-x[1], x[0]),
-    )
+        ((-sum(f.get(w, 0) for f in freqs), w) for w in common),
+    )]
     return results
 
 
@@ -313,9 +315,10 @@ def main():
     print("Comprehensive Additional Analysis")
     print("=" * 70)
 
-    stats = {}
+    # 三个数据集互不依赖，进程池并行统计；结果与串行执行完全一致。
+    results = run_parallel([partial(stream_all, f) for f in files])
+    stats = dict(zip(files, results))
     for f in files:
-        stats[f] = stream_all(f)
         print("Loaded " + f + ": " + str(stats[f]["total"]) + " records")
 
     print("\n" + "=" * 70)

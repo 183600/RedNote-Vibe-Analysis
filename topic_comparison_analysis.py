@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import json
 import re
+
 import numpy as np
 from analysis_utils import init_plot_style
 import matplotlib
@@ -193,9 +194,14 @@ SENTIMENT_PATTERN = re.compile(
     + ")"
 )
 
+# 词表全部用字：片段不含其中任何字符时不可能命中任何情感词，直接跳过正则。
+_SENTIMENT_CHARS = frozenset("".join(POSITIVE_WORDS | NEGATIVE_WORDS))
+
 
 def count_sentiment_words(token):
     """统计单个片段内正/负向词的出现次数。"""
+    if _SENTIMENT_CHARS.isdisjoint(token):
+        return 0, 0
     pos = neg = 0
     for m in SENTIMENT_PATTERN.finditer(token):
         if m.lastgroup == "pos":

@@ -8,8 +8,9 @@
 import json
 import re
 from collections import Counter, defaultdict
+from functools import partial
 
-from analysis_utils import engagement_of
+from analysis_utils import engagement_of, run_parallel
 
 RE_CJK = re.compile(r"[\u4e00-\u9fff]+")
 RE_SENT_SPLIT = re.compile(r"[。！？\n]")
@@ -172,8 +173,8 @@ def scan(path):
     seen_runs = set()
     # 元数据
     meta_user = meta_time = meta_lt = meta_like = meta_collect = meta_comment = 0
-    # 领域-情感
-    domain_sent = defaultdict(lambda: [0, 0])
+    # 领域-情感（普通 dict，便于结果 pickle 后由并行 worker 返回）
+    domain_sent = {}
     # 一致性
     empty_desc = empty_title = short = 0
     titles_c = Counter()
@@ -280,7 +281,10 @@ def scan(path):
             meta_comment += 1
 
         # 9. 领域-情感（复用第 2 步已算好的本条正文情感计数）
-        slot = domain_sent[item.get("domain", "Unknown")]
+        key = item.get("domain", "Unknown")
+        slot = domain_sent.get(key)
+        if slot is None:
+            slot = domain_sent[key] = [0, 0]
         slot[0] += pos_i
         slot[1] += neg_i
 
@@ -471,11 +475,15 @@ def domain_len(result, name):
 
 def main():
     print("Loading data...")
-    stats = {
-        "Human": scan("training_set_human.jsonl"),
-        "AIGC": scan("training_set_aigc.jsonl"),
-        "Exploring": scan("exploring_set.jsonl"),
-    }
+    # 三个数据集互不依赖，进程池并行扫描（池不可用时 run_parallel 自动串行，
+    # 结果与串行逐位一致）。
+    datasets = [
+        ("Human", "training_set_human.jsonl"),
+        ("AIGC", "training_set_aigc.jsonl"),
+        ("Exploring", "exploring_set.jsonl"),
+    ]
+    results = run_parallel([partial(scan, path) for _, path in datasets])
+    stats = {name: result for (name, _), result in zip(datasets, results)}
 
     print(
         f"Human: {stats['Human']['n']}, AIGC: {stats['AIGC']['n']}, Exploring: {stats['Exploring']['n']}"

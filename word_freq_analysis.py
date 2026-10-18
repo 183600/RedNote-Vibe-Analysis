@@ -2,8 +2,10 @@
 import heapq
 import json
 import re
+from functools import partial
+
 import numpy as np
-from analysis_utils import init_plot_style, clean_body
+from analysis_utils import init_plot_style, clean_body, run_parallel
 import matplotlib
 
 matplotlib.use("Agg")
@@ -141,14 +143,14 @@ def compute_correlation(freq1, freq2, top_n=100):
     words2 = set(freq2.keys())
     common = words1 & words2
 
-    if len(common) < 10:
-        combined = dict(
-            (w, freq1.get(w, 0) + freq2.get(w, 0)) for w in (words1 | words2)
-        )
-    else:
-        combined = dict((w, freq1.get(w, 0) + freq2.get(w, 0)) for w in common)
-    all_words = heapq.nsmallest(
-        top_n, combined.keys(), key=lambda w: (-combined[w], w))
+    candidates = (words1 | words2) if len(common) < 10 else common
+    # 直接对 (-合并频次, 词) 元组做 nsmallest（键唯一，与原先
+    # key=(-combined[w], w) 的排序结果一致），省掉中间 combined 字典与
+    # 堆比较时的 lambda 调用。
+    all_words = [w for _, w in heapq.nsmallest(
+        top_n,
+        ((-(freq1.get(w, 0) + freq2.get(w, 0)), w) for w in candidates),
+    )]
 
     vec1 = np.array([freq1.get(w, 0) for w in all_words], dtype=float)
     vec2 = np.array([freq2.get(w, 0) for w in all_words], dtype=float)
@@ -205,8 +207,9 @@ def main():
 
     freqs_by_label = {"desc_only": {}, "title_only": {}}
     totals = {}
-    for f in files:
-        freq_desc, freq_title, total = stream_word_freq(f)
+    # 三个数据集互不依赖，进程池并行统计；结果与串行执行完全一致。
+    for f, (freq_desc, freq_title, total) in zip(
+            files, run_parallel([partial(stream_word_freq, f) for f in files])):
         freqs_by_label["desc_only"][f] = freq_desc
         freqs_by_label["title_only"][f] = freq_title
         totals[f] = total

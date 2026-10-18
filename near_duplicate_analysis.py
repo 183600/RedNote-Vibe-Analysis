@@ -79,6 +79,9 @@ N_DECILES = 10
 QUARTER_MIN_N = 300     # 季度曲线最少样本
 RECALL_SAMPLE = 1000    # 召回自检的文档数
 RECALL_SEED = 42
+# 召回自检的分块大小（块内 shingle 总数）：块越小，bincount/共享计数
+# 的工作数组越小、缓存越友好（实测 32K 最优）；块越大逐块开销越低。
+_RECALL_CHUNK = 1 << 15
 MAX_CROSS_EXAMPLES = 10
 
 _MIX1 = np.uint64(0x9E3779B185EBCA87)
@@ -589,6 +592,9 @@ def recall_check(sets: list[np.ndarray], pairs, n_sample: int = RECALL_SAMPLE,
     随机抽 n_sample 篇文档，对全库逐篇计算与其共享的 5-gram 数（对样本
     shingle 建反向索引，单篇文档的共享数由一次 bincount 得到），得到所有
     涉及样本文档的真实 J ≥ min_j 对；再与主流程验证出的对求交集。
+
+    全库扫描按 `_RECALL_CHUNK` 分块向量化：块内所有文档的 shingle 一次
+    searchsorted + 一次 bincount，等价于逐篇循环（命中区间与逐篇一致）。
     """
     n_docs = len(sets)
     if n_docs == 0:
@@ -618,31 +624,55 @@ def recall_check(sets: list[np.ndarray], pairs, n_sample: int = RECALL_SAMPLE,
     counts = np.diff(np.r_[starts, all_h.size]).astype(np.int64)
 
     true_pairs: set[tuple[int, int]] = set()
-    for d in range(n_docs):
-        h = sets[d]
-        if h.size < MIN_SHINGLES:
-            continue
-        pos = np.searchsorted(uniq_h, h)
-        np.minimum(pos, uniq_h.size - 1, out=pos)
-        match = uniq_h[pos] == h
+    lengths = np.fromiter((s.size for s in sets), dtype=np.int64, count=n_docs)
+    eligible = np.flatnonzero(lengths >= MIN_SHINGLES)
+    n_sample_docs = nonempty.size
+    last_h = uniq_h.size - 1
+    start_i = 0
+    while start_i < eligible.size:
+        span = 0
+        stop_i = start_i
+        while stop_i < eligible.size and (
+                span == 0
+                or span + int(lengths[eligible[stop_i]]) <= _RECALL_CHUNK):
+            span += int(lengths[eligible[stop_i]])
+            stop_i += 1
+        chunk = eligible[start_i:stop_i]
+        start_i = stop_i
+        parts = [sets[int(d)] for d in chunk]
+        chunk_lens = np.fromiter((p.size for p in parts), dtype=np.int64,
+                                 count=len(parts))
+        conc = np.concatenate(parts)
+        del parts
+        doc_local = np.repeat(np.arange(len(chunk), dtype=np.int64), chunk_lens)
+        pos = np.searchsorted(uniq_h, conc)
+        np.minimum(pos, last_h, out=pos)
+        match = uniq_h[pos] == conc
         if not match.any():
             continue
-        sel = pos[match]
-        rs, rl = starts[sel], counts[sel]
+        fpos = pos[match]
+        fdoc = doc_local[match]
+        rs, rl = starts[fpos], counts[fpos]
         total = int(rl.sum())
-        idx = np.repeat(rs, rl) + (np.arange(total)
+        idx = np.repeat(rs, rl) + (np.arange(total, dtype=np.int64)
                                    - np.repeat(np.cumsum(rl) - rl, rl))
-        shared = np.bincount(sample_ids[idx], minlength=nonempty.size)
+        d_inc = np.repeat(fdoc, rl)
+        s_inc = sample_ids[idx]
+        del idx, rs, rl, fpos
+        shared = np.bincount(d_inc * n_sample_docs + s_inc,
+                             minlength=len(chunk) * n_sample_docs)
         nz = np.flatnonzero(shared)
         if nz.size == 0:
             continue
         inter = shared[nz].astype(np.int64)
-        j = inter / (h.size + sizes[nz] - inter)
-        for s_pos in nz[j >= min_j]:
-            s = int(nonempty[s_pos])
-            if s == d:
-                continue
-            true_pairs.add((min(d, s), max(d, s)))
+        d_loc = nz // n_sample_docs
+        s_pos = nz - d_loc * n_sample_docs
+        d_glob = chunk[d_loc]
+        s_glob = nonempty[s_pos]
+        j = inter / (lengths[d_glob] + sizes[s_pos] - inter)
+        keep = (j >= min_j) & (d_glob != s_glob)
+        for a, b in zip(d_glob[keep].tolist(), s_glob[keep].tolist()):
+            true_pairs.add((a, b) if a < b else (b, a))
 
     in_sample = set(int(x) for x in sample)
     found = {(min(a, b), max(a, b)) for _, a, b in pairs

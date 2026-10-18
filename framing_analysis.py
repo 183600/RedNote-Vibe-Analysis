@@ -33,6 +33,7 @@ from __future__ import annotations
 import json
 import re
 from collections import Counter
+from functools import partial
 
 import numpy as np
 import matplotlib
@@ -45,7 +46,7 @@ from analysis_utils import (BASE, INSIGHTS, PALETTE, init_plot_style, save_fig,
                             cliffs_delta, clean_body, content_of, dedup_indices,
                             engagement_of, iter_jsonl, parse_local_time,
                             rate_diff_ranking, rate_top, shannon_entropy,
-                            topk_coverage, wilson_ci)
+                            topk_coverage, run_parallel, wilson_ci)
 from paper_features import EMOJI
 
 DATASETS = {
@@ -398,11 +399,14 @@ def main() -> None:
     p_ai = scores["p_ai"].to_numpy()
     months_scores = scores["month"].astype(str).to_numpy()
 
+    ref = scores["content_len"].to_numpy()
+
     scans: dict[str, dict] = {}
-    for key, path in DATASETS.items():
-        ref = scores["content_len"].to_numpy() if key == "exploring" else None
-        scans[key] = scan_view(path, content_len_ref=ref)
-        s = scans[key]
+    scans_list = run_parallel(
+        [partial(scan_view, path, content_len_ref=ref if key == "exploring" else None)
+         for key, path in DATASETS.items()])
+    for (key, _), s in zip(DATASETS.items(), scans_list):
+        scans[key] = s
         print(f"[scan] {key}: {s['n_raw']} 条记录，短文本 {s['n_short']}，"
               f"对齐 mismatch={s['mismatch']}")
     if scans["exploring"]["n_raw"] != len(scores):

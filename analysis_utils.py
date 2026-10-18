@@ -350,6 +350,27 @@ def close_pool(pool) -> None:
         pool.join()
 
 
+def _call_task(fn):
+    return fn()
+
+
+def run_parallel(tasks: list, max_workers: int = 4) -> list:
+    """在 fork 进程池中并行执行一组无参任务，按输入顺序返回结果。
+
+    任务需可 pickle（如 `functools.partial` 包装模块级函数），以便 fork
+    子进程解析；池不可用（非 Linux 或单核）时自动串行回退，结果与串行
+    执行逐位一致。结果用 `imap` 流式回收（完成一个、取回一个），父进程
+    峰值内存不高于「全部结果 + 单份在途结果」，子进程结果随即释放。
+    """
+    pool = make_pool(max_workers=max_workers)
+    if pool is None:
+        return [t() for t in tasks]
+    try:
+        return list(pool.imap(_call_task, tasks, chunksize=1))
+    finally:
+        close_pool(pool)
+
+
 def iter_jsonl(path: str) -> Iterator[dict]:
     """流式读取 JSONL，逐行解析，避免把大文件一次性载入内存。
 
@@ -1399,28 +1420,35 @@ def _stream_bytes_equal(stream, data: bytes, chunk: int = 65536) -> bool:
     return not stream.read(1)
 
 
-def write_csv_gz_if_changed(df: pd.DataFrame, path: str) -> bool:
-    """把 DataFrame 写为 gzip CSV；内容与现有文件一致时一个字节都不动。
+def write_gz_if_changed(data: bytes, path: str) -> bool:
+    """把已序列化的字节写成 gzip 文件；与现有文件内容一致时一个字节都不动。
 
-    研究数据文件（*.csv.gz）由 CI 逐字节校验保护：重跑分析脚本时若派生内容
-    没有变化，就不应该产生无意义的字节churn。这里先把新内容序列化到内存
-    （gzip mtime 固定为 0，输出确定性），再分块流式解压现有文件逐字节比较
-    （不整体读入内存）；只有内容真正变化时才经临时文件原子替换。返回是否
-    实际写入了文件。
+    研究数据文件（*.csv.gz）由 CI 保护：重跑分析脚本时若派生内容没有变化，
+    就不应该产生无意义的字节 churn。先分块流式解压现有文件逐字节比较
+    （不整体读入内存）；只有内容真正变化时才经临时文件原子替换，且 gzip
+    mtime 固定为 0（输出确定性）。返回是否实际写入了文件。
     """
     import gzip
 
-    csv_bytes = df.to_csv(index=False).encode("utf-8")
     if os.path.exists(path):
         try:
             with gzip.open(path, "rb") as f:
-                if _stream_bytes_equal(f, csv_bytes):
+                if _stream_bytes_equal(f, data):
                     return False
         except OSError:
             pass
     tmp = f"{path}.tmp"
     with open(tmp, "wb") as f:
         with gzip.GzipFile(fileobj=f, mode="wb", mtime=0) as gz:
-            gz.write(csv_bytes)
+            gz.write(data)
     os.replace(tmp, path)
     return True
+
+
+def write_csv_gz_if_changed(df: pd.DataFrame, path: str) -> bool:
+    """把 DataFrame 写为 gzip CSV；内容与现有文件一致时一个字节都不动。
+
+    序列化到内存后交给 `write_gz_if_changed` 做比较与原子替换，返回是否
+    实际写入了文件。
+    """
+    return write_gz_if_changed(df.to_csv(index=False).encode("utf-8"), path)

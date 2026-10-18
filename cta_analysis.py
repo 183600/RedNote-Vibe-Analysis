@@ -46,6 +46,7 @@ from __future__ import annotations
 
 from array import array
 from collections import Counter, defaultdict
+from functools import partial
 
 import numpy as np
 import matplotlib
@@ -59,7 +60,7 @@ from analysis_utils import (BASE, INSIGHTS, PALETTE, init_plot_style, save_fig,
                             clean_body, content_of, decile_table,
                             dedup_indices, domain_standardized_series,
                             engagement_of, iter_jsonl, length_bin_codes,
-                            parse_local_time, within_cell_spearman)
+                            parse_local_time, run_parallel, within_cell_spearman)
 from engagement_drivers_analysis import (cluster_bootstrap_fe_ols, fe_ols,
                                          prepare_fe)
 
@@ -502,8 +503,9 @@ def plot_gradient(grad: dict, word_rho: dict, eng: dict, family_table: dict,
 # 主流程
 # --------------------------------------------------------------------------
 def main() -> None:
-    print("扫描三个语料（全量）…")
-    scans = {name: scan_corpus(path) for name, path in DATASETS.items()}
+    print("扫描三个语料（全量，进程池并行）…")
+    scans = dict(zip(DATASETS, run_parallel(
+        [partial(scan_corpus, path) for path in DATASETS.values()])))
     for name, sc in scans.items():
         print(f"  {name}: {sc['n_total']:,} 条记录")
 

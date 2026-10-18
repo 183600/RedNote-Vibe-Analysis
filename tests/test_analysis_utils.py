@@ -6,6 +6,8 @@ import random
 import sys
 import tempfile
 import unittest
+from functools import partial
+from unittest import mock
 
 import numpy as np
 import pandas as pd
@@ -25,7 +27,8 @@ from analysis_utils import (post_text, content_of, clean_body,
                             DATASETS, linear_score, prior_corrected_proba,
                             reliability_bins, expected_calibration_error,
                             LENGTH_BINS, decile_table, length_bin_codes,
-                            standardize_weights, domain_standardized_series)
+                            standardize_weights, domain_standardized_series,
+                            run_parallel)
 
 
 class TestJsonlHelpers(unittest.TestCase):
@@ -578,6 +581,21 @@ class TestDomainStandardizedSeries(unittest.TestCase):
         })
         s = domain_standardized_series(df, "v", "quarter")
         self.assertAlmostEqual(s["Q2"], 3.0)
+
+
+def _double(x: int) -> int:
+    return 2 * x
+
+
+class TestRunParallel(unittest.TestCase):
+    def test_results_in_input_order(self):
+        tasks = [partial(_double, i) for i in range(7)]
+        self.assertEqual(run_parallel(tasks), [0, 2, 4, 6, 8, 10, 12])
+
+    def test_serial_fallback_matches(self):
+        tasks = [partial(_double, i) for i in range(4)]
+        with mock.patch("analysis_utils.make_pool", return_value=None):
+            self.assertEqual(run_parallel(tasks), [0, 2, 4, 6])
 
 
 if __name__ == "__main__":

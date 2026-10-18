@@ -27,6 +27,7 @@ from __future__ import annotations
 import json
 import re
 from collections import Counter, defaultdict
+from functools import partial
 
 import numpy as np
 import matplotlib
@@ -36,7 +37,7 @@ from scipy.stats import mannwhitneyu, spearmanr
 
 from analysis_utils import (BASE, INSIGHTS, PALETTE, init_plot_style, save_fig,
                             cliffs_delta_from_u, engagement_of, iter_jsonl,
-                            parse_local_time, clean_body, content_of)
+                            parse_local_time, clean_body, content_of, run_parallel)
 from paper_features import AI_WORDS, HUMAN_WORDS
 
 DATASETS = {
@@ -603,11 +604,12 @@ def write_markdown(out: dict) -> None:
 
 def main() -> None:
     init_plot_style()
+    print("[扫描] 三个语料（全量，进程池并行）")
     stats = {}
-    for name, path in DATASETS.items():
+    results = run_parallel([partial(collect, path) for path in DATASETS.values()])
+    for (name, path), s in zip(DATASETS.items(), results):
+        stats[name] = s
         print(f"[扫描] {name}: {path}")
-        stats[name] = collect(path)
-        s = stats[name]
         print(f"        记录 {s['n']} 条 / 唯一 note_id {s['unique_ids'] or '—'}")
 
     out = {}

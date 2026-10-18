@@ -47,6 +47,7 @@ from __future__ import annotations
 
 import re
 from collections import Counter, defaultdict
+from functools import partial
 
 import numpy as np
 import matplotlib
@@ -63,7 +64,7 @@ from analysis_utils import (BASE, DATASET_LABELS, INSIGHTS, LENGTH_BINS, PALETTE
                             init_plot_style, iter_jsonl, length_bin_codes,
                             parse_local_time, save_fig, save_json,
                             standardize_weights, wilson_ci,
-                            within_cell_spearman)
+                            run_parallel, within_cell_spearman)
 from engagement_drivers_analysis import (cluster_bootstrap_fe_ols, fe_ols,
                                          prepare_fe)
 
@@ -108,6 +109,36 @@ MASTER_RE = re.compile(r"""
 # 整个文本上做一次廉价 search，无提示字符时跳过昂贵的逐匹配循环。
 _MASTER_HINT_RE = re.compile(r"[\d¥￥$百]")
 _UNIT_STRIP_RE = re.compile(r"[\d.\s]")
+
+# MASTER_RE 保留为规范定义（测试与文档引用）；classify() 使用下面这套
+# 等价但更快的实现：以提示字符定位候选起点（数字 / ¥ ￥ $ / 百），再按
+# 「金额 > 百分比 > 度量 > 时间 > 裸数字」的优先级手工判定后缀，避免
+# 多分支正则在长文本上的回溯开销。已用全量语料与模糊串做差分验证。
+_NUMBER_RE = re.compile(r"\d+(?:\.\d+)?")
+_CLOCK_RE = re.compile(r"\d{1,2}[:：]\d{2}")
+_PERCENT_CN_RE = re.compile(r"百分之[零一二两三四五六七八九十百千万]+")
+_MONEY_SYMBOL_RE = re.compile(r"[¥￥$]\s*")
+_WS_RE = re.compile(r"\s*")
+
+# 各分支单位表（与 MASTER_RE 逐字一致）；按首字符索引、同首字符最长优先，
+# 与原交替分支内「更具体优先」的书写顺序等价（跨分支不存在互为前缀的单位）。
+_UNIT_TABLE = {
+    "money": ("万元", "万块", "块钱", "元", "块"),
+    "percent": ("%", "％"),
+    "measure": ("mAh", "kg", "KG", "Kg", "公斤", "斤", "克", "毫克", "mg",
+                "毫升", "ml", "ML", "升", "厘米", "cm", "CM", "毫米", "mm",
+                "千米", "公里", "km", "KM", "米", "寸", "尺", "摄氏度", "大卡",
+                "千卡", "卡路里", "卡", "毫安", "瓦", "GB", "MB", "TB", "gb",
+                "mb", "tb"),
+    "time": ("分钟", "小时", "天", "周", "星期", "个月", "月", "年", "岁",
+             "秒", "点半", "点"),
+}
+_SUFFIX_BY_FIRST: dict = {}
+for _unit_cat, _unit_list in _UNIT_TABLE.items():
+    for _unit_str in _unit_list:
+        _SUFFIX_BY_FIRST.setdefault(_unit_str[0], []).append((_unit_str, _unit_cat))
+for _unit_cands in _SUFFIX_BY_FIRST.values():
+    _unit_cands.sort(key=lambda item: -len(item[0]))
 
 VAGUE_WORDS = ["很多", "一些", "有些", "各种", "许多", "不少", "好多", "大量",
                "无数", "些许", "若干", "部分", "多数", "少数", "大多", "挺多",
@@ -171,20 +202,85 @@ def classify(text: str) -> tuple:
     - unit_tokens: 单位记号 Counter（如 元/天/kg）；
     - place_tokens: 命中地名 Counter。
     裸数字（num）与带单位量值（unit）互斥：金额/百分比/度量/时间优先匹配。
+
+    实现与 MASTER_RE 逐分支等价：人民币符号 + 数字为金额；数字（可含小数）
+    + 空白 + 单位按 金额/百分比/度量/时间 判定；「百分之 + 中文数字」计为
+    百分比；`d{1,2}[:：]d{2}` 计为时间；其余数字为裸数字。命中区间与
+    MASTER_RE.finditer 一致（下一个候选起点从匹配末尾继续扫描）。
     """
     counts = {k: 0 for k in CATEGORY_ORDER}
     subtypes = {k: 0 for k in SUBTYPE_ORDER}
     unit_tokens: Counter = Counter()
     place_tokens: Counter = Counter()
-    if _MASTER_HINT_RE.search(text):
-        for m in MASTER_RE.finditer(text):
-            group = m.lastgroup
-            if group == "num":
-                counts["num"] += 1
-            else:
-                counts["unit"] += 1
-                subtypes[group] += 1
-                unit_tokens[unit_token_of(m.group(0))] += 1
+    unit = money = percent = measure = time = 0
+    next_start = 0
+    for hint in _MASTER_HINT_RE.finditer(text):
+        pos = hint.start()
+        if pos < next_start:
+            continue
+        ch = text[pos]
+        if ch in "¥￥$":
+            sym = _MONEY_SYMBOL_RE.match(text, pos)
+            number = _NUMBER_RE.match(text, sym.end()) if sym else None
+            if number is None:            # 符号后无数字：不构成金额
+                next_start = pos + 1
+                continue
+            end = number.end()
+            unit += 1
+            money += 1
+            unit_tokens[unit_token_of(text[pos:end])] += 1
+            next_start = end
+            continue
+        if ch != "百":
+            clock = _CLOCK_RE.match(text, pos)
+            if clock is not None:         # 时间分支的第二种写法
+                unit += 1
+                time += 1
+                unit_tokens[unit_token_of(clock.group(0))] += 1
+                next_start = clock.end()
+                continue
+            number = _NUMBER_RE.match(text, pos)
+            if number is None:
+                next_start = pos + 1
+                continue
+            end = number.end()
+            unit_pos = _WS_RE.match(text, end).end()
+            cands = _SUFFIX_BY_FIRST.get(text[unit_pos:unit_pos + 1])
+            if cands is not None:
+                for suffix, cat in cands:
+                    if text.startswith(suffix, unit_pos):
+                        unit += 1
+                        if cat == "money":
+                            money += 1
+                        elif cat == "percent":
+                            percent += 1
+                        elif cat == "measure":
+                            measure += 1
+                        else:
+                            time += 1
+                        unit_tokens[unit_token_of(suffix)] += 1
+                        next_start = unit_pos + len(suffix)
+                        break
+                else:
+                    counts["num"] += 1
+                    next_start = end
+                continue
+            counts["num"] += 1
+            next_start = end
+            continue
+        pct = _PERCENT_CN_RE.match(text, pos)   # 百分比分支的中文写法
+        if pct is not None:
+            unit += 1
+            percent += 1
+            unit_tokens[unit_token_of(pct.group(0))] += 1
+            next_start = pct.end()
+        else:
+            next_start = pos + 1
+    counts["unit"] = unit
+    subtypes["money"] = money
+    subtypes["percent"] = percent
+    subtypes["measure"] = measure
+    subtypes["time"] = time
     counts["vague"] = len(VAGUE_RE.findall(text))
     places = PLACE_RE.findall(text)
     counts["place"] = len(places)
@@ -548,8 +644,9 @@ def plot_gradient(grad: dict, eng: dict, quarterly: dict,
 # 主流程
 # --------------------------------------------------------------------------
 def main() -> None:
-    print("扫描三个语料（全量）…")
-    scans = {name: scan_corpus(path) for name, path in DATASETS.items()}
+    print("扫描三个语料（全量，进程池并行）…")
+    scans = dict(zip(DATASETS, run_parallel(
+        [partial(scan_corpus, path) for path in DATASETS.values()])))
     for name, sc in scans.items():
         print(f"  {name}: {sc['n_total']:,} 条记录")
 

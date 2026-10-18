@@ -344,16 +344,23 @@ def main() -> None:
     init_plot_style()
 
     stats, bursts = {}, {}
-    for name, path in DATASET_PATHS.items():
-        s = scan_sentence_stats(path)
-        stats[name] = s
-        bursts[name] = bootstrap_median_ci(s["burst"], n_boot=BOOT, seed=BOOT_SEED)
-        print(f"{name}: {s['n_reps']} 篇（去重后），burstiness 中位数 "
-              f"{bursts[name]['median']:.3f}")
-
-    mtld_dist, mtld_stats, heaps = {}, {}, {}
     pool = make_pool(preload=jieba.initialize)
     try:
+        # 三个子集的全量句法扫描互不依赖，复用同一个进程池并行执行；
+        # 逐子集返回结果与串行调用完全一致、子集顺序不变。该池随后继续
+        # 用于 MTLD/Heaps 的抽样分词，不额外增加进程开销。
+        names = list(DATASET_PATHS)
+        scans = (pool.map(scan_sentence_stats,
+                          [DATASET_PATHS[n] for n in names])
+                 if pool is not None
+                 else [scan_sentence_stats(DATASET_PATHS[n]) for n in names])
+        for name, s in zip(names, scans):
+            stats[name] = s
+            bursts[name] = bootstrap_median_ci(s["burst"], n_boot=BOOT, seed=BOOT_SEED)
+            print(f"{name}: {s['n_reps']} 篇（去重后），burstiness 中位数 "
+                  f"{bursts[name]['median']:.3f}")
+
+        mtld_dist, mtld_stats, heaps = {}, {}, {}
         for name, path in DATASET_PATHS.items():
             smp = sample_lexical(path, pool, offsets=stats[name].pop("offsets"))
             vals = smp["mtld"]

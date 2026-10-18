@@ -10,12 +10,12 @@
 """
 import json
 import re
-import gzip
 import csv
+import io
 import os
 from functools import partial
 
-from analysis_utils import close_pool, make_pool
+from analysis_utils import close_pool, make_pool, write_gz_if_changed
 
 BASE = os.path.dirname(os.path.abspath(__file__)) + "/"
 
@@ -191,11 +191,20 @@ def main():
     try:
         for fname, ds in jobs:
             out = BASE + f"paper_features_{ds}.csv.gz"
-            with gzip.open(out, "wt", encoding="utf-8", newline="") as g:
-                w = csv.writer(g)
-                w.writerow(FIELDS)
-                n = process(BASE + fname, ds, w, pool=pool)
-            print(f"{ds}: {n} rows -> {out}")
+            # 先在内存序列化再比较写出：内容未变化时不动数据文件，同时
+            # 省掉一次无意义的 gzip 压缩（三语料合计约 2–3 秒）。
+            # 直接用「utf-8 文本包装 BytesIO」逐行编码，避免整份 str 与
+            # bytes 各存一份；newline="" 与原 gzip 文本流写出逐字节一致。
+            buf = io.BytesIO()
+            tw = io.TextIOWrapper(buf, encoding="utf-8", newline="")
+            w = csv.writer(tw)
+            w.writerow(FIELDS)
+            n = process(BASE + fname, ds, w, pool=pool)
+            tw.flush()
+            changed = write_gz_if_changed(buf.getvalue(), out)
+            tw.detach()
+            print(f"{ds}: {n} rows -> {out}"
+                  + ("" if changed else "（内容未变化，保持原文件）"))
     finally:
         close_pool(pool)
 

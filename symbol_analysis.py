@@ -546,7 +546,7 @@ def plot_gradient(grad: dict, diff: dict, eng: dict,
         ax.annotate(f"{v:.2f}", (i, v), textcoords="offset points",
                     xytext=(0, 3), ha="center", fontsize=7.6)
     ax.set_ylabel("平均每帖标签数", color=PALETTE["aigc"])
-    ax.set_xlabel("AI 风格得分十分位（0=最像人 … 9=最像AI）")
+    ax.set_xlabel("AI 风格得分十分位（1=最像人 … 10=最像AI）")
     ax2 = ax.twinx()
     ax2.plot(x, tagged, "o-", color="#333333", ms=4, lw=1.4,
              label="有标签帖占比")
@@ -733,7 +733,7 @@ def plot_emoji(structs: dict, grad_emoji: dict, emoji_diff: dict,
             label="含 Unicode emoji 帖占比")
     ax.plot(x, xshares, "s-", color="#DD8452", ms=4.0, lw=1.5,
             label="含 [xxR] 表情帖占比")
-    ax.set_xlabel("AI 风格得分十分位（0=最像人 … 9=最像AI）")
+    ax.set_xlabel("AI 风格得分十分位（1=最像人 … 10=最像AI）")
     ax.set_ylabel("帖子占比 (%)")
     ax2 = ax.twinx()
     ax2.plot(x, means, "^--", color="#333333", ms=4.2, lw=1.3,

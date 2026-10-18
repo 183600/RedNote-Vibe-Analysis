@@ -606,7 +606,7 @@ def md_summary(out: dict) -> str:
         "",
         "## 2 跨子集近重复（模板迁移）",
         "",
-        "| 组合 | J ≥ 0.5 对数 | J ≥ 0.7 对数 | 一侧文档占比（J ≥ 0.5） |",
+        "| 组合 | J ≥ 0.5 对数 | J ≥ 0.7 对数 | 涉及文档占比（占两侧合计，J ≥ 0.5） |",
         "|------|------------:|------------:|------------------------:|",
     ]
     for combo, r in out["cross"]["combos"].items():
@@ -645,9 +645,11 @@ def md_summary(out: dict) -> str:
                      f"{r['cross_human_share_pct']:.2f}% |")
     top_fam = max(out["aigc_family"].items(),
                   key=lambda kv: kv[1]["cross_human_share_pct"])
+    max_twin = max(r["twin_share_pct"] for r in out["aigc_family"].values())
     lines += [
         "",
-        f"生成集内部无自重复（子集内 0.00%）；跨子集近重复集中在 {top_fam[0]}"
+        f"生成集内部自重复最高 {max_twin:.2f}%（各家族子集内 J ≥ 0.7 占比）；"
+        f"跨子集近重复集中在 {top_fam[0]}"
         f"（{top_fam[1]['cross_human_share_pct']:.2f}% 的帖子与人类帖 J ≥ 0.5），"
         "其余家族接近 0。",
         "",

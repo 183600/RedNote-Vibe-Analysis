@@ -54,8 +54,8 @@ from scipy.stats import spearmanr, wilcoxon
 from analysis_utils import (BASE, INSIGHTS, PALETTE, clean_body, close_pool,
                             content_of, dedup_indices, engagement_of,
                             gini_coefficient, init_plot_style, iter_jsonl,
-                            make_pool, save_fig, save_json, wilson_ci,
-                            within_cell_spearman)
+                            make_pool, parse_local_time, save_fig, save_json,
+                            wilson_ci, within_cell_spearman)
 
 SCORES_PATH = BASE + "paper_exploring_scores.csv.gz"
 EXPLORING_PATH = BASE + "exploring_set_fixed.jsonl"
@@ -474,8 +474,12 @@ def scan_users(scores: pd.DataFrame) -> dict:
         uid.append(user)
         has_meta = (bool(user)
                     and rec.get("domain") not in (None, "", "未知"))
+        # 去重打分与 analysis_utils.dedup_indices 文档的共享规则完全一致
+        # （含时间戳），保证与其他全量扫描脚本保留同一条重复记录。
+        dt = parse_local_time(rec.get("local_time"))
         meta.append(int(has_meta) + int(bool(lk)) + int(bool(cl))
-                    + int(bool(cm)) + int(len(body) > 0))
+                    + int(bool(cm)) + int(dt is not None)
+                    + int(len(body) > 0))
     return {"nid": nid, "uid": uid, "meta": np.asarray(meta),
             "n_raw": len(nid), "mismatch": int(mismatch)}
 

@@ -365,8 +365,6 @@ def plot_engagement(fe: dict, zero: dict, controlled: dict,
     axes[0].text(0.02, 0.02, "基线：Q1 双低（=0）",
                  transform=axes[0].transAxes, ha="left", fontsize=8, color="#666666")
     axes[0].legend(fontsize=8, loc="center right")
-    axes[0].text(0.02, 0.02, "基线：Q1 双低（=0）",
-                 transform=axes[0].transAxes, ha="left", fontsize=8, color="#666666")
     note = "/".join(f"{s['coef']['Q4']:+.3f}" for s in sens if "coef" in s)
     axes[2].text(0.98, 0.97, f"阈值敏感性（Q50/Q70/Q80）双高：{note}",
                  transform=axes[2].transAxes, ha="right", va="top",

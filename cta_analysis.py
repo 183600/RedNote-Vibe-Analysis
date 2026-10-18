@@ -48,6 +48,8 @@ from array import array
 from collections import Counter, defaultdict
 from functools import partial
 
+import re
+
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
@@ -92,14 +94,22 @@ CATEGORY_DEFS = {
 }
 
 # 高歧义短语的显式排除词（等价于原始正则的否定前瞻）：
-# 计数时对每个标记扣除被排除形式的出现次数（正则语义下后者先被匹配、
-# 前者不再重复计数）；「留言→留言区」「冲鸭→快冲鸭」是同类别内
-# 最长优先匹配的重复计数扣除。
+# 「留言→留言区」「冲鸭→快冲鸭」是同类别内最长优先匹配的重复计数扣除，
+# 用 `str.count` 之差计数；以标记本身开头的排除词（收藏夹/聊聊天）
+# 则用「标记 + 否定前瞻」正则精确计数——与排除词邻接重叠的出现
+#（如「聊聊聊天」）无法用简单扣除表达。
 GUARDED = {
     "收藏": ("收藏夹", "收藏品", "收藏家"),
     "聊聊": ("聊聊天",),
     "留言": ("留言区",),
     "冲鸭": ("快冲鸭",),
+}
+GUARDED_RE = {
+    w: re.compile(re.escape(w) + "(?!"
+                  + "|".join(re.escape(g[len(w):]) for g in guards
+                             if g.startswith(w)) + ")")
+    for w, guards in GUARDED.items()
+    if any(g.startswith(w) for g in guards)
 }
 CATEGORY_LABELS = {k: v[0] for k, v in CATEGORY_DEFS.items()}
 CATEGORY_COLORS = {"comment": "#4C72B0", "reaction": "#C44E52",
@@ -133,19 +143,27 @@ def cta_counts(text: str) -> dict:
     最长优先匹配、不重复计数（如「留言区」计为一次「留言区」而不是
     「留言」+「区」），类别计数等于该类逐标记计数之和。
 
-    实现为逐标记的 `str.count`（C 层非重叠计数）再按 `GUARDED` 扣除
-    被排除/被更长标记吃掉的次数，与原「最长优先正则 alternation」在
-    本词表上逐位一致（词表内不存在其他前缀/共字重叠组合），但免去每帖
-    4 次正则扫描，速度约快 2–3 倍。
+    实现：无排除词的标记用 `str.count`（C 层非重叠计数）；以标记开头
+    的排除词（收藏夹/聊聊天）用预编译的「标记 + 否定前瞻」正则计数；
+    其余排除词（快冲鸭）按最长优先从计数中扣除。与原「最长优先正则
+    alternation」在本词表上逐位一致（含「聊聊聊天」这类邻接重叠）。
     """
     out: dict = {}
     pat_counts: Counter = Counter()
     for cat, (_, words) in CATEGORY_DEFS.items():
         named = {}
         for w in words:
-            n = text.count(w)
-            for guarded in GUARDED.get(w, ()):
-                n -= text.count(guarded)
+            guards = GUARDED.get(w, ())
+            if not guards:
+                n = text.count(w)
+            else:
+                if w in GUARDED_RE:
+                    n = len(GUARDED_RE[w].findall(text))
+                else:
+                    n = text.count(w)
+                for g in guards:
+                    if not g.startswith(w):
+                        n -= text.count(g)
             if n:
                 named[w] = n
         out[cat] = int(sum(named.values()))

@@ -312,9 +312,11 @@ def plot_errors(deciles: list[dict], domains: list[dict],
     da = {f["label"]: f["z_diff"] for f in profiles["aigc_fn_vs_tp"]["features"]}
     feats = list(dict.fromkeys(list(dh) + list(da)))
     pos = np.arange(len(feats))
-    ax.barh(pos - 0.19, [dh.get(f, 0.0) for f in feats], height=0.38,
+    # 只进入另一侧 Top-10 的特征在本侧没有数值：画成 NaN（缺测）而不是 0.0，
+    # 否则「未进榜」会被误读为「该特征上两类错分无差异」。
+    ax.barh(pos - 0.19, [dh.get(f, np.nan) for f in feats], height=0.38,
             color=COLORS["human"], label="人类假阳性 − 真阴性")
-    ax.barh(pos + 0.19, [da.get(f, 0.0) for f in feats], height=0.38,
+    ax.barh(pos + 0.19, [da.get(f, np.nan) for f in feats], height=0.38,
             color=COLORS["aigc"], label="AIGC 假阴性 − 真阳性")
     ax.axvline(0, color="k", lw=0.8)
     ax.set_yticks(pos)

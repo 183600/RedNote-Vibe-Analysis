@@ -239,6 +239,16 @@
 4. **数字与地名是少见的「正向互动」特征**：控制 P(AI)、正文长度与标签数后（n=54,969、116 个单元、整群 bootstrap 300 次），具体数字收藏 β=+0.035 [+0.016, +0.055]、地点实指 +0.022 [+0.003, +0.039]、模糊量词 +0.016 [+0.003, +0.030]，带单位量值不显著（-0.007）；同期 P(AI) 本身为 -0.039/-0.020——给出具体数字/地名与「像人」同向且独立抬升收藏（观察性关联，不作因果解读）。
 5. **家族指纹与时间演化**：DeepSeek 数字密度最高（0.951/百字）、Gemini 最低（0.653）；GLM 的地点实指最高（0.196）。探索集季度趋势：带单位量值密度固定领域权重后显著上升（ρ=+0.900，p=0.001），模糊量词显著下降（-0.683，p=0.042），具体数字与地点实指无显著趋势——与语气层「自信话术消退」相对，量值信息的密度在上升。
 
+### 互动引导语层：评论、点赞收藏、关注转发与催购（`cta_analysis.py`）
+
+把「AI 味」再下沉到**互动引导语（CTA, call-to-action）**层：用四个先验短语类别（评论征集 comment、点赞收藏 reaction、关注转发 follow、催购催促 urge，共 19 个标记，不做数据驱动筛选；匹配带前瞻守卫，如 `收藏(?![夹品家])`、`聊聊(?!天)`），统计三子集的帖子层普及率与字符层密度、探索集内的 P(AI) 梯度（含长度分层）、互动偏效应（与 `engagement_drivers_analysis.py` 同协议的月份×领域 FE + 整群 bootstrap 300 次，并新增评论端口径）、CTA 是否改变 P(AI) 互动惩罚的交互模型、6 家族指纹与季度趋势。结果图在 `insights/cta_lexicon.png`、`cta_gradient.png`，数据在 `cta_results.json` 与 `cta_results.md`。人类/探索集按 note_id 去重，正文 ≥50 字，p_ai 按行序对齐（content_len mismatch=0）：
+
+1. **生成集过量使用 CTA，催购催促几乎专属生成集**：含任一 CTA 的帖子占比人类 12.7% / AIGC 21.5% / 探索集 14.1%；类别密度（次/百字）human / aigc / exploring 分别为——评论征集 0.0196/0.0410/0.0331，点赞收藏 0.0093/0.0165/0.0119，关注转发 0.0065/0.0110/0.0067，催购催促 0.0019/0.0152/0.0012。逐标记 AIGC−人类过量最多的是「冲鸭」（+0.926/万字符）、「评论区」（+0.710）、「聊聊」（+0.546）、「分享一下」（+0.533）、「收藏」（+0.497）、「分享给」（+0.271）、「快冲」（+0.229）。
+2. **野外梯度温和且类别分化**：探索集（39,941 篇去重笔记 / 313 个单元）任一 CTA 的单元内加权 ρ=+0.0305，长度分层后 +0.0739；分类别看评论征集整体近零（ρ=-0.0022，长度分层 +0.0364，54.3% 单元为负——「评论区」类引导在人类笔记中同样是常态），而催购催促（ρ=+0.0523，仅 17.6% 单元为负）与点赞收藏（+0.0483）是最稳定的 AI 味正标记；逐标记正端「码住」+0.0801、「冲鸭」+0.0611、「快冲」+0.0533。
+3. **互动偏效应：收藏导向抬互动、评论导向分化**：控制 P(AI)、正文长度与标签数后（n=54,969、116 个单元、整群 bootstrap 300 次），点赞收藏类 CTA 的点赞 β=+0.0164 [+0.0057, +0.0272]、收藏 +0.0319 [+0.0193, +0.0437]、但评论 -0.0217 [-0.0306, -0.0129]；关注转发类点赞 +0.0145 [+0.0033, +0.0286]、收藏 +0.0200 [+0.0090, +0.0345]；评论征集类反压低点赞（-0.0157 [-0.0310, -0.0018]）而评论端 +0.0094 [-0.0035, +0.0211]（边缘），催购催促类各端均不显著；同期 P(AI) 本身仍全面为负（点赞 -0.0436、收藏 -0.0276、评论 -0.0742）——「请互动」的话术并非普遍有效的互动杠杆（观察性关联，不作因果解读）。
+4. **CTA 放大而非缓冲 AI 味惩罚**：交互模型（z(P(AI))×z(任一 CTA)）显示，点赞端交互 β=-0.0218 [-0.0343, -0.0105]、评论端 -0.0297 [-0.0390, -0.0200]（bootstrap p=0.000）；P(AI) 的边际斜率在含 CTA 帖中几乎翻倍——点赞 -0.0323 → -0.0956，评论 -0.0622 → -0.1485（每 1 SD P(AI)）。即当高 AI 味文本带上 CTA 时，受到的互动惩罚更强，与「模板化引导语本身就是 AI 味的显性信号」互洽。
+5. **家族指纹与季度趋势**：评论征集密度 Claude 最高（0.0586/百字）；催购催促 Gemini 最高（0.0401）、GLM/Claude 近乎为零（0.0045/0.0068）。探索集季度趋势：点赞收藏类密度显著上升（ρ=+0.917，p=0.001；固定领域权重 +0.733，p=0.025），2023Q2 的 0.0067 → 2025Q1 的 0.0177；评论征集/关注转发/催购催促无显著单调趋势（固定权重后催购催促 ρ=+0.600，p=0.088，边缘上升）。
+
 ### 生成的可视化图表
 
 | 文件 | 描述 |
@@ -273,6 +283,8 @@
 | `insights/stance_gradient.png` | 语气梯度图（P(AI) 十分位曲线、逐词单元内 ρ、互动偏效应森林图、家族语气指纹热力图） |
 | `insights/concreteness_lexicon.png` | 具体性图（三子集发生率/密度、长度分箱发生率曲线） |
 | `insights/concreteness_gradient.png` | 具体性梯度图（P(AI) 十分位曲线、单元内 ρ（含长度分层）、互动偏效应森林图、季度趋势、家族指纹热力图、单标记 AUC） |
+| `insights/cta_lexicon.png` | 互动引导语图（三子集四类 CTA 普及率/密度、逐标记 AIGC−人类过量使用、探索集标记命中） |
+| `insights/cta_gradient.png` | CTA 梯度图（P(AI) 十分位曲线、逐标记单元内 ρ、互动偏效应森林图、P(AI)×CTA 交互边际斜率、季度趋势、家族指纹热力图） |
 | `output/` | 领域、话题、互动等探索性图表合集 |
 | `paper_figs/` | 论文管线图表（检测器、漂移、互动、稳健性） |
 
@@ -307,11 +319,12 @@
 - `family_transfer_analysis.py` - 家族风格迁移：6 路家族分类器（5 折 CV）迁移到探索集，高 P(AI) 帖的家族构成/半年度演化与互动回报的家族结构（月份×领域 FE + 整群 bootstrap，输出 `insights/family_transfer*.png`、`family_transfer_results.json/md`）
 - `stance_analysis.py` - 语气情态：谨慎/断言/强化/呼语四类先验词表的跨子集密度、P(AI) 梯度（含长度分层）、互动偏效应（月份×领域 FE + 整群 bootstrap）与家族指纹（输出 `insights/stance_*.png`、`stance_results.json/md`）
 - `concreteness_analysis.py` - 具体性/实指表达：数字/单位量值/模糊量词/地名的跨子集发生率与密度、领域标准化与长度匹配控制、P(AI) 梯度（含长度分层）、互动偏效应与单标记 AUC（输出 `insights/concreteness_*.png`、`concreteness_results.json/md`）
+- `cta_analysis.py` - 互动引导语：评论征集/点赞收藏/关注转发/催购催促四类先验短语的跨子集普及率与密度、P(AI) 梯度（含长度分层）、互动偏效应（含评论端）、P(AI)×CTA 交互模型与家族指纹（输出 `insights/cta_*.png`、`cta_results.json/md`）
 - `quick_start.py` - BERT 基线训练
 
-深潜分析套件可一键顺序执行：`python3 run_fork_pipeline.py`（`--list` / `--from N` / `--only 脚本名`，编排 deep_dive / framing / title_style / title_body_congruence / diversity / detector_diagnostics / family_lexicon / engagement_structure / engagement_drivers / author_style / user_clustering / symbol / near_duplicate / family_transfer / stance / concreteness 共 16 步，输出统一落在 `insights/`）。两个管线运行器共用 `pipeline_common.py` 的步骤选择与顺序执行实现（含未知脚本名校验），其单元测试见 `tests/test_pipeline_common.py`。
+深潜分析套件可一键顺序执行：`python3 run_fork_pipeline.py`（`--list` / `--from N` / `--only 脚本名`，编排 deep_dive / framing / title_style / title_body_congruence / diversity / detector_diagnostics / family_lexicon / engagement_structure / engagement_drivers / author_style / user_clustering / symbol / near_duplicate / family_transfer / stance / concreteness / cta 共 17 步，输出统一落在 `insights/`）。两个管线运行器共用 `pipeline_common.py` 的步骤选择与顺序执行实现（含未知脚本名校验），其单元测试见 `tests/test_pipeline_common.py`。
 
-运行环境：`pip install -r requirements.txt`；公共工具位于 `analysis_utils.py`（含概率校准、阈值指标、单元内秩相关、长度分箱/十分位表/固定权重时间序列等跨脚本复用工具），单元测试见 `tests/`（`python3 -m unittest discover -s tests`，覆盖 `analysis_utils.py`、`framing_analysis.py` 及标题/标题正文组合/多样性/符号/近重复/互动载体/作者层分解/家族迁移/语气/具体性分析的纯函数与共享管线运行器）。
+运行环境：`pip install -r requirements.txt`；公共工具位于 `analysis_utils.py`（含概率校准、阈值指标、单元内秩相关、长度分箱/十分位表/固定权重时间序列等跨脚本复用工具），单元测试见 `tests/`（`python3 -m unittest discover -s tests`，覆盖 `analysis_utils.py`、`framing_analysis.py` 及标题/标题正文组合/多样性/符号/近重复/互动载体/作者层分解/家族迁移/语气/具体性/互动引导语分析的纯函数与共享管线运行器）。
 
 中文字体由 `setup_chinese_fonts()` 自动解析：依次扫描 `REDNOTE_FONT_DIR`、`assets/fonts/`、系统字体目录（Noto Sans CJK/SC、思源黑体、文泉驿等），找不到时回退下载 Noto Sans SC（另含单色 emoji 字体）并缓存到 `~/.cache/rednote-vibe/fonts`；也可用 `REDNOTE_FONT_PATH` 直接指定字体文件，或设 `REDNOTE_FONT_DOWNLOAD=0` 禁用联网下载。写回 CSV 时使用内容比较（`write_csv_gz_if_changed`），内容未变则不触碰文件；`paper_drift.py --figs-only` 可只重绘图表、完全不写 `paper_exploring_scores.csv.gz`。
 

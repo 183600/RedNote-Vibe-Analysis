@@ -6,7 +6,7 @@
 或全量扫描原始 JSONL，互不写坏对方输出，可以任意单独重跑。
 
 用法：
-  python3 run_fork_pipeline.py                     # 运行全部 16 步
+  python3 run_fork_pipeline.py                     # 运行全部 17 步
   python3 run_fork_pipeline.py --list              # 只打印步骤
   python3 run_fork_pipeline.py --from 3            # 从第 3 步开始
   python3 run_fork_pipeline.py --only detector_diagnostics.py family_lexicon_analysis.py
@@ -51,6 +51,8 @@ STEPS = [
      "语气情态：谨慎表达/断言强调/程度强化/社区呼语的梯度与互动偏效应 -> stance_results.{json,md} + 2 图"),
     ("concreteness_analysis.py",
      "具体性：数字/单位量值/模糊量词/地名的梯度、长度控制与互动 -> concreteness_results.{json,md} + 2 图"),
+    ("cta_analysis.py",
+     "互动引导语：评论/点赞收藏/关注转发/催购四类 CTA 的梯度、互动与 p_ai 调节 -> cta_results.{json,md} + 2 图"),
 ]
 
 

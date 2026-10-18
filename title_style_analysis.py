@@ -80,9 +80,15 @@ HALF_ORDER = ["2023H1", "2023H2", "2024H1", "2024H2", "2025H1"]
 # --------------------------------------------------------------------------
 # 数据加载与打分
 # --------------------------------------------------------------------------
+# 训练集两帧只用 dataset/model_family/model 与特征列；domain/month/likes/
+# collections/comments 仅探索集口径需要，读取时直接跳过。
+_UNUSED_META = ("domain", "month", "likes", "collections", "comments")
+
+
 def load_features() -> tuple[pd.DataFrame, pd.DataFrame]:
-    human = pd.read_csv(BASE + "paper_features_human.csv.gz")
-    aigc = pd.read_csv(BASE + "paper_features_aigc.csv.gz")
+    usecols = lambda c: c not in _UNUSED_META
+    human = pd.read_csv(BASE + "paper_features_human.csv.gz", usecols=usecols)
+    aigc = pd.read_csv(BASE + "paper_features_aigc.csv.gz", usecols=usecols)
     return human, aigc
 
 

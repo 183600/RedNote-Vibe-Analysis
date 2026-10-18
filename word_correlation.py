@@ -33,10 +33,20 @@ def main():
     note_counts = defaultdict(int)
     user_token_total = defaultdict(int)
     word_doc_freq = Counter()
+    # 第一遍顺手记下每条可用记录的 (user_id, 行起始字节偏移)，第二遍只回读
+    # 目标用户的少量行，不再整份重解析大文件。
+    record_offsets = []
 
     print("Loading...")
-    with open(PATH, "r", encoding="utf-8") as f:
-        for line in f:
+    # 二进制模式读取：文本模式逐行 tell() 需要反复处理解码器状态，代价高；
+    # 数据文件无 CR，二进制按 LF 切行与文本通用换行口径一致，json.loads
+    # 可直接解析 bytes。
+    with open(PATH, "rb") as f:
+        while True:
+            pos = f.tell()
+            line = f.readline()
+            if not line:
+                break
             try:
                 item = json.loads(line)
                 user_id = item.get("user_id")
@@ -45,6 +55,7 @@ def main():
                 words = _record_words(item)
                 note_counts[user_id] += 1
                 user_token_total[user_id] += len(words)
+                record_offsets.append((user_id, pos))
                 for w in set(words):
                     word_doc_freq[w] += 1
             except:
@@ -60,13 +71,13 @@ def main():
     top_word_set = set(topWords)
     wanted_users = set(user_ids)
     user_totals = defaultdict(Counter)
-    with open(PATH, "r", encoding="utf-8") as f:
-        for line in f:
+    with open(PATH, "rb") as f:
+        for user_id, pos in record_offsets:
+            if user_id not in wanted_users:
+                continue
             try:
-                item = json.loads(line)
-                user_id = item.get("user_id")
-                if not user_id or user_id not in wanted_users:
-                    continue
+                f.seek(pos)
+                item = json.loads(f.readline())
                 user_totals[user_id].update(
                     w for w in _record_words(item) if w in top_word_set)
             except:

@@ -53,9 +53,11 @@ FAMILY_NAME = {"gpt": "GPT", "gemini": "Gemini", "deepseek": "DeepSeek",
 
 
 def main():
-    human = pd.read_csv(BASE + "paper_features_human.csv.gz")
-    aigc = pd.read_csv(BASE + "paper_features_aigc.csv.gz")
+    # 只加载用到的列：人类集只需核心特征，AIGC 集额外需要 model/model_family
     feats = list(CORE_FEATS.keys())
+    human = pd.read_csv(BASE + "paper_features_human.csv.gz", usecols=feats)
+    aigc = pd.read_csv(BASE + "paper_features_aigc.csv.gz",
+                       usecols=feats + ["model", "model_family"])
 
     h_feats = human[feats]  # 只切一次列，均值/标准差复用
     h_mean = h_feats.mean()

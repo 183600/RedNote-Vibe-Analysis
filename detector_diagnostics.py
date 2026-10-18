@@ -64,9 +64,14 @@ COLORS = {"human": "#4C72B0", "aigc": "#C44E52", "exploring": "#55A868"}
 # --------------------------------------------------------------------------
 # 数据与交叉验证（口径同 paper_detector.py）
 # --------------------------------------------------------------------------
+# 本脚本全程未用到的 5 个 META 列；读取时跳过以省去整列解析
+_UNUSED_META = ("model_family", "model", "likes", "collections", "comments")
+
+
 def load_labeled() -> tuple[pd.DataFrame, list[str]]:
-    human = pd.read_csv(BASE + "paper_features_human.csv.gz")
-    aigc = pd.read_csv(BASE + "paper_features_aigc.csv.gz")
+    usecols = lambda c: c not in _UNUSED_META
+    human = pd.read_csv(BASE + "paper_features_human.csv.gz", usecols=usecols)
+    aigc = pd.read_csv(BASE + "paper_features_aigc.csv.gz", usecols=usecols)
     df = pd.concat([human, aigc], ignore_index=True)
     feats = [c for c in human.columns if c not in META]
     return df, feats

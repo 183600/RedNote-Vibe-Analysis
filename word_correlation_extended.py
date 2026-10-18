@@ -29,9 +29,16 @@ def main():
     print("Loading...")
     user_word_total = defaultdict(int)
     word_doc_freq = Counter()
+    # 第一遍顺手记下每条有效记录的 (user_id, 行起始字节偏移)；第二遍只回读
+    # 活跃用户的行，不再整份重新解码+解析大文件（空词记录对计数无贡献，跳过）。
+    record_offsets = []
 
     with open(PATH, "rb") as f:
-        for line in f:
+        while True:
+            pos = f.tell()
+            line = f.readline()
+            if not line:
+                break
             try:
                 s = line.decode("utf-8")
                 item = json.loads(s)
@@ -40,6 +47,7 @@ def main():
                     continue
                 words = _record_words(item)
                 if words:
+                    record_offsets.append((user_id, pos))
                     user_word_total[user_id] += len(words)
                     word_doc_freq.update(set(words))
             except:
@@ -58,13 +66,12 @@ def main():
     top_word_set = set(top_words)
     note_by_user = defaultdict(lambda: defaultdict(int))
     with open(PATH, "rb") as f:
-        for line in f:
+        for user_id, pos in record_offsets:
+            if user_id not in active_users:
+                continue
             try:
-                s = line.decode("utf-8")
-                item = json.loads(s)
-                user_id = item.get("user_id")
-                if not user_id or user_id not in active_users:
-                    continue
+                f.seek(pos)
+                item = json.loads(f.readline().decode("utf-8"))
                 counts = note_by_user[user_id]
                 for w in _record_words(item):
                     if w in top_word_set:

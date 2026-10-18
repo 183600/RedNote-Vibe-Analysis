@@ -70,9 +70,17 @@ def main(with_scores: bool = True):
     with open(BASE + "paper_detector_model.json", encoding="utf-8") as f:
         model = json.load(f)
 
-    human = pd.read_csv(BASE + "paper_features_human.csv.gz")
-    expl = pd.read_csv(BASE + "paper_features_exploring.csv.gz")
-    aigc_feats = pd.read_csv(BASE + "paper_features_aigc.csv.gz")
+    # 只加载各帧实际用到的列：模型特征列表来自已保存的 detector 参数，
+    # 人类/AIGC 帧仅稳健特征参与打分，探索集需要全特征与互动/时间列。
+    model_feats = list(model["features"])
+    robust_feats = list(model["robust_features"])
+    human = pd.read_csv(BASE + "paper_features_human.csv.gz",
+                        usecols=["month", "domain"] + robust_feats)
+    expl = pd.read_csv(BASE + "paper_features_exploring.csv.gz",
+                       usecols=["month", "domain", "likes", "collections",
+                                "comments"] + model_feats)
+    aigc_feats = pd.read_csv(BASE + "paper_features_aigc.csv.gz",
+                             usecols=robust_feats)
     human["month"] = human["month"].astype(str)
     expl["month"] = expl["month"].astype(str)
 

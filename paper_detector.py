@@ -76,9 +76,14 @@ FAMILY_NAME = {"gpt": "GPT", "gemini": "Gemini", "deepseek": "DeepSeek",
                "anthropic": "Claude", "glm": "GLM", "qwen": "Qwen"}
 
 
+# 本脚本全程未用到的 META 列；读取时跳过以省去整列解析
+_UNUSED_META = ("domain", "month", "model", "likes", "collections", "comments")
+
+
 def main():
-    human = pd.read_csv(BASE + "paper_features_human.csv.gz")
-    aigc = pd.read_csv(BASE + "paper_features_aigc.csv.gz")
+    usecols = lambda c: c not in _UNUSED_META
+    human = pd.read_csv(BASE + "paper_features_human.csv.gz", usecols=usecols)
+    aigc = pd.read_csv(BASE + "paper_features_aigc.csv.gz", usecols=usecols)
     feats = [c for c in human.columns if c not in META]
 
     df = pd.concat([human, aigc], ignore_index=True)

@@ -107,7 +107,7 @@ def main(with_scores: bool = True):
     fig, axes = plt.subplots(1, 2, figsize=(14, 4.6),
                              gridspec_kw={"width_ratios": [1, 1.6]})
     ax = axes[0]
-    human_monthly_base = float(ms_h["mean"].mean())
+    human_monthly_base = human_mean_p
     x_h = range(len(ms_h))
     ax.plot(x_h, ms_h["mean"], "o-", color="#4C72B0", ms=3, lw=1.2)
     ax.axhline(human_monthly_base, color="gray", ls="--", lw=0.8)

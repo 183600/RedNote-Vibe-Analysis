@@ -61,7 +61,7 @@ ax.plot(x_h[:split], ms_h["mean"].values[:split], "o-", color="#4C72B0",
 ax.plot(x_h[split:], ms_h["mean"].values[split:], "o-", color="#DD8452",
         ms=3.5, lw=1.3, label="实时爬取窗口")
 ax.axvspan(split - 0.5, len(ms_h) - 0.5, color="#DD8452", alpha=0.08)
-base_clean = ms_h.loc[clean_months, "mean"].mean()
+base_clean = float(human.loc[human["month"] <= "202206", "p_ai"].mean())
 ax.axhline(base_clean, color="gray", ls="--", lw=0.9)
 ax.annotate("采样断层\n(爬取批次切换)", xy=(split, 0.26), fontsize=9,
             ha="center", color="#7f3b08")

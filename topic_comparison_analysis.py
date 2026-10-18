@@ -14,6 +14,7 @@ import os
 
 RE_TOPIC_TAG = re.compile(r"#\w+\[话题\]")
 RE_HASHTAG = re.compile(r"#(\w+)")
+RE_XHS_EMO = re.compile(r"\[[^\[\]]{1,8}R\]")
 RE_DIGITS = re.compile(r"\d+")
 # 直接匹配长度 >1 的 \w 串，等价于原先「非 \w 切分后过滤长度 >1」。
 RE_WORD2 = re.compile(r"\w{2,}")
@@ -210,6 +211,7 @@ def clean_tokenize(text):
     text = str(text)
     text = RE_TOPIC_TAG.sub(" ", text)
     text = RE_HASHTAG.sub(r"\1", text)
+    text = RE_XHS_EMO.sub(" ", text)
     text = RE_DIGITS.sub("", text)
     return [w for w in RE_WORD2.findall(text) if w not in STOPWORDS]
 

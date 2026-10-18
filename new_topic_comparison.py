@@ -182,6 +182,7 @@ EMOJI_PATTERN = re.compile(
 
 RE_TOPIC_TAG = re.compile(r"#\w+\[话题\]")
 RE_HASHTAG = re.compile(r"#(\w+)")
+RE_XHS_EMO = re.compile(r"\[[^\[\]]{1,8}R\]")
 RE_DIGITS = re.compile(r"\d+")
 RE_SENTENCE_SPLIT = re.compile(r"[。！？.!?]")
 RE_HHMM = re.compile(r"(\d{2}):(\d{2})")
@@ -255,6 +256,7 @@ def clean_tokenize(text):
     text = str(text)
     text = RE_TOPIC_TAG.sub(" ", text)
     text = RE_HASHTAG.sub(r"\1", text)
+    text = RE_XHS_EMO.sub(" ", text)
     text = RE_DIGITS.sub("", text)
     return [w for w in RE_WORD2.findall(text) if w not in STOPWORDS]
 

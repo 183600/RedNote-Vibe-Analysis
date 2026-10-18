@@ -126,6 +126,26 @@ negative_words = [
     "后悔",
 ]
 
+_POSITIVE_SET = set(positive_words)
+_NEGATIVE_SET = set(negative_words)
+# 最长优先的合并模式：避免 "伤心" 同时命中 "伤"、"难过" 同时命中 "难"
+# 这类嵌套词导致的同一处情感被重复计数。
+_SENTIMENT_PATTERN = re.compile("|".join(
+    sorted((re.escape(w) for w in _POSITIVE_SET | _NEGATIVE_SET),
+           key=len, reverse=True)))
+
+
+def sentiment_hits(text):
+    """非重叠、最长优先的词典匹配，返回 (正向命中数, 负向命中数)。
+
+    每个词至多计一次（保持原实现的「存在性」口径），但嵌套的短词不再与
+    其所属的长词在同一位置被重复计入。
+    """
+    if not text:
+        return 0, 0
+    hits = set(_SENTIMENT_PATTERN.findall(text))
+    return len(hits & _POSITIVE_SET), len(hits & _NEGATIVE_SET)
+
 
 def scan(path):
     """单次流式扫描数据集，一次性累计 13 个分析维度所需的全部中间量。
@@ -175,12 +195,12 @@ def scan(path):
         domains[item.get("domain", "Unknown")] += 1
 
         # 2. 情感（正文 / 标题）
-        pos_i = sum(map(content.__contains__, positive_words))
-        neg_i = sum(map(content.__contains__, negative_words))
+        pos_i, neg_i = sentiment_hits(content)
         pos_c += pos_i
         neg_c += neg_i
-        pos_t += sum(map(title.__contains__, positive_words))
-        neg_t += sum(map(title.__contains__, negative_words))
+        pos_ti, neg_ti = sentiment_hits(title)
+        pos_t += pos_ti
+        neg_t += neg_ti
 
         # 3. 互动
         like_i, coll_i, comm_i = engagement_of(item)
@@ -272,7 +292,10 @@ def scan(path):
             empty_title += 1
         if content and len(stripped) < 20:
             short += 1
-        titles_c[title] += 1
+        # 空标题不是「重复标题」：不计入重复标题统计（否则人类/探索集会
+        # 因大量缺失标题而凭空多出一个重复类别）。
+        if title:
+            titles_c[title] += 1
 
         # 11. 时间分布
         lt = item.get("local_time", "")

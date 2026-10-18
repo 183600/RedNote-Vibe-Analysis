@@ -113,6 +113,10 @@ NEGATIVE_WORDS = set(
     ]
 )
 
+SENTIMENT_PATTERN = re.compile("|".join(
+    sorted((re.escape(w) for w in POSITIVE_WORDS | NEGATIVE_WORDS),
+           key=len, reverse=True)))
+
 NEUTRAL_WORDS = set(
     [
         "今天",
@@ -172,9 +176,11 @@ def extract_punctuation(text):
 def sentiment_analysis(text):
     if not text:
         return 0, 0, 0
-    text = str(text).lower()
-    pos_count = sum(1 for word in POSITIVE_WORDS if word in text)
-    neg_count = sum(1 for word in NEGATIVE_WORDS if word in text)
+    # 最长优先的非重叠匹配：保持「每个词是否存在」的口径，但避免
+    # "好喜欢" 同时命中 "好"+"喜欢"+"好喜欢" 这类嵌套短词的重复计数。
+    hits = set(SENTIMENT_PATTERN.findall(str(text).lower()))
+    pos_count = len(hits & POSITIVE_WORDS)
+    neg_count = len(hits & NEGATIVE_WORDS)
     return pos_count, neg_count, pos_count - neg_count
 
 
@@ -216,14 +222,26 @@ def get_time_features(item):
 
 
 def compute_chi_square(counter1, counter2, top_n=10):
-    """Chi-square test of homogeneity over the most frequent emoji types."""
+    """Chi-square test of homogeneity over the full emoji distribution.
+
+    最高频的 `top_n` 类单独成列，其余类别合并为一列「其他」，因此检验覆盖
+    两份完整分布（旧实现丢弃长尾，统计量与 p 值实际只描述 Top-10 的条件
+    构成，不能代表整体 emoji 使用差异）。
+    """
     try:
         top = [e for e, _ in (counter1 + counter2).most_common(top_n)]
         if not top:
             return 0, 1
-        observed = np.array(
-            [[counter1.get(e, 0) for e in top], [counter2.get(e, 0) for e in top]]
-        )
+        top_set = set(top)
+        other1 = sum(c for e, c in counter1.items() if e not in top_set)
+        other2 = sum(c for e, c in counter2.items() if e not in top_set)
+        row1 = [counter1.get(e, 0) for e in top]
+        row2 = [counter2.get(e, 0) for e in top]
+        if other1 or other2:
+            row1.append(other1)
+            row2.append(other2)
+        observed = np.array([row1, row2])
+        observed = observed[:, observed.sum(axis=0) > 0]
         chi2, p_value = stats.chi2_contingency(observed)[:2]
         return chi2, p_value
     except:

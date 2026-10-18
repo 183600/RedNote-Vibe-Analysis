@@ -79,9 +79,13 @@ def main(with_scores: bool = True):
     human["p_ai"] = detector_oof_scores(human, aigc_feats, model, robust=True)
     expl["p_ai"] = score(expl, model, robust=True)
     expl["p_ai_full"] = score(expl, model, robust=False)
-    # 人类集基线与月度均值只算一次，图/JSON/摘要复用
-    human_mean_p = float(human["p_ai"].mean())
-    human_hi_share = float((human["p_ai"] > 0.9).mean())
+    # 人类集基线与月度均值只算一次，图/JSON/摘要复用。
+    # 基线口径为论文定义的「干净回溯窗口」（≤2022.06）：2022.07 起是实时
+    # 爬取窗口，存在采样断层（高置信占比 1.93% vs 干净窗口 0.67%），混入
+    # 会系统性抬高基线、削弱与探索集台阶的对比。
+    human_clean = human[human["month"] <= "202206"]
+    human_mean_p = float(human_clean["p_ai"].mean())
+    human_hi_share = float((human_clean["p_ai"] > 0.9).mean())
 
     ms_h = monthly_series(human)
     ms_e = monthly_series(expl)

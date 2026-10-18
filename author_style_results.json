@@ -161,9 +161,10 @@
   },
   "author_month_cells": {
    "n_cells": 517,
+   "n_authors": 463,
    "mean_delta": -0.0164,
    "neg_share": 0.5068,
-   "wilcoxon_p": 0.6268160796616917
+   "wilcoxon_p": 0.7621204341513317
   },
   "within_author_rho": {
    "min_notes": 4,

@@ -169,7 +169,9 @@ CITIES = ["广州", "深圳", "杭州", "成都", "武汉", "西安", "南京", 
           "吉安", "黄石", "十堰", "荆州", "荆门", "黄冈", "孝感", "咸宁",
           "阳江", "茂名", "肇庆", "江门", "清远", "韶关", "梅州", "河源",
           "汕尾", "云浮", "揭阳", "西双版纳", "香格里拉", "九寨沟", "峨眉山"]
-_PLACE_NAMES = sorted(set(PROVINCES) | set(CITIES), key=len, reverse=True)
+# 长度降序 + 字典序打破并列：`key=len` 的稳定排序在同长度词之间依赖 set
+# 迭代顺序（受 PYTHONHASHSEED 影响），会导致产物内容不变但序列化顺序随机。
+_PLACE_NAMES = sorted(set(PROVINCES) | set(CITIES), key=lambda s: (-len(s), s))
 PLACE_RE = re.compile("|".join(map(re.escape, _PLACE_NAMES)))
 
 CATEGORY_NOTE = {
@@ -351,7 +353,7 @@ def scan_corpus(path: str) -> dict:
         note_id.append(rec.get("note_id"))
         dom = rec.get("domain")
         domain.append(dom if dom not in (None, "") else "未知")
-        likes_v, colls, _ = engagement_of(rec)
+        likes_v, colls, comms = engagement_of(rec)
         likes.append(likes_v)
         collections.append(colls)
         has_meta = bool(rec.get("user_id")) and dom not in (None, "", "未知")
@@ -359,8 +361,11 @@ def scan_corpus(path: str) -> dict:
         month.append(f"{dt.year:04d}{dt.month:02d}" if dt else None)
         # 正文仅用于「是否有非空白内容」的评分：strip 的布尔值与原先
         # `"".join(content.split())` 完全一致，并省掉逐帖的 split/join 拷贝。
+        # 打分项与 analysis_utils.dedup_indices 文档的共享规则一致（含评论数），
+        # 与其他全量扫描脚本的去重保留记录完全相同。
         score = (int(has_meta) + int(bool(likes_v)) + int(bool(colls))
-                 + int(dt is not None) + int(bool(content.strip())))
+                 + int(bool(comms)) + int(dt is not None)
+                 + int(bool(content.strip())))
         meta.append(score)
         family.append(rec.get("model_family") or "")
         model.append(rec.get("model") or "")
@@ -619,13 +624,16 @@ def plot_gradient(grad: dict, eng: dict, quarterly: dict,
     labels2["cv_lr"] = "四标记 LR（5 折 CV）"
     mark_keys = CATEGORY_ORDER + ["concrete"]
     aucs = [auc["markers"][k]["auc"] for k in mark_keys] + [auc["cv_lr"]["auc"]]
-    los = [auc["markers"][k]["ci_low"] for k in mark_keys] + [auc["cv_lr"]["auc"]]
-    his = [auc["markers"][k]["ci_high"] for k in mark_keys] + [auc["cv_lr"]["auc"]]
+    # cv_auc() 只返回点估计，没有 bootstrap CI：LR 行用 NaN 占位而不是把点
+    # 估计当作区间端点（否则会画出一条零宽度的“95% CI”线段）。
+    los = [auc["markers"][k]["ci_low"] for k in mark_keys] + [float("nan")]
+    his = [auc["markers"][k]["ci_high"] for k in mark_keys] + [float("nan")]
     colors = [CATEGORY_COLORS[k] for k in CATEGORY_ORDER] + ["#8172B3", "#937860"]
     ypos = np.arange(len(keys))
     for i, (v, lo, hi, c) in enumerate(zip(aucs, los, his, colors)):
-        ax.plot([lo, hi], [ypos[i], ypos[i]], color=c, lw=2.0,
-                solid_capstyle="butt")
+        if np.isfinite(lo) and np.isfinite(hi) and hi > lo:
+            ax.plot([lo, hi], [ypos[i], ypos[i]], color=c, lw=2.0,
+                    solid_capstyle="butt")
         ax.scatter([v], [ypos[i]], s=52, color=c, zorder=3)
         ax.annotate(f"{v:.3f}", xy=(v, ypos[i]), xytext=(0, 7),
                     textcoords="offset points", ha="center", fontsize=8.5)
@@ -633,8 +641,8 @@ def plot_gradient(grad: dict, eng: dict, quarterly: dict,
     ax.set_yticks(ypos)
     ax.set_yticklabels([labels2[k] for k in keys])
     ax.set_xlabel("AUC（得分越高=该标记越偏向人类；虚线=随机）")
-    ax.set_xlim(0.45, max(his) + 0.03)
-    ax.set_title("(f) 标记单独区分人类 / AIGC 的能力（含 95% CI）")
+    ax.set_xlim(0.45, max(h for h in his if np.isfinite(h)) + 0.03)
+    ax.set_title("(f) 标记单独区分人类 / AIGC 的能力（单标记含 95% CI）")
 
     fig.tight_layout()
     save_fig(fig, INSIGHTS + "concreteness_gradient.png")

@@ -1,6 +1,6 @@
 {
- "human_baseline_mean_p": 0.2098,
- "human_baseline_hi_share": 0.0102,
+ "human_baseline_mean_p": 0.1612,
+ "human_baseline_hi_share": 0.0067,
  "trend": {
   "exploring_mean": {
    "rho": -0.256,

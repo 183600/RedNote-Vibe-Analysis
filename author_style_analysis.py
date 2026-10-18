@@ -217,21 +217,20 @@ def variance_decomposition(values, codes) -> dict:
     }
 
 
-def _paired_half_means(ids, p_ai, log_likes,
-                       split: float = STYLE_SPLIT
-                       ) -> tuple[np.ndarray, np.ndarray]:
-    """逐作者「低风格半组均值 / 高风格半组均值」。
+def _paired_groups(ids, p_ai, log_likes, split: float = STYLE_SPLIT
+                   ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """逐组「低风格半组均值 / 高风格半组均值」，并返回保留下来的组键。
 
-    只保留两半都非空（p_ai < split 与 p_ai >= split 各至少一条）的作者。
-    用稳定排序 + 分组求和实现，与逐作者 pandas 布尔筛选/求均值取值一致，
-    但把 O(作者数) 次 DataFrame 筛选降为几次 O(n) 的数组运算。
-    返回 (lo_means, hi_means)，两个数组按作者在稳定排序下的顺序对齐。
+    只保留两半都非空（p_ai < split 与 p_ai >= split 各至少一条）的组。
+    用稳定排序 + 分组求和实现，与逐组 pandas 布尔筛选/求均值取值一致，
+    但把 O(组数) 次 DataFrame 筛选降为几次 O(n) 的数组运算。
+    返回 (keys, lo_means, hi_means)，三个数组在稳定排序下互相对齐。
     """
     ids = np.asarray(ids)
     p = np.asarray(p_ai, dtype=float)
     y = np.asarray(log_likes, dtype=float)
     if ids.size == 0:
-        return np.empty(0, dtype=float), np.empty(0, dtype=float)
+        return ids[:0], np.empty(0, dtype=float), np.empty(0, dtype=float)
     order = np.argsort(ids, kind="stable")
     ids_s, p_s, y_s = ids[order], p[order], y[order]
     change = np.empty(ids_s.shape, dtype=bool)
@@ -247,8 +246,17 @@ def _paired_half_means(ids, p_ai, log_likes,
     keep = (n_hi > 0) & (n_lo > 0)
     sum_hi = np.bincount(g[hi], weights=y_s[hi], minlength=n_groups)
     sum_lo = np.bincount(g[lo], weights=y_s[lo], minlength=n_groups)
-    return (sum_lo[keep] / n_lo[keep]).astype(float), \
+    keys = ids_s[np.flatnonzero(change)][keep]
+    return keys, (sum_lo[keep] / n_lo[keep]).astype(float), \
         (sum_hi[keep] / n_hi[keep]).astype(float)
+
+
+def _paired_half_means(ids, p_ai, log_likes,
+                       split: float = STYLE_SPLIT
+                       ) -> tuple[np.ndarray, np.ndarray]:
+    """逐组「低风格半组均值 / 高风格半组均值」（组键见 `_paired_groups`）。"""
+    _, lo, hi = _paired_groups(ids, p_ai, log_likes, split)
+    return lo, hi
 
 
 def paired_style_deltas(ids, p_ai, log_likes,
@@ -625,13 +633,29 @@ def paired_analysis(auth: pd.DataFrame, deltas: np.ndarray | None = None) -> dic
         "wilcoxon_p": p_wil,
     }
 
-    # 同作者同月份单元：与逐组 DataFrame 筛选求均值同口径，但一次向量化算完
-    cell_ids = (auth["user_id"].to_numpy().astype(str) + "|"
-                + auth["month"].to_numpy().astype(str))
-    cell_deltas = paired_style_deltas(cell_ids, auth["p_ai"], auth["log_likes"])
-    p_cell = float(wilcoxon(cell_deltas).pvalue) if cell_deltas.size else float("nan")
+    # 同作者同月份单元：与逐组 DataFrame 筛选求均值同口径，但一次向量化算完。
+    # 同一作者可贡献多个月份单元，这些 Δ 并非独立观测（伪重复）；描述统计仍
+    # 按单元给出，Wilcoxon 检验则先按作者把单元 Δ 聚合成一个观测（簇级检验），
+    # 避免把同作者单元当作独立样本而低估 p 值。
+    user_ids = auth["user_id"].to_numpy().astype(str)
+    cell_ids = user_ids + "|" + auth["month"].to_numpy().astype(str)
+    cell_keys, cell_lo, cell_hi = _paired_groups(
+        cell_ids, auth["p_ai"], auth["log_likes"])
+    cell_deltas = cell_hi - cell_lo
+    if cell_deltas.size:
+        uid_by_cell = dict(zip(cell_ids, user_ids))
+        cell_authors = np.asarray([uid_by_cell[k] for k in cell_keys])
+        cluster_codes, n_clusters = factorize_codes(cell_authors)
+        cluster_deltas = (np.bincount(cluster_codes, weights=cell_deltas)
+                          / np.bincount(cluster_codes))
+        p_cell = float(wilcoxon(cluster_deltas).pvalue)
+    else:
+        n_clusters = 0
+        cluster_deltas = np.empty(0, dtype=float)
+        p_cell = float("nan")
     out["author_month_cells"] = {
         "n_cells": int(cell_deltas.size),
+        "n_authors": int(n_clusters),
         "mean_delta": round(float(cell_deltas.mean()), 4) if cell_deltas.size else float("nan"),
         "neg_share": round(float((cell_deltas < 0).mean()), 4) if cell_deltas.size else float("nan"),
         "wilcoxon_p": p_cell,
@@ -916,8 +940,9 @@ def render_markdown(out: dict) -> str:
         f"Wilcoxon p={pa['wilcoxon_p']:.3g}",
         f"  即同作者内部，风格更高半组的点赞量乘数约 ×{pa['likes_multiplier']:.2f}"
         "（点估计），与无差异无法区分。",
-        f"- 同作者同月份单元（{pm['n_cells']:,} 个）：平均 Δ={pm['mean_delta']:+.4f}，"
-        f"负向占 {pm['neg_share']:.1%}，Wilcoxon p={pm['wilcoxon_p']:.3g}",
+        f"- 同作者同月份单元（{pm['n_cells']:,} 个，{pm['n_authors']:,} 位作者）："
+        f"平均 Δ={pm['mean_delta']:+.4f}，负向占 {pm['neg_share']:.1%}，"
+        f"按作者聚类的 Wilcoxon p={pm['wilcoxon_p']:.3g}",
         f"- 发文 ≥{wr['min_notes']} 帖且风格有变化的作者（{wr['n_authors']:,} 位）"
         f"人内 ρ 加权均值 {wr['weighted_mean_rho']:+.4f}，负向占 {wr['neg_share']:.1%}",
         "",

@@ -102,8 +102,12 @@ MASTER_RE = re.compile(r"""
 |(?P<percent>\d+(?:\.\d+)?\s*[%％]|百分之[零一二两三四五六七八九十百千万]+)
 |(?P<measure>\d+(?:\.\d+)?\s*(?:mAh|kg|KG|Kg|公斤|斤|克|毫克|mg|毫升|ml|ML|升|厘米|cm|CM|毫米|mm|千米|公里|km|KM|米|寸|尺|摄氏度|大卡|千卡|卡路里|卡|毫安|瓦|GB|MB|TB|gb|mb|tb))
 |(?P<time>\d+(?:\.\d+)?\s*(?:分钟|小时|天|周|星期|个月|月|年|岁|秒|点半?)|(?:\d{1,2}[:：]\d{2}))
-|(?P<num>\d+(?:\.\d+)?)
-""", re.X)
+ |(?P<num>\d+(?:\.\d+)?)
+ """, re.X)
+# 快速预筛选：MASTER_RE 的任一分支命中文本必含 数字/¥/￥/$/百，先在
+# 整个文本上做一次廉价 search，无提示字符时跳过昂贵的逐匹配循环。
+_MASTER_HINT_RE = re.compile(r"[\d¥￥$百]")
+_UNIT_STRIP_RE = re.compile(r"[\d.\s]")
 
 VAGUE_WORDS = ["很多", "一些", "有些", "各种", "许多", "不少", "好多", "大量",
                "无数", "些许", "若干", "部分", "多数", "少数", "大多", "挺多",
@@ -154,7 +158,7 @@ FAMILIES = ["anthropic", "deepseek", "gemini", "glm", "gpt", "qwen"]
 # --------------------------------------------------------------------------
 def unit_token_of(raw: str) -> str:
     """从命中的量值文本中剥离数字与空白，返回单位记号（纯符号返回符号本身）。"""
-    token = re.sub(r"[\d.\s]", "", raw)
+    token = _UNIT_STRIP_RE.sub("", raw)
     return token or "符号"
 
 
@@ -172,14 +176,15 @@ def classify(text: str) -> tuple:
     subtypes = {k: 0 for k in SUBTYPE_ORDER}
     unit_tokens: Counter = Counter()
     place_tokens: Counter = Counter()
-    for m in MASTER_RE.finditer(text):
-        group = m.lastgroup
-        if group == "num":
-            counts["num"] += 1
-        else:
-            counts["unit"] += 1
-            subtypes[group] += 1
-            unit_tokens[unit_token_of(m.group(0))] += 1
+    if _MASTER_HINT_RE.search(text):
+        for m in MASTER_RE.finditer(text):
+            group = m.lastgroup
+            if group == "num":
+                counts["num"] += 1
+            else:
+                counts["unit"] += 1
+                subtypes[group] += 1
+                unit_tokens[unit_token_of(m.group(0))] += 1
     counts["vague"] = len(VAGUE_RE.findall(text))
     places = PLACE_RE.findall(text)
     counts["place"] = len(places)

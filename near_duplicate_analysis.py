@@ -138,11 +138,34 @@ def jaccard_sorted(a: np.ndarray, b: np.ndarray) -> float:
 
 def candidate_pair_keys(sketches: np.ndarray, n_docs: int,
                         cap: int = DF_CAP) -> tuple[np.ndarray, np.ndarray]:
-    """bottom-k 概要 + 文档频率过滤生成候选对。
+    """bottom-k 概要 + 文档频率过滤生成候选对（二维 sketch 矩阵入口）。
 
-    返回 (keys, counts)：key = i * n_docs + j（i < j）编码的候选对（int64，
-    升序去重）与每个候选对共享的链接键个数。sketch 中 0 视为空槽（哈希值
-    恰好为 0 的概率可忽略，且 0 只会让该槽失去链接能力，不影响正确性）。
+    把 (文档, 概要哈希) 展平后交给 `candidate_pair_keys_flat`；生产路径
+    （`main`）直接用现成的 bottom-k 切片调用后者，避免构造 n_docs×K 的
+    概要矩阵与 flatnonzero/int64 下标临时数组。
+    """
+    flat = sketches.ravel()
+    idx = np.flatnonzero(flat)
+    if idx.size == 0:
+        return np.empty(0, dtype=np.int64), np.empty(0, dtype=np.int64)
+    # C 顺序展平：flat_idx = doc * K + 槽位，故 doc = flat_idx // K。
+    # 先取 hv 再原地整除，避免多一份 idx // K 的 int64 临时数组。
+    hv = flat[idx]
+    idx //= sketches.shape[1]
+    docs = idx.astype(np.int32)
+    del idx, flat
+    return candidate_pair_keys_flat(hv, docs, n_docs, cap)
+
+
+def candidate_pair_keys_flat(hv: np.ndarray, docs: np.ndarray, n_docs: int,
+                             cap: int = DF_CAP) -> tuple[np.ndarray, np.ndarray]:
+    """bottom-k 概要 + 文档频率过滤生成候选对（展平数组入口）。
+
+    `hv`/`docs` 为一维平行数组：每个 bottom-k 概要哈希值与其所属文档下标
+    （int32）。返回 (keys, counts)：key = i * n_docs + j（i < j）编码的
+    候选对（int64，升序去重）与每个候选对共享的链接键个数。0 视为空槽
+    （哈希值恰好为 0 的概率可忽略，且 0 只会让该槽失去链接能力，不影响
+    正确性）。
 
     全 numpy 实现：把 (文档, 概要哈希) 展平后排序，按哈希值分组，对
     df ∈ [2, cap] 的组批量生成 pair key（组内文档顺序任意，逐对取
@@ -155,17 +178,15 @@ def candidate_pair_keys(sketches: np.ndarray, n_docs: int,
     分组元数据（`ends`/`df`/`starts`/`docs`）用完后立即 `del`，
     使峰值内存集中在最终 `np.unique` 而非与其叠加。
     """
-    flat = sketches.ravel()
-    idx = np.flatnonzero(flat)
-    if idx.size == 0:
+    if hv.size == 0:
         return np.empty(0, dtype=np.int64), np.empty(0, dtype=np.int64)
-    # C 顺序展平：flat_idx = doc * K + 槽位，故 doc = flat_idx // K，
-    # 与 np.repeat(arange(n_docs), K)[idx] 完全一致但省下 13M 元素的临时数组。
-    # 先取 hv 再原地整除，避免多一份 idx // K 的 int64 临时数组。
-    hv = flat[idx]
-    idx //= sketches.shape[1]
-    docs = idx.astype(np.int32)
-    del idx, flat
+    nz = hv != 0
+    if not nz.all():
+        hv = hv[nz]
+        docs = docs[nz]
+        if hv.size == 0:
+            return np.empty(0, dtype=np.int64), np.empty(0, dtype=np.int64)
+    del nz
     order = np.argsort(hv)
     docs = docs[order]
     del order
@@ -862,18 +883,21 @@ def main() -> int:
                 for raw_i, body, aux in scans[name]["docs"]]
     del scans  # 全量正文只保留 all_docs 一份引用
 
-    all_sets = [shingle_hashes(d[2]) for d in all_docs]
-    keep = [s.size >= MIN_SHINGLES for s in all_sets]
+    # 逐篇算 shingle 后立即把正文换成 60 字符片段并清空 all_docs 槽位：下游只
+    # 需要片段与长度，正文不必与不断增长的 shingle 集合同时驻留（峰值内存的
+    # 主要来源）；顺序与旧的「先全部算完再按 keep 过滤」完全一致。
+    sets: list = []
+    docs: list = []
     excluded = {name: 0 for name in scan_meta}
-    for d, k in zip(all_docs, keep):
-        if not k:
-            excluded[d[0]] += 1
-    # 下游只用到正文前 60 字符与长度：换成短片段后释放全量正文，峰值内存大幅下降
-    docs = [(d[0], d[1], d[2][:60], len(d[2]), d[3])
-            for d, k in zip(all_docs, keep) if k]
+    for j, (name, raw_i, body, aux) in enumerate(all_docs):
+        s = shingle_hashes(body)
+        if s.size >= MIN_SHINGLES:
+            sets.append(s)
+            docs.append((name, raw_i, body[:60], len(body), aux))
+        else:
+            excluded[name] += 1
+        all_docs[j] = None
     del all_docs
-    sets = [s for s, k in zip(all_sets, keep) if k]
-    del all_sets
     dataset = np.asarray([d[0] for d in docs])
     n_docs = len(docs)
     # 校验用「unique 5-gram 数」（原实现口径）；正文长度由 collect_stats 自行取
@@ -882,12 +906,18 @@ def main() -> int:
     print(f"[近重复] 参与匹配 {n_docs:,} 篇（清洗后不足 {MIN_SHINGLES} 个 "
           f"5-gram、按「空正文/纯标签」剔除 {sum(excluded.values()):,} 篇）")
 
-    sketches = np.zeros((n_docs, SKETCH_K), dtype=np.uint64)
-    for idx, s in enumerate(sets):
-        sketches[idx, :min(s.size, SKETCH_K)] = bottom_k(s)
-
-    keys, counts = candidate_pair_keys(sketches, n_docs)
-    del sketches
+    # 直接由 bottom-k 切片拼出候选生成的展平数组（等价于旧实现里先填
+    # n_docs×K 概要矩阵再 flatnonzero 展平，但不构造 ~100MB 的概要矩阵
+    # 与同量级的 int64 下标临时数组）。
+    parts = [bottom_k(s) for s in sets]
+    part_lens = np.fromiter((p.size for p in parts), dtype=np.int64,
+                            count=n_docs)
+    hv = np.concatenate(parts)
+    del parts
+    doc_ids = np.repeat(np.arange(n_docs, dtype=np.int32), part_lens)
+    del part_lens
+    keys, counts = candidate_pair_keys_flat(hv, doc_ids, n_docs)
+    del hv, doc_ids
     n_verified = int(select_verify_pairs(keys, counts, shingle_counts,
                                          n_docs).size)
     print(f"[近重复] 候选对 {keys.size:,}（校验子集 {n_verified:,}）")

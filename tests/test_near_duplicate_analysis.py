@@ -10,6 +10,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
 from near_duplicate_analysis import (MIN_SHINGLES, bottom_k,
                                      candidate_pair_keys,
+                                     candidate_pair_keys_flat,
                                      connected_components, decile_rates,
                                      jaccard_sorted, recall_check,
                                      select_verify_pairs, shingle_hashes,
@@ -84,6 +85,26 @@ class TestCandidateGeneration(unittest.TestCase):
         s1 = self._sketch([2])
         keys, _ = candidate_pair_keys(np.stack([s0, s1]), 2)
         self.assertEqual(keys.size, 0)
+
+    def test_flat_entry_matches_matrix_entry(self):
+        s0 = self._sketch([10, 20])
+        s1 = self._sketch([10, 30])
+        s2 = self._sketch([99, 98])
+        mat = np.stack([s0, s1, s2])
+        want_keys, want_counts = candidate_pair_keys(mat, 3)
+        flat = mat.ravel()
+        nz = np.flatnonzero(flat)
+        got_keys, got_counts = candidate_pair_keys_flat(
+            flat[nz], (nz // mat.shape[1]).astype(np.int32), 3)
+        self.assertEqual(got_keys.tolist(), want_keys.tolist())
+        self.assertEqual(got_counts.tolist(), want_counts.tolist())
+
+    def test_zero_hash_filtered_in_flat_entry(self):
+        hv = np.array([0, 5, 5], dtype=np.uint64)
+        ids = np.array([0, 1, 2], dtype=np.int32)
+        keys, counts = candidate_pair_keys_flat(hv, ids, 3)
+        self.assertEqual(keys.tolist(), [1 * 3 + 2])
+        self.assertEqual(counts.tolist(), [1])
 
 
 class TestVerifyFilter(unittest.TestCase):

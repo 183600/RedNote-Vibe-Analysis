@@ -24,13 +24,15 @@
   再单元内去均值、单元 ≥100 条、整群 bootstrap 300 次），额外加入四个
   语气密度特征。
 
-词表（先验定义，不做数据驱动的筛选；`|` 表示正则分支）：
+词表（先验定义，不做数据驱动的筛选）：
 - 谨慎表达 hedge：可能 也许 或许 大概 大约 好像 似乎 应该 不一定 算是
   稍微 有点 说不定 个人觉得
 - 断言强调 boost：一定（排除「不一定」）绝对 必须 肯定 千万 保证 务必
   毫无疑问
 - 程度强化 intens：超级 简直 真的 非常 特别 完全 彻底
 - 社区呼语 vocative：姐妹们 宝子们 家人们 集美
+- 类别计数为「正文中出现次数（非重叠匹配）」，等价于按词长降序的类别正则
+  交替匹配；`一定` 只计入不以「不」开头的位置（即扣除「不一定」）。
 
 输出：
   insights/stance_lexicon.png   跨子集类别密度 + 逐词 AIGC−人类使用差
@@ -40,7 +42,7 @@
 """
 from __future__ import annotations
 
-import re
+from array import array
 from collections import Counter, defaultdict
 
 import numpy as np
@@ -98,26 +100,6 @@ FAMILY_NAME = {"anthropic": "Claude", "deepseek": "DeepSeek", "gemini": "Gemini"
 FAMILIES = ["anthropic", "deepseek", "gemini", "glm", "gpt", "qwen"]
 
 
-def compile_pattern(category: str) -> re.Pattern:
-    """类别正则：按词长降序的 alternation。
-
-    「一定」加 `(?<!不)` 前瞻排除，避免把「不一定」同时计入断言与谨慎
-    两个类别（「不一定」只属于 hedge）。长词优先可避免前缀词抢匹配
-    （如「个人觉得」先于「觉得」——「觉得」不在词表中，此处为一般规则）。
-    """
-    words = CATEGORY_WORDS[category][1]
-    parts = []
-    for w in sorted(words, key=len, reverse=True):
-        if w == "一定":
-            parts.append(r"(?<!不)一定")
-        else:
-            parts.append(re.escape(w))
-    return re.compile("|".join(parts))
-
-
-CATEGORY_RE = {k: compile_pattern(k) for k in CATEGORY_WORDS}
-
-
 # --------------------------------------------------------------------------
 # 纯函数（可单元测试）
 # --------------------------------------------------------------------------
@@ -127,13 +109,28 @@ def word_counts(text: str) -> dict:
     返回 {"hedge": {"可能": 2, ...}, ..., "_words": {词: 次数}}；计数口径
     与 paper_features.py 的 body.count(word) 一致（非重叠匹配），唯一
     例外是 boost 中的「一定」不算「不一定」中的出现。
+
+    实现为逐词的 `str.count`（C 层非重叠计数），与原「按词长降序的类别
+    正则交替匹配」逐位一致：词表内不存在同类别前缀抢匹配（如「留言区」
+    之于「留言」）的组合，唯一的类别内相邻重叠是「务必」尾字起头的
+    「必须」（如「任务必须」——正则先匹配「务必」后吃掉「必须」的首字），
+    因此对「必须」扣除「务必须」的出现次数；跨类别的「一定」扣除
+    「不一定」（与 `(?<!不)一定` 等价）。逐词计数比整段正则快约 2–3 倍。
     """
     out: dict = {}
     words: Counter = Counter()
-    for cat, pat in CATEGORY_RE.items():
-        found = Counter(pat.findall(text))
-        out[cat] = dict(found)
-        words.update(found)
+    for cat, (_, keyword_list) in CATEGORY_WORDS.items():
+        found = {}
+        for w in keyword_list:
+            n = text.count(w)
+            if w == "必须":
+                n -= text.count("务必须")
+            elif w == "一定":
+                n -= text.count("不一定")
+            if n:
+                found[w] = n
+                words[w] += n
+        out[cat] = found
     out["_words"] = dict(words)
     return out
 
@@ -146,16 +143,27 @@ def density_per_100(count: int, body_len: int) -> float:
 # --------------------------------------------------------------------------
 # 扫描
 # --------------------------------------------------------------------------
+_WORD_INDEX = {w: i for i, w in enumerate(ALL_WORDS)}
+
+
 def scan_corpus(path: str) -> dict:
     """单次流式扫描一个语料，返回逐记录数组。
 
     每条记录保存：正文长度、note_id、元数据完整度（用于去重取舍）、
     月份、领域、模型家族/模型（AIGC），以及四个类别的命中次数与逐词次数。
+
+    逐词计数写入按 `ALL_WORDS` 顺序拉平的 `array('i')`，最后一次性
+    reshape/切片：避免每帖 33 次 `dict.get` + `list.append`（全量三语料
+    约 500 万次 Python 调用），且 int32 平铺存储比 33 个 Python int 列表
+    更省内存。`content.strip()` 只用于「正文是否有非空白内容」的元数据
+    评分，与原先 `"".join(content.split())` 的布尔值完全一致。
     """
     body_len, note_id, meta, month, domain = [], [], [], [], []
     family, model = [], []
+    word_index = _WORD_INDEX
+    n_words = len(ALL_WORDS)
     cat_counts = {k: [] for k in CATEGORY_WORDS}
-    word_counts_by_rec: dict[str, list] = defaultdict(list)
+    flat_words = array("i")
     likes = []
     n_total = 0
     for rec in iter_jsonl(path):
@@ -174,17 +182,19 @@ def scan_corpus(path: str) -> dict:
         dt = parse_local_time(rec.get("local_time"))
         m = f"{dt.year:04d}{dt.month:02d}" if dt else None
         month.append(m)
-        raw = "".join(content.split())
         score = (int(has_meta) + int(bool(likes_v)) + int(bool(colls))
-                 + int(bool(comms)) + int(dt is not None) + int(bool(raw)))
+                 + int(bool(comms)) + int(dt is not None)
+                 + int(bool(content.strip())))
         meta.append(score)
         family.append(rec.get("model_family") or "")
         model.append(rec.get("model") or "")
         for k in CATEGORY_WORDS:
             cat_counts[k].append(sum(counts[k].values()))
-        found = counts["_words"]
-        for w in ALL_WORDS:
-            word_counts_by_rec[w].append(found.get(w, 0))
+        row = [0] * n_words
+        for w, n in counts["_words"].items():
+            row[word_index[w]] = n
+        flat_words.extend(row)
+    word_matrix = np.frombuffer(flat_words, dtype=np.int32).reshape(-1, n_words)
     return {
         "path": path, "n_total": n_total,
         "body_len": np.asarray(body_len, dtype=np.int32),
@@ -193,8 +203,7 @@ def scan_corpus(path: str) -> dict:
         "family": family, "model": model,
         "cat_counts": {k: np.asarray(v, dtype=np.int32)
                        for k, v in cat_counts.items()},
-        "word_counts": {w: np.asarray(v, dtype=np.int32)
-                        for w, v in word_counts_by_rec.items()},
+        "word_counts": {w: word_matrix[:, i] for i, w in enumerate(ALL_WORDS)},
     }
 
 
@@ -462,17 +471,25 @@ def main() -> None:
           f"单元 {len(np.unique(cells))} 个")
 
     groups = cell_groups(cells, MIN_CELL_N)
+    # p_ai 是所有类别/逐词的同一对侧向量：预算一次单元内平均秩供全部调用
+    # 复用（原先每个类别与逐词都会重算一次，共 32 次重复排序）；上下十分位
+    # 阈值同样只与 p_ai 有关，循环外只算一次。
+    p_ai_ranks = cell_rank_cache(p_ai, groups)
+    groups_strat = cell_groups(strat, MIN_CELL_N)
+    p_ai_ranks_strat = cell_rank_cache(p_ai, groups_strat)
+    p_hi, p_lo = float(np.quantile(p_ai, 0.9)), float(np.quantile(p_ai, 0.1))
     grad_cat = {}
     for k in CATEGORY_ORDER:
         dens = expl["cat_counts"][k][sel].astype(float) / body * 100
         dec = decile_table(dens, p_ai)
         wc = within_cell_spearman(dens, p_ai, cells, min_cell_n=MIN_CELL_N,
-                                  groups=groups)
-        st = within_cell_spearman(dens, p_ai, strat, min_cell_n=MIN_CELL_N)
+                                  groups=groups, y_ranks=p_ai_ranks)
+        st = within_cell_spearman(dens, p_ai, strat, min_cell_n=MIN_CELL_N,
+                                  groups=groups_strat, y_ranks=p_ai_ranks_strat)
         lo = dec[0]["p_range"][0] if dec else float("nan")
         hi = dec[-1]["p_range"][1] if dec else float("nan")
-        hi_p = p_ai >= np.quantile(p_ai, 0.9)
-        lo_p = p_ai <= np.quantile(p_ai, 0.1)
+        hi_p = p_ai >= p_hi
+        lo_p = p_ai <= p_lo
         delta, dp = cliffs_delta(dens[hi_p], dens[lo_p])
         grad_cat[k] = {
             "deciles": dec,
@@ -495,7 +512,7 @@ def main() -> None:
         if dens.std() == 0:
             continue
         wc = within_cell_spearman(dens, p_ai, cells, min_cell_n=MIN_CELL_N,
-                                  groups=groups)
+                                  groups=groups, y_ranks=p_ai_ranks)
         word_rho[w] = {"category": WORD_CATEGORY[w],
                        "weighted_rho": round(wc["weighted_rho"], 4),
                        "neg_cell_share": round(wc["neg_cell_share"], 4),

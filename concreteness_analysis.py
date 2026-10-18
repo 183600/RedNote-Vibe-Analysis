@@ -248,7 +248,8 @@ def scan_corpus(path: str) -> dict:
     n_total = 0
     for rec in iter_jsonl(path):
         n_total += 1
-        body = clean_body(content_of(rec))
+        content = content_of(rec)
+        body = clean_body(content)
         counts, subtypes, units, places = classify(body)
         body_len.append(len(body))
         note_id.append(rec.get("note_id"))
@@ -260,9 +261,10 @@ def scan_corpus(path: str) -> dict:
         has_meta = bool(rec.get("user_id")) and dom not in (None, "", "未知")
         dt = parse_local_time(rec.get("local_time"))
         month.append(f"{dt.year:04d}{dt.month:02d}" if dt else None)
-        raw = "".join((content_of(rec) or "").split())
+        # 正文仅用于「是否有非空白内容」的评分：strip 的布尔值与原先
+        # `"".join(content.split())` 完全一致，并省掉逐帖的 split/join 拷贝。
         score = (int(has_meta) + int(bool(likes_v)) + int(bool(colls))
-                 + int(dt is not None) + int(bool(raw)))
+                 + int(dt is not None) + int(bool(content.strip())))
         meta.append(score)
         family.append(rec.get("model_family") or "")
         model.append(rec.get("model") or "")
@@ -646,17 +648,25 @@ def main() -> None:
           f"单元 {len(np.unique(cells))} 个")
 
     groups = cell_groups(cells, MIN_CELL_N)
+    # p_ai 是所有类别的同一对侧向量：预算一次单元内平均秩供全部调用复用
+    # （原先每个类别都会重算片上秩，且长度分层单元也每次重新分组）；
+    # 上下十分位阈值同样只与 p_ai 有关，循环外只算一次。
+    p_ai_ranks = cell_rank_cache(p_ai, groups)
+    groups_strat = cell_groups(strat, MIN_CELL_N)
+    p_ai_ranks_strat = cell_rank_cache(p_ai, groups_strat)
+    p_hi, p_lo = float(np.quantile(p_ai, 0.9)), float(np.quantile(p_ai, 0.1))
     grad_cat = {}
     for k in CATEGORY_ORDER:
         dens = expl["cat_counts"][k][sel].astype(float) / body * 100
         dec = decile_table(dens, p_ai)
         wc = within_cell_spearman(dens, p_ai, cells, min_cell_n=MIN_CELL_N,
-                                  groups=groups)
-        st = within_cell_spearman(dens, p_ai, strat, min_cell_n=MIN_CELL_N)
+                                  groups=groups, y_ranks=p_ai_ranks)
+        st = within_cell_spearman(dens, p_ai, strat, min_cell_n=MIN_CELL_N,
+                                  groups=groups_strat, y_ranks=p_ai_ranks_strat)
         lo = dec[0]["p_range"][0] if dec else float("nan")
         hi = dec[-1]["p_range"][1] if dec else float("nan")
-        hi_p = p_ai >= np.quantile(p_ai, 0.9)
-        lo_p = p_ai <= np.quantile(p_ai, 0.1)
+        hi_p = p_ai >= p_hi
+        lo_p = p_ai <= p_lo
         delta, dp = cliffs_delta(dens[hi_p], dens[lo_p])
         grad_cat[k] = {
             "deciles": dec,

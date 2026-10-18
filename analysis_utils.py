@@ -384,6 +384,41 @@ def iter_jsonl(path: str) -> Iterator[dict]:
             yield json.loads(line)
 
 
+def body_cache(fn, probe: int = 2000, min_hit: float = 0.05):
+    """给「正文 -> 结果」的纯函数加逐次扫描内的字符串缓存。
+
+    探索集语料里同一段正文被反复导出（逐字节重复约占 45%），重复帖的
+    计数/正则结果完全相同；按正文缓存可直接省掉重复计算，结果与逐帖
+    重新计算逐位一致（返回的是同一结果对象，调用方必须只读）。
+
+    缓存按需自动关闭：前 `probe` 次调用后命中率低于 `min_hit` 时说明该
+    语料几乎无重复（人类/AIGC 子集），立即停用并释放已缓存的正文副本，
+    避免白白占内存。`fn` 的返回值不能为 None（None 仅用于表示未命中）。
+    """
+    cache: dict = {}
+    hits = 0
+    calls = 0
+    enabled = True
+
+    def cached(text):
+        nonlocal hits, calls, enabled
+        if not enabled:
+            return fn(text)
+        calls += 1
+        val = cache.get(text)
+        if val is not None:
+            hits += 1
+            return val
+        val = fn(text)
+        cache[text] = val
+        if calls >= probe and hits < min_hit * calls:
+            enabled = False
+            cache.clear()
+        return val
+
+    return cached
+
+
 def iter_jsonl_relaxed(path: str) -> Iterator[dict]:
     """流式读取 JSONL，跳过空行与无法解析的行（历史探索脚本的容错口径）。"""
     with open(path, encoding="utf-8") as f:

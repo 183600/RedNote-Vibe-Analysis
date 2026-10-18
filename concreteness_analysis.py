@@ -57,9 +57,9 @@ import pandas as pd
 from scipy.stats import spearmanr
 
 from analysis_utils import (BASE, DATASET_LABELS, INSIGHTS, LENGTH_BINS, PALETTE,
-                            bootstrap_auc, cell_groups, cell_rank_cache,
-                            clean_body, cliffs_delta, content_of, cv_auc,
-                            decile_table, dedup_indices,
+                            body_cache, bootstrap_auc, cell_groups,
+                            cell_rank_cache, clean_body, cliffs_delta, content_of,
+                            cv_auc, decile_table, dedup_indices,
                             domain_standardized_series, engagement_of,
                             init_plot_style, iter_jsonl, length_bin_codes,
                             parse_local_time, save_fig, save_json,
@@ -344,11 +344,15 @@ def scan_corpus(path: str) -> dict:
     unit_tokens: Counter = Counter()
     place_tokens: Counter = Counter()
     n_total = 0
+    # 重复正文（探索集约 45%）直接复用上一次的分类结果；缓存值只读：
+    # 下面 unit_tokens.update(units) / place_tokens.update(places) 均不改动
+    # 被缓存的 Counter 本体。
+    cached = body_cache(classify)
     for rec in iter_jsonl(path):
         n_total += 1
         content = content_of(rec)
         body = clean_body(content)
-        counts, subtypes, units, places = classify(body)
+        counts, subtypes, units, places = cached(body)
         body_len.append(len(body))
         note_id.append(rec.get("note_id"))
         dom = rec.get("domain")

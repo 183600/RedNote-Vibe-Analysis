@@ -43,7 +43,7 @@
 from __future__ import annotations
 
 from array import array
-from collections import Counter, defaultdict
+from collections import defaultdict
 from functools import partial
 
 import numpy as np
@@ -53,9 +53,9 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.stats import spearmanr
 
-from analysis_utils import (BASE, INSIGHTS, PALETTE, init_plot_style, save_fig,
-                            save_json, cliffs_delta, cell_rank_cache, cell_groups,
-                            clean_body, content_of, decile_table,
+from analysis_utils import (BASE, INSIGHTS, PALETTE, body_cache, init_plot_style,
+                            save_fig, save_json, cliffs_delta, cell_rank_cache,
+                            cell_groups, clean_body, content_of, decile_table,
                             dedup_indices, domain_standardized_series,
                             engagement_of, iter_jsonl, length_bin_codes,
                             parse_local_time, run_parallel, within_cell_spearman)
@@ -96,6 +96,13 @@ SUBSET_ORDER = ["human", "aigc", "exploring"]
 ALL_WORDS = [w for k in CATEGORY_ORDER for w in CATEGORY_WORDS[k][1]]
 WORD_CATEGORY = {w: k for k in CATEGORY_ORDER for w in CATEGORY_WORDS[k][1]}
 
+# 逐词展平（模块级预计算）：(词, 类别, 需扣除的重叠词或 None)；
+# 热循环内不再做逐词字符串比较（"必须"/"一定"）分派。
+_FLAT_STANCE_WORDS = [
+    (w, cat, {"必须": "务必须", "一定": "不一定"}.get(w))
+    for cat in CATEGORY_ORDER for w in CATEGORY_WORDS[cat][1]
+]
+
 FAMILY_NAME = {"anthropic": "Claude", "deepseek": "DeepSeek", "gemini": "Gemini",
                "glm": "GLM", "gpt": "GPT", "qwen": "Qwen"}
 FAMILIES = ["anthropic", "deepseek", "gemini", "glm", "gpt", "qwen"]
@@ -118,21 +125,16 @@ def word_counts(text: str) -> dict:
     因此对「必须」扣除「务必须」的出现次数；跨类别的「一定」扣除
     「不一定」（与 `(?<!不)一定` 等价）。逐词计数比整段正则快约 2–3 倍。
     """
-    out: dict = {}
-    words: Counter = Counter()
-    for cat, (_, keyword_list) in CATEGORY_WORDS.items():
-        found = {}
-        for w in keyword_list:
-            n = text.count(w)
-            if w == "必须":
-                n -= text.count("务必须")
-            elif w == "一定":
-                n -= text.count("不一定")
-            if n:
-                found[w] = n
-                words[w] += n
-        out[cat] = found
-    out["_words"] = dict(words)
+    out: dict = {cat: {} for cat in CATEGORY_ORDER}
+    words: dict = {}
+    for w, cat, overlap in _FLAT_STANCE_WORDS:
+        n = text.count(w)
+        if overlap is not None:
+            n -= text.count(overlap)
+        if n:
+            out[cat][w] = n
+            words[w] = words.get(w, 0) + n
+    out["_words"] = words
     return out
 
 
@@ -167,12 +169,14 @@ def scan_corpus(path: str) -> dict:
     flat_words = array("i")
     likes = []
     n_total = 0
+    # 重复正文（探索集约 45%）直接复用上一次的逐词计数，只读不改。
+    cached = body_cache(word_counts)
     for rec in iter_jsonl(path):
         n_total += 1
         content = content_of(rec)
         body = clean_body(content)
         L = len(body)
-        counts = word_counts(body)
+        counts = cached(body)
         body_len.append(L)
         note_id.append(rec.get("note_id"))
         dom = rec.get("domain")

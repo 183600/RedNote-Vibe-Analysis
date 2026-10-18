@@ -14,7 +14,7 @@ import pandas as pd
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
-from analysis_utils import (post_text, content_of, clean_body,
+from analysis_utils import (post_text, content_of, clean_body, body_cache,
                             shannon_entropy, topk_coverage,
                             iter_jsonl, load_posts, load_records,
                             to_int, engagement_of, parse_local_time, hour_of,
@@ -596,6 +596,64 @@ class TestRunParallel(unittest.TestCase):
         tasks = [partial(_double, i) for i in range(4)]
         with mock.patch("analysis_utils.make_pool", return_value=None):
             self.assertEqual(run_parallel(tasks), [0, 2, 4, 6])
+
+
+class TestBodyCache(unittest.TestCase):
+    def test_duplicate_inputs_reuse_result(self):
+        calls = []
+
+        def fn(t):
+            calls.append(t)
+            return {"v": len(t)}
+
+        cached = body_cache(fn)
+        a = cached("aa")
+        b = cached("aa")
+        c = cached("bbb")
+        self.assertEqual(a, b)
+        self.assertIs(a, b)
+        self.assertEqual(c, {"v": 3})
+        self.assertEqual(calls, ["aa", "bbb"])
+
+    def test_disables_on_low_hit_rate(self):
+        calls = []
+
+        def fn(t):
+            calls.append(t)
+            return t.upper()
+
+        cached = body_cache(fn, probe=4, min_hit=0.5)
+        for i in range(4):
+            self.assertEqual(cached(f"t{i}"), f"T{i}")
+        self.assertEqual(len(calls), 4)
+        # 命中率不足后缓存关闭：重复输入重算但结果不变
+        self.assertEqual(cached("t0"), "T0")
+        self.assertEqual(len(calls), 5)
+
+    def test_stays_enabled_on_duplicate_heavy_input(self):
+        calls = []
+
+        def fn(t):
+            calls.append(t)
+            return len(t)
+
+        cached = body_cache(fn, probe=4, min_hit=0.5)
+        for _ in range(6):
+            self.assertEqual(cached("aaa"), 3)
+        self.assertEqual(len(calls), 1)
+
+    def test_small_input_keeps_caching(self):
+        calls = []
+
+        def fn(t):
+            calls.append(t)
+            return t
+
+        cached = body_cache(fn, probe=100, min_hit=0.5)
+        self.assertEqual(cached("x"), "x")
+        self.assertEqual(cached("x"), "x")
+        self.assertEqual(cached("y"), "y")
+        self.assertEqual(calls, ["x", "y"])
 
 
 if __name__ == "__main__":

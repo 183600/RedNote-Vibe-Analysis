@@ -42,11 +42,12 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.stats import spearmanr
 
-from analysis_utils import (BASE, INSIGHTS, PALETTE, init_plot_style, save_fig,
-                            cliffs_delta, clean_body, content_of, dedup_indices,
-                            engagement_of, iter_jsonl, parse_local_time,
-                            rate_diff_ranking, rate_top, shannon_entropy,
-                            topk_coverage, run_parallel, wilson_ci)
+from analysis_utils import (BASE, INSIGHTS, PALETTE, body_cache, init_plot_style,
+                            save_fig, cliffs_delta, clean_body, content_of,
+                            dedup_indices, engagement_of, iter_jsonl,
+                            parse_local_time, rate_diff_ranking, rate_top,
+                            shannon_entropy, topk_coverage, run_parallel,
+                            wilson_ci)
 from paper_features import EMOJI
 
 DATASETS = {
@@ -117,18 +118,26 @@ def ending_class(suffix: str) -> str:
     return "文字结尾"
 
 
+def frame_features(body: str) -> tuple[str, str]:
+    """紧凑文本与其收尾类别（纯函数；scan_view 内按正文缓存复用）。"""
+    s = compact(body)
+    return s, ending_class(s)
+
+
 def scan_view(path: str, content_len_ref: np.ndarray | None = None) -> dict:
     """单次流式扫描：收集首/尾框架片段、note_id、元数据完整度、时间与收尾类别。"""
     heads, tails, ids, months = [], [], [], []
     meta, hours, ending_classes = [], [], []
     month_pool: dict = {}   # 共享同月字符串对象（月份只有几十种）
     n_raw = n_short = mismatch = 0
+    # 重复正文（探索集约 45%）直接复用紧凑文本与收尾类别，只读不改。
+    cached = body_cache(frame_features)
     for rec in iter_jsonl(path):
         content = content_of(rec)
         body = clean_body(content)
         if content_len_ref is not None and len(body) != int(content_len_ref[n_raw]):
             mismatch += 1
-        s = compact(body)
+        s, cls = cached(body)
         if len(s) >= MIN_NORM:
             heads.append(s[:FRAME_LEN])
             tails.append(s[-FRAME_LEN:])
@@ -136,7 +145,7 @@ def scan_view(path: str, content_len_ref: np.ndarray | None = None) -> dict:
             heads.append(None)
             tails.append(None)
             n_short += 1
-        ending_classes.append(ending_class(s))
+        ending_classes.append(cls)
         ids.append(rec.get("note_id"))
         likes, colls, comms = engagement_of(rec)
         dt = parse_local_time(rec.get("local_time"))

@@ -45,7 +45,7 @@
 from __future__ import annotations
 
 from array import array
-from collections import Counter, defaultdict
+from collections import defaultdict
 from functools import partial
 
 import re
@@ -57,9 +57,9 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.stats import spearmanr
 
-from analysis_utils import (BASE, INSIGHTS, PALETTE, init_plot_style, save_fig,
-                            save_json, cliffs_delta, cell_rank_cache, cell_groups,
-                            clean_body, content_of, decile_table,
+from analysis_utils import (BASE, INSIGHTS, PALETTE, body_cache, init_plot_style,
+                            save_fig, save_json, cliffs_delta, cell_rank_cache,
+                            cell_groups, clean_body, content_of, decile_table,
                             dedup_indices, domain_standardized_series,
                             engagement_of, iter_jsonl, length_bin_codes,
                             parse_local_time, run_parallel, within_cell_spearman)
@@ -111,6 +111,13 @@ GUARDED_RE = {
     for w, guards in GUARDED.items()
     if any(g.startswith(w) for g in guards)
 }
+# 逐标记展平（模块级预计算）：(标记, 类别, 前瞻正则或 None, 需扣除的后缀元组)。
+# 热循环内不再逐词查 GUARDED/GUARDED_RE、不再做 startswith 过滤。
+_FLAT_CTA_WORDS = [
+    (w, cat, GUARDED_RE.get(w),
+     tuple(g for g in GUARDED.get(w, ()) if not g.startswith(w)))
+    for cat, (_, words) in CATEGORY_DEFS.items() for w in words
+]
 CATEGORY_LABELS = {k: v[0] for k, v in CATEGORY_DEFS.items()}
 CATEGORY_COLORS = {"comment": "#4C72B0", "reaction": "#C44E52",
                    "follow": "#DD8452", "urge": "#8172B3"}
@@ -148,27 +155,19 @@ def cta_counts(text: str) -> dict:
     其余排除词（快冲鸭）按最长优先从计数中扣除。与原「最长优先正则
     alternation」在本词表上逐位一致（含「聊聊聊天」这类邻接重叠）。
     """
-    out: dict = {}
-    pat_counts: Counter = Counter()
-    for cat, (_, words) in CATEGORY_DEFS.items():
-        named = {}
-        for w in words:
-            guards = GUARDED.get(w, ())
-            if not guards:
-                n = text.count(w)
-            else:
-                if w in GUARDED_RE:
-                    n = len(GUARDED_RE[w].findall(text))
-                else:
-                    n = text.count(w)
-                for g in guards:
-                    if not g.startswith(w):
-                        n -= text.count(g)
-            if n:
-                named[w] = n
-        out[cat] = int(sum(named.values()))
-        pat_counts.update(named)
-    out["_patterns"] = dict(pat_counts)
+    out: dict = {cat: 0 for cat in CATEGORY_ORDER}
+    patterns: dict = {}
+    for w, cat, guard_re, sub_guards in _FLAT_CTA_WORDS:
+        if guard_re is not None:
+            n = len(guard_re.findall(text))
+        else:
+            n = text.count(w)
+        for g in sub_guards:
+            n -= text.count(g)
+        if n:
+            out[cat] += n
+            patterns[w] = patterns.get(w, 0) + n
+    out["_patterns"] = patterns
     return out
 
 
@@ -213,12 +212,14 @@ def scan_corpus(path: str) -> dict:
     flat_words = array("i")
     likes = []
     n_total = 0
+    # 重复正文（探索集约 45%）直接复用上一次的命中计数，只读不改。
+    cached = body_cache(cta_counts)
     for rec in iter_jsonl(path):
         n_total += 1
         content = content_of(rec)
         body = clean_body(content)
         L = len(body)
-        counts = cta_counts(body)
+        counts = cached(body)
         body_len.append(L)
         note_id.append(rec.get("note_id"))
         dom = rec.get("domain")

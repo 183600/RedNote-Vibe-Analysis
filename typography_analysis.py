@@ -51,7 +51,7 @@
 from __future__ import annotations
 
 from array import array
-from collections import Counter, defaultdict
+from collections import defaultdict
 from functools import partial
 
 import numpy as np
@@ -61,12 +61,12 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from scipy.stats import spearmanr
 
-from analysis_utils import (BASE, INSIGHTS, PALETTE, init_plot_style, save_fig,
-                            save_json, cliffs_delta, cell_rank_cache, cell_groups,
-                            clean_body, content_of, decile_table, dedup_indices,
-                            domain_standardized_series, engagement_of, iter_jsonl,
-                            length_bin_codes, parse_local_time, run_parallel,
-                            within_cell_spearman)
+from analysis_utils import (BASE, INSIGHTS, PALETTE, body_cache, init_plot_style,
+                            save_fig, save_json, cliffs_delta, cell_rank_cache,
+                            cell_groups, clean_body, content_of, decile_table,
+                            dedup_indices, domain_standardized_series,
+                            engagement_of, iter_jsonl, length_bin_codes,
+                            parse_local_time, run_parallel, within_cell_spearman)
 from engagement_drivers_analysis import (cluster_bootstrap_fe_ols, fe_ols,
                                          prepare_fe)
 from paper_features import LIST_LINE
@@ -164,6 +164,11 @@ MARKER_DISPLAY = [m for m, _ in MARKERS]
 MARKER_CATEGORY = {m: cat for m, cat in MARKERS}
 MARKER_INDEX = {m: i for i, m in enumerate(MARKER_DISPLAY)}
 
+# 逐标记展平（类别顺序 × 标记顺序）；热循环内直接遍历 (标记, 类别)，
+# 不再对每个 token 做 isinstance 分派。标记在所有类别间唯一。
+_FLAT_MARKERS: list[tuple[str, str]] = [
+    (tok, cat) for cat in CATEGORY_ORDER for tok in _category_tokens(cat)]
+
 
 # --------------------------------------------------------------------------
 # 纯函数（可单元测试）
@@ -183,24 +188,17 @@ def typography_counts(text: str) -> dict:
     均为不同字符），因此不会重复计数；省略号内部的 `。` 同时计入句号，
     与 `paper_features.py` 的 ellip100/period100 口径一致。
     """
-    out: dict = {}
-    marker_counts: Counter = Counter()
-    for cat in CATEGORY_ORDER:
-        total = 0
-        for tok in CATEGORY_DEFS[cat][1]:
-            if isinstance(tok, str):
-                n = text.count(tok)
-                if n:
-                    marker_counts[tok] += n
-                total += n
-            else:
-                for ch in tok:
-                    n = text.count(ch)
-                    if n:
-                        marker_counts[ch] += n
-                    total += n
-        out[cat] = int(total)
-    out["_markers"] = dict(marker_counts)
+    per_cat: dict = {}
+    markers: dict = {}
+    # 逐标记直接计数（标记在类别间唯一，get 仍保留累积语义以兼容未来扩充）；
+    # 只在命中时写字典，避免为零命中标记做多余更新。
+    for tok, cat in _FLAT_MARKERS:
+        n = text.count(tok)
+        if n:
+            per_cat[cat] = per_cat.get(cat, 0) + n
+            markers[tok] = markers.get(tok, 0) + n
+    out: dict = {cat: per_cat.get(cat, 0) for cat in CATEGORY_ORDER}
+    out["_markers"] = markers
     return out
 
 
@@ -216,12 +214,21 @@ def layout_metrics(body: str) -> dict:
     行数」（保留浮点精度，汇总时再取整）；列表行正则直接复用
     `paper_features.LIST_LINE`；冒号行沿用「前 14 字内出现冒号」的定义。
     """
-    lines = [ln for ln in body.split("\n") if ln.strip()]
-    n_lines = len(lines)
+    n_lines = short = list_lines = colon_lines = 0
+    # 单遍处理：strip 只做一次（原实现 filter 与短行判断各 strip 一遍），
+    # 列表行/冒号行仍在未剥离空白的原始行上判断，与旧口径一致。
+    for ln in body.split("\n"):
+        stripped = ln.strip()
+        if not stripped:
+            continue
+        n_lines += 1
+        if len(stripped) < SHORT_LINE:
+            short += 1
+        if LIST_LINE.match(ln):
+            list_lines += 1
+        if "：" in ln[:14] or ":" in ln[:14]:
+            colon_lines += 1
     n_safe = max(n_lines, 1)
-    short = sum(1 for ln in lines if len(ln.strip()) < SHORT_LINE)
-    list_lines = sum(1 for ln in lines if LIST_LINE.match(ln))
-    colon_lines = sum(1 for ln in lines if ("：" in ln[:14] or ":" in ln[:14]))
     return {
         "n_lines": int(n_lines),
         "avg_line_len": float(len(body) / n_safe),
@@ -255,13 +262,14 @@ def scan_corpus(path: str) -> dict:
     flat_marker = array("i")
     n_markers = len(MARKER_DISPLAY)
     n_total = 0
+    # 重复正文（探索集约 45%）直接复用上一次的标点/排版结果，只读不改。
+    cached = body_cache(lambda b: (typography_counts(b), layout_metrics(b)))
     for rec in iter_jsonl(path):
         n_total += 1
         content = content_of(rec)
         body = clean_body(content)
         L = len(body)
-        counts = typography_counts(body)
-        lay = layout_metrics(body)
+        counts, lay = cached(body)
         body_len.append(L)
         note_id.append(rec.get("note_id"))
         dom = rec.get("domain")

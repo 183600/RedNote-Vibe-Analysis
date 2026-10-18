@@ -87,31 +87,36 @@ def analyze_sentences(text):
     words_list = [words_of(s) for s in sentences]
     total_words = sum(len(w) for w in words_list)
     unique_words = set()
+    all_words = []
     for words in words_list:
         unique_words.update(words)
+        all_words.extend(words)
     vocab_richness = len(unique_words) / total_words if total_words else 0
     return {
         "num_sentences": len(sentences),
         "total_words": total_words,
         "avg_words": round(total_words / len(sentences), 2),
         "vocab_richness": round(vocab_richness, 4),
+        "words": all_words,
     }
 
 
-def analyze_repetition(text):
-    if not text:
-        return {}
-    words = words_of(text)
+def _repeat_ratio(words):
     if len(words) < 3:
-        return {"repeat_ratio": 0}
+        return 0
     repeat_count = sum(
         1
         for i in range(len(words) - 1)
         if words[i] == words[i + 1]
         or (i + 2 < len(words) and words[i] == words[i + 2])
     )
-    repeat_ratio = repeat_count / (len(words) - 1)
-    return {"repeat_ratio": round(repeat_ratio, 4)}
+    return round(repeat_count / (len(words) - 1), 4)
+
+
+def analyze_repetition(text):
+    if not text:
+        return {}
+    return {"repeat_ratio": _repeat_ratio(words_of(text))}
 
 
 def _aggregate_texts(texts):
@@ -150,11 +155,15 @@ def _aggregate_texts(texts):
 
         sent = analyze_sentences(text)
         if sent:
+            # 整段文本的分词结果 = 各句子分词结果的拼接（jieba 以句子边界标点
+            # 为跳过分隔），因此重复度直接复用该结果，避免第二次分词。
+            words = sent.pop("words")
             sent_stats.append(sent)
-
-        rep = analyze_repetition(text)
-        if rep:
-            repeat_ratios.append(rep["repeat_ratio"])
+            repeat_ratios.append(_repeat_ratio(words))
+        else:
+            rep = analyze_repetition(text)
+            if rep:
+                repeat_ratios.append(rep["repeat_ratio"])
     return (url_total, url_domains, num_total, price, count,
             paras, list_n, bullet_n, sent_stats, repeat_ratios)
 

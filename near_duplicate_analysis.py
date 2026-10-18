@@ -47,6 +47,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from functools import partial
 
 import numpy as np
 import pandas as pd
@@ -57,7 +58,8 @@ from scipy.stats import spearmanr
 
 from analysis_utils import (BASE, INSIGHTS, PALETTE, init_plot_style, save_fig,
                             save_json, wilson_ci, clean_body, content_of,
-                            engagement_of, iter_jsonl, parse_local_time)
+                            engagement_of, iter_jsonl, parse_local_time,
+                            run_parallel)
 
 DATASETS = {
     "human": BASE + "training_set_human_fixed.jsonl",
@@ -91,6 +93,16 @@ _MIX2 = np.uint64(0xC2B2AE3D27D4EB4F)
 # 用广播一次的三角索引向量化生成，批内控制临时数组在 ~200 万对以内。
 _PAIR_BLOCK = 1 << 21
 
+# 精确校验并行的门槛与分段数：候选对太少时 fork 进程池的开销反而不划算，
+# 因此小规模调用保持串行（单元测试路径默认串行）。
+_VERIFY_PARALLEL_MIN = 4096
+_VERIFY_WORKERS = 4
+_VERIFY_CHUNKS = 8
+
+# fork 子进程经该模块级上下文读取只读校验状态：任务只 pickle (lo, hi)
+# 区间，不复制候选数组与 shingle 集合。
+_VERIFY_CTX: dict = {}
+
 
 # --------------------------------------------------------------------------
 # 纯函数（可单元测试）
@@ -105,16 +117,29 @@ def shingle_hashes(text: str, n: int = SHINGLE_N) -> np.ndarray:
         return np.empty(0, dtype=np.uint64)
     codes = np.frombuffer(text.encode("utf-32-le"), dtype=np.uint32).astype(np.uint64)
     m = codes.size - n + 1
-    h = codes[:m].copy()
-    for j in range(1, n):
-        h *= _MIX1
-        h += codes[j:j + m]
+    # 滚动哈希与终混全部 in-place（除首轮乘法分配一次结果数组外不再产生
+    # 临时数组）；随后原地排序 + 相邻去重掩码，等价于 np.unique 但不额外
+    # 复制一份窗口哈希数组。
+    if n == 1:
+        h = codes[:m].copy()
+    else:
+        h = codes[:m] * _MIX1
+        h += codes[1:1 + m]
+        for j in range(2, n):
+            h *= _MIX1
+            h += codes[j:j + m]
     h ^= h >> np.uint64(30)
     h *= _MIX2
     h ^= h >> np.uint64(27)
     h *= _MIX1
     h ^= h >> np.uint64(31)
-    return np.unique(h)
+    h.sort()
+    if h.size > 1:
+        keep = np.empty(h.size, dtype=bool)
+        keep[0] = True
+        np.not_equal(h[1:], h[:-1], out=keep[1:])
+        h = h[keep]
+    return h
 
 
 def bottom_k(hashes: np.ndarray, k: int = SKETCH_K) -> np.ndarray:
@@ -248,14 +273,54 @@ def select_verify_pairs(keys: np.ndarray, counts: np.ndarray,
     return keys[keep]
 
 
+def _verify_segment(lo: int, hi: int) -> list:
+    """fork 子进程入口：精确校验 sel[lo:hi] 区间的候选对（只读上下文）。"""
+    sets = _VERIFY_CTX["sets"]
+    sel = _VERIFY_CTX["sel"]
+    n_docs = _VERIFY_CTX["n_docs"]
+    min_j = _VERIFY_CTX["min_j"]
+    out: list[tuple[float, int, int]] = []
+    for key in sel[lo:hi].tolist():
+        i, j = divmod(key, n_docs)
+        sim = jaccard_sorted(sets[i], sets[j])
+        if sim >= min_j:
+            out.append((sim, i, j))
+    return out
+
+
+def _verify_bounds(work: np.ndarray, n_chunks: int) -> list[tuple[int, int]]:
+    """按预估工作量把候选对切成连续区间的分块边界（各块工作量尽量均衡）。
+
+    块内配对顺序与串行一致，块间按边界顺序拼接后整体排序，结果与串行
+    逐位一致；J 的计算成本随较短文档的 shingle 数近似线性，故以
+    min(len_i, len_j) 作为工作量权重。
+    """
+    n = work.size
+    if n <= n_chunks:
+        return [(i, i + 1) for i in range(n)]
+    cum = np.cumsum(work)
+    total = int(cum[-1])
+    if total <= 0:
+        step = -(-n // n_chunks)
+        edges = list(range(0, n, step)) + [n]
+    else:
+        targets = np.linspace(0, total, n_chunks + 1)[1:-1]
+        edges = sorted({0, n, *(int(x) for x in
+                                np.searchsorted(cum, targets, side="right"))})
+    return [(lo, hi) for lo, hi in zip(edges, edges[1:]) if hi > lo]
+
+
 def verified_pairs(keys: np.ndarray, counts: np.ndarray, sets: list[np.ndarray],
                    min_j: float = MIN_J, k: int = SKETCH_K,
-                   lengths: np.ndarray | None = None):
+                   lengths: np.ndarray | None = None,
+                   parallel: bool = False):
     """候选对精确校验：返回 J ≥ min_j 的 (相似度, i, j) 列表（降序）。
 
     候选对的「共享链接键数 ≥ 2 或短文档单键」筛选见 `select_verify_pairs`；
     其余候选对不校验（召回自检会在真实数据上复核漏检率）。
     `lengths` 可传入已算好的各文档 unique 5-gram 数以避免重复计算。
+    `parallel=True` 且候选对足够多时按工作量分块走 fork 进程池；分块拼接
+    后整体排序，结果与串行调用逐位一致；默认串行（单元测试路径）。
     """
     n_docs = len(sets)
     if lengths is None:
@@ -270,11 +335,24 @@ def verified_pairs(keys: np.ndarray, counts: np.ndarray, sets: list[np.ndarray],
         # （数学上不可能命中，结果与逐对精确校验完全一致）。
         sel = sel[(1.0 + min_j) * min_len >= min_j * (la + lb)]
     pairs: list[tuple[float, int, int]] = []
-    for key in sel.tolist():
-        i, j = divmod(key, n_docs)
-        sim = jaccard_sorted(sets[i], sets[j])
-        if sim >= min_j:
-            pairs.append((sim, i, j))
+    if parallel and sel.size >= _VERIFY_PARALLEL_MIN:
+        work = np.minimum(lengths[sel // n_docs], lengths[sel % n_docs])
+        bounds = _verify_bounds(work, _VERIFY_CHUNKS)
+        _VERIFY_CTX.update(sets=sets, sel=sel, n_docs=n_docs, min_j=min_j)
+        try:
+            parts = run_parallel([partial(_verify_segment, lo, hi)
+                                  for lo, hi in bounds],
+                                 max_workers=_VERIFY_WORKERS)
+        finally:
+            _VERIFY_CTX.clear()
+        for part in parts:
+            pairs.extend(part)
+    else:
+        for key in sel.tolist():
+            i, j = divmod(key, n_docs)
+            sim = jaccard_sorted(sets[i], sets[j])
+            if sim >= min_j:
+                pairs.append((sim, i, j))
     pairs.sort(reverse=True)
     return pairs
 
@@ -921,7 +999,8 @@ def main() -> int:
     n_verified = int(select_verify_pairs(keys, counts, shingle_counts,
                                          n_docs).size)
     print(f"[近重复] 候选对 {keys.size:,}（校验子集 {n_verified:,}）")
-    pairs = verified_pairs(keys, counts, sets, lengths=shingle_counts)
+    pairs = verified_pairs(keys, counts, sets, lengths=shingle_counts,
+                           parallel=True)
     n_candidate_pairs = int(keys.size)
     del keys, counts
     within_j = within_max_j(dataset, pairs, n_docs)

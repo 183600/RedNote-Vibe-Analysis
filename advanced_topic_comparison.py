@@ -11,9 +11,10 @@ import os
 import warnings
 import numpy as np
 from collections import Counter, defaultdict
+from functools import partial
 from scipy import stats
 
-from analysis_utils import init_plot_style, engagement_of
+from analysis_utils import init_plot_style, engagement_of, run_parallel
 import matplotlib
 
 matplotlib.use("Agg")
@@ -342,6 +343,18 @@ def analyze_domain_stats(items):
         "has_numbers_pct": has_numbers / len(items) * 100,
         "avg_paragraphs": paragraphs / len(items),
     }
+
+
+# fork 子进程经该模块级上下文读取当前数据集的域分桶结果：任务只 pickle 域名，
+# 不复制整份文本；各域统计彼此独立，结果与串行逐域调用逐位一致。
+_ANALYZE_CTX: dict = {}
+
+
+def _analyze_domain_task(domain):
+    items = _ANALYZE_CTX["grouped"][domain]
+    if not items:
+        return None
+    return analyze_domain_stats(items)
 
 
 def compute_word_similarity(words1, words2, top_n=50):
@@ -882,32 +895,43 @@ def main():
     output_dir = "output"
     os.makedirs(output_dir, exist_ok=True)
 
-    print("Loading datasets...")
-    grouped = {}
     totals = {}
+    all_stats = {"Human": {}, "AIGC": {}, "Exploring": {}}
+    loading_lines = []
+
+    # 逐数据集「加载 → 域内统计 → 释放原始记录」：三个数据集的正文不再同时
+    # 驻留内存（峰值约为原来的 1/3），统计结果只保留数组/词频等小对象；
+    # 各域统计彼此独立，交给 fork 进程池并行（池不可用时自动串行回退），
+    # 控制台输出顺序与旧实现逐行一致（加载行先收集、统计行按域重排打印）。
     for ds_name, filepath in [
         ("Human", "training_set_human.jsonl"),
         ("AIGC", "training_set_aigc.jsonl"),
         ("Exploring", "exploring_set.jsonl"),
     ]:
         # 逐数据集流式读取并一次性按域分桶，避免整份 load 与逐域重复扫描
-        grouped[ds_name], totals[ds_name] = group_by_domain(filepath)
-        print(f"  {ds_name}: {totals[ds_name]} records")
+        grouped, totals[ds_name] = group_by_domain(filepath)
+        loading_lines.append(f"  {ds_name}: {totals[ds_name]} records")
+        _ANALYZE_CTX["grouped"] = grouped
+        try:
+            domain_stats = run_parallel(
+                [partial(_analyze_domain_task, d) for d in DOMAINS])
+        finally:
+            _ANALYZE_CTX.clear()
+        for domain, stats in zip(DOMAINS, domain_stats):
+            if stats:
+                all_stats[ds_name][domain] = stats
+        del grouped
+
+    print("Loading datasets...")
+    for line in loading_lines:
+        print(line)
 
     print("\nAnalyzing domain statistics for each dataset...")
-    all_stats = {"Human": {}, "AIGC": {}, "Exploring": {}}
-
     for domain in DOMAINS:
         for ds_name in ["Human", "AIGC", "Exploring"]:
-            items = grouped[ds_name][domain]
-            if items:
-                stats = analyze_domain_stats(items)
-                if stats:
-                    all_stats[ds_name][domain] = stats
-                    print(f"  {ds_name} - {domain}: {stats['count']} items processed")
-
-    # 统计结果已包含后续所需的全部数组，释放原始记录（大文本）再绘图
-    del grouped
+            if domain in all_stats[ds_name]:
+                print(f"  {ds_name} - {domain}: "
+                      f"{all_stats[ds_name][domain]['count']} items processed")
 
     print("\nGenerating visualizations...")
     plot_three_way_domain_comparison(all_stats, output_dir)

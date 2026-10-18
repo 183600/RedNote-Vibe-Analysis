@@ -11,9 +11,10 @@ import warnings
 import numpy as np
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
+from functools import partial
 from scipy import stats
 
-from analysis_utils import init_plot_style, engagement_of
+from analysis_utils import init_plot_style, engagement_of, run_parallel
 import matplotlib
 
 matplotlib.use("Agg")
@@ -821,81 +822,100 @@ def plot_content_consistency(results, output_dir):
     print("Saved: " + os.path.join(output_dir, "content_consistency.png"))
 
 
+INTENSITY_WORDS = {
+    "positive_strong": [
+        "超爱",
+        "太喜欢",
+        "超级喜欢",
+        "完美",
+        "绝绝子",
+        "太棒了",
+        "爱死了",
+        "惊艳",
+        "震撼",
+        "极致",
+    ],
+    "positive_mild": [
+        "喜欢",
+        "好",
+        "不错",
+        "可以",
+        "还行",
+        "满意",
+        "推荐",
+        "棒",
+        "赞",
+        "开心",
+    ],
+    "negative_strong": [
+        "崩溃",
+        "绝望",
+        "彻底",
+        "完全",
+        "太难了",
+        "受够了",
+        "糟透了",
+        "极度",
+        "相当",
+        "难受",
+    ],
+    "negative_mild": [
+        "有点",
+        "可能",
+        "担心",
+        "焦虑",
+        "难过",
+        "累",
+        "烦",
+        "失望",
+        "怕",
+        "不舒服",
+    ],
+}
+
+# fork 子进程经该模块级上下文读取域分桶结果：任务只 pickle (数据集, 域)，
+# 不复制整份文本；各 (数据集, 域) 的计数彼此独立，结果与串行逐项统计一致。
+_EMOTION_CTX: dict = {}
+
+
+def _emotion_domain_task(key):
+    ds_name, domain = key
+    domain_items = _EMOTION_CTX["grouped"][ds_name][domain]
+    if not domain_items:
+        return None
+    pos_strong = pos_mild = neg_strong = neg_mild = 0
+    for item in domain_items:
+        text = get_text(item)
+        for w in INTENSITY_WORDS["positive_strong"]:
+            pos_strong += text.count(w)
+        for w in INTENSITY_WORDS["positive_mild"]:
+            pos_mild += text.count(w)
+        for w in INTENSITY_WORDS["negative_strong"]:
+            neg_strong += text.count(w)
+        for w in INTENSITY_WORDS["negative_mild"]:
+            neg_mild += text.count(w)
+    return pos_strong, pos_mild, neg_strong, neg_mild
+
+
 def analyze_emotion_intensity(grouped, token_totals):
     print("\n" + "=" * 80)
     print("7. EMOTION INTENSITY ANALYSIS: Positive vs Negative Word Strength")
     print("=" * 80)
 
-    INTENSITY_WORDS = {
-        "positive_strong": [
-            "超爱",
-            "太喜欢",
-            "超级喜欢",
-            "完美",
-            "绝绝子",
-            "太棒了",
-            "爱死了",
-            "惊艳",
-            "震撼",
-            "极致",
-        ],
-        "positive_mild": [
-            "喜欢",
-            "好",
-            "不错",
-            "可以",
-            "还行",
-            "满意",
-            "推荐",
-            "棒",
-            "赞",
-            "开心",
-        ],
-        "negative_strong": [
-            "崩溃",
-            "绝望",
-            "彻底",
-            "完全",
-            "太难了",
-            "受够了",
-            "糟透了",
-            "极度",
-            "相当",
-            "难受",
-        ],
-        "negative_mild": [
-            "有点",
-            "可能",
-            "担心",
-            "焦虑",
-            "难过",
-            "累",
-            "烦",
-            "失望",
-            "怕",
-            "不舒服",
-        ],
-    }
+    # 各 (数据集, 域) 的关键词计数彼此独立（每帖 40 次 str.count 是主要开销），
+    # 交给 fork 进程池并行；池不可用时自动串行回退，输出顺序不变。
+    results = {ds_name: {} for ds_name in grouped}
+    keys = [(ds_name, domain) for ds_name, ds_grouped in grouped.items()
+            for domain in DOMAINS if ds_grouped[domain]]
+    _EMOTION_CTX["grouped"] = grouped
+    try:
+        counts = run_parallel([partial(_emotion_domain_task, k) for k in keys])
+    finally:
+        _EMOTION_CTX.clear()
 
-    results = {}
-    for ds_name, ds_grouped in grouped.items():
-        results[ds_name] = {}
-        for domain in DOMAINS:
-            domain_items = ds_grouped[domain]
-            if not domain_items:
-                continue
-
-            pos_strong = pos_mild = neg_strong = neg_mild = 0
-            for item in domain_items:
-                text = get_text(item)
-                for w in INTENSITY_WORDS["positive_strong"]:
-                    pos_strong += text.count(w)
-                for w in INTENSITY_WORDS["positive_mild"]:
-                    pos_mild += text.count(w)
-                for w in INTENSITY_WORDS["negative_strong"]:
-                    neg_strong += text.count(w)
-                for w in INTENSITY_WORDS["negative_mild"]:
-                    neg_mild += text.count(w)
+    for (ds_name, domain), c in zip(keys, counts):
+        if c is not None:
+            pos_strong, pos_mild, neg_strong, neg_mild = c
 
             total_words = token_totals[ds_name][domain]
 

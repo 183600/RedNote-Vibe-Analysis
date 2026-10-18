@@ -524,13 +524,18 @@ def generate_summary_dashboard(aggs, output_dir):
     axes[1, 1].set_title("Domain Diversity")
     axes[1, 1].set_ylabel("Normalized Entropy")
 
-    avg_eng = []
-    for ds in datasets:
-        domain_engs = [
-            eng_results[ds].get(d, {}).get("avg_efficiency", 0) for d in DOMAINS
-        ]
-        positive_engs = [e for e in domain_engs if e > 0]
-        avg_eng.append(np.mean(positive_engs) if positive_engs else 0.0)
+    # 与 engagement_efficiency 图同口径：只在三个数据集都有结果的领域集合上
+    # 求平均。原先各数据集按自己的领域子集（领域缺样本或不足 5 篇会被跳过，
+    # 缺项又按 0 再被 e>0 过滤掉）分别求平均，三根柱子平均的领域并不相同，
+    # 柱高之间不可比。
+    common_domains = [d for d in DOMAINS
+                      if all(d in eng_results.get(ds, {}) for ds in datasets)]
+    avg_eng = [
+        float(np.mean([eng_results[ds][d]["avg_efficiency"]
+                       for d in common_domains]))
+        if common_domains else 0.0
+        for ds in datasets
+    ]
     axes[1, 2].bar(x, avg_eng, color=colors)
     axes[1, 2].set_xticks(x)
     axes[1, 2].set_xticklabels(datasets)

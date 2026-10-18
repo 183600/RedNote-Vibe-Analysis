@@ -853,18 +853,15 @@ def to_int(v, default: int = 0) -> int:
 def engagement_of(rec: dict) -> tuple[int, int, int]:
     """读取一条记录的（点赞, 收藏, 评论），兼容两种字段命名。
 
-    每个字段只做一次 `rec.get`（命中旧字段名时不再重复查字典），
-    与旧实现的取值口径完全一致（新字段值为 None 时回退旧字段名）。
+    与 `paper_features.py` 的 `d.get("liked_count") or d.get("likes")` 口径
+    一致：`*_fixed.jsonl` 会把缺失的 `liked_count` 等新字段填充为 0（真实值
+    仍留在旧字段 `likes` 里），因此新字段为 None **或 0** 时都要回退旧字段，
+    否则占位 0 会被当成真实互动量。旧字段同样缺省时回退结果仍为 0，
+    取值与旧实现完全一致。
     """
-    liked = rec.get("liked_count")
-    if liked is None:
-        liked = rec.get("likes")
-    collected = rec.get("collected_count")
-    if collected is None:
-        collected = rec.get("collections")
-    comments = rec.get("comments_count")
-    if comments is None:
-        comments = rec.get("comments")
+    liked = rec.get("liked_count") or rec.get("likes")
+    collected = rec.get("collected_count") or rec.get("collections")
+    comments = rec.get("comments_count") or rec.get("comments")
     return to_int(liked), to_int(collected), to_int(comments)
 
 

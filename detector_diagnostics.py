@@ -284,11 +284,16 @@ def plot_errors(deciles: list[dict], domains: list[dict],
     ax2.legend(fontsize=8, loc="lower right")
 
     ax = axes[1]
-    ds = sorted(domains, key=lambda r: -(r["human_fp_rate"] or 0))
+    # n_human / n_aigc 为 0 的切片速率为 None：排序时排到最后、绘图时画成
+    # 缺测（nan），不能当成 0——0% 会被误读成「表现最好」的切片，且下游
+    # 极值文案（write_markdown）会跟着选错对象。与 aigc 侧的 None 过滤一致。
+    ds = sorted(domains, key=lambda r: -(r["human_fp_rate"]
+                                         if r["human_fp_rate"] is not None
+                                         else float("-inf")))
     names = [r["domain"] for r in ds]
-    fp = [r["human_fp_rate"] * 100 if r["human_fp_rate"] is not None else 0
+    fp = [r["human_fp_rate"] * 100 if r["human_fp_rate"] is not None else np.nan
           for r in ds]
-    fn = [r["aigc_fn_rate"] * 100 if r["aigc_fn_rate"] is not None else 0
+    fn = [r["aigc_fn_rate"] * 100 if r["aigc_fn_rate"] is not None else np.nan
           for r in ds]
     pos = np.arange(len(ds))
     ax.barh(pos - 0.19, fp, height=0.38, color=COLORS["human"],
@@ -466,8 +471,11 @@ def write_markdown(out: dict) -> None:
         f"| {r['threshold']:g} | {r['precision']:.3f} | {r['recall']:.3f} | "
         f"{r['f1']:.3f} | {r['flagged_neg_share']*100:.1f}% | "
         f"{r['flagged_pos_share']*100:.1f}% |" for r in out["thresholds"])
-    dmin = min(out["domain_slices"], key=lambda r: r["human_fp_rate"] or 0)
-    dmax = max(out["domain_slices"], key=lambda r: r["human_fp_rate"] or 0)
+    # None（该切片没有人类样本）不能参与极值比较：`or 0` 会把缺测当成 0%，
+    # 选出「假阳性率最低的领域」后又在下面乘 100 时崩溃。与 aigc 侧同口径。
+    with_fp = [r for r in out["domain_slices"] if r["human_fp_rate"] is not None]
+    dmin = min(with_fp, key=lambda r: r["human_fp_rate"])
+    dmax = max(with_fp, key=lambda r: r["human_fp_rate"])
     amin = min((r for r in out["domain_slices"] if r["aigc_fn_rate"] is not None),
                key=lambda r: r["aigc_fn_rate"])
     amax = max((r for r in out["domain_slices"] if r["aigc_fn_rate"] is not None),

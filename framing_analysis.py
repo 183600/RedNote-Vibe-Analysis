@@ -295,10 +295,15 @@ def plot_gradient(grad: dict, quarterly: dict, hourly: dict,
     ax.set_xlabel("检测器得分 P(AI)（十分位均值）")
     ax.set_ylabel("开篇命中模板的帖子占比 (%)")
     ax.set_title("模板化开篇随 AI 风格得分上升")
+    # p 值从实际检验结果生成：两个 p 都小于 1e-16 时才压缩成「均 p<1e-16」，
+    # 避免图上文案与 grad 中的检验结果脱钩（数据/检验一变就写死过期结论）。
+    p_ai, p_hum = float(grad["cliff"]["p"]), float(grad["cliff_human"]["p"])
+    p_text = ("均 p<1e-16" if max(p_ai, p_hum) < 1e-16
+              else f"p={p_ai:.1e} / p={p_hum:.1e}")
     ax.text(0.03, 0.95,
             f"AI 专属 δ={grad['cliff']['delta']:.2f}、"
             f"人类专属 δ={grad['cliff_human']['delta']:.2f}"
-            f"\n（均 p<1e-16，Mann–Whitney 双侧）",
+            f"\n（{p_text}，Mann–Whitney 双侧）",
             transform=ax.transAxes, fontsize=8.6, va="top")
     ax.legend(fontsize=8.2, loc="upper left", bbox_to_anchor=(0.03, 0.80))
 

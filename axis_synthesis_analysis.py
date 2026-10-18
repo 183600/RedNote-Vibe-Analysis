@@ -208,6 +208,20 @@ def fe_r2(fit: dict) -> float:
     return float(1 - (resid ** 2).sum() / sst) if sst > 0 else float("nan")
 
 
+def stack_shares(stack_arr, ok_stack) -> dict:
+    """各「与 P(AI) 同向的轴数」在有效帖子中的占比。
+
+    `stack_arr` 用 -1 标记有效轴数不足 5 的帖子；这些帖子不进入分布，
+    分母必须是有效帖子数（`ok_stack` 之和），否则占比之和小于 1。
+    """
+    arr = np.asarray(stack_arr)
+    n = int(np.asarray(ok_stack, dtype=bool).sum())
+    ks = sorted(int(k) for k in np.unique(arr[arr >= 0]))
+    if n <= 0:
+        return {str(k): 0.0 for k in ks}
+    return {str(k): float((arr == k).sum() / n) for k in ks}
+
+
 def mean_ci(values, n_boot: int = STACK_BOOT, seed: int = BOOT_SEED) -> dict:
     """均值 + 对帖子重抽的描述性 95% bootstrap CI（不处理单元聚类）。"""
     v = np.asarray(values, dtype=float)
@@ -661,8 +675,7 @@ def main() -> None:
     stack_all = np.full(len(dens_all), np.nan)
     stack_all[sel] = np.where(ok_stack, hits.astype(float), np.nan)
     order_ks = sorted(int(k) for k in np.unique(stack_arr[stack_arr >= 0]))
-    share_by_stack = {str(k): float((stack_arr == k).mean())
-                      for k in order_ks}
+    share_by_stack = stack_shares(stack_arr, ok_stack)
     mean_p_ai = {str(k): mean_ci(p_ai[stack_arr == k], seed=BOOT_SEED)
                  for k in order_ks}
     stack_rho = within_cell_spearman(

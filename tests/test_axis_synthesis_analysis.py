@@ -13,7 +13,7 @@ from axis_synthesis_analysis import (ALL_CATEGORIES, AXES, AXIS_INDICES,
                                      CATEGORY_LABEL, composite_density,
                                      composite_z, category_vector, fe_r2,
                                      log2_ratio, mean_ci, stack_hits,
-                                     within_cell_rank_z)
+                                     stack_shares, within_cell_rank_z)
 
 
 class TestCategoryVector(unittest.TestCase):
@@ -116,6 +116,19 @@ class TestStackHits(unittest.TestCase):
         hits, n_valid = stack_hits([[0.0, 0.0]], [1, -1])
         np.testing.assert_array_equal(hits, [0])
         np.testing.assert_array_equal(n_valid, [2])
+
+
+class TestStackShares(unittest.TestCase):
+    def test_invalid_sentinel_excluded_from_denominator(self):
+        stack = np.asarray([0, 1, 1, -1, -1])
+        ok = stack >= 0
+        shares = stack_shares(stack, ok)
+        self.assertAlmostEqual(shares["0"], 1 / 3)
+        self.assertAlmostEqual(shares["1"], 2 / 3)
+        self.assertAlmostEqual(sum(shares.values()), 1.0)
+
+    def test_all_invalid_is_empty(self):
+        self.assertEqual(stack_shares(np.asarray([-1, -1]), [False, False]), {})
 
 
 class TestFeR2(unittest.TestCase):

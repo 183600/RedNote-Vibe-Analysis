@@ -2,6 +2,17 @@
 
 [English](README.md) | [中文](README_zh.md)
 
+## 目录
+
+- [数据集](#数据集)
+- [📄 论文](#-论文)
+- [📊 Fork 分析](#-fork-分析)
+  - [数据集概览](#数据集概览) · [词频相关性矩阵](#词频相关性矩阵) · [关键发现](#关键发现) · [常见词分析](#常见词助词虚词分析)
+  - 深潜分析：[deep_dive](#深潜分析deep_dive_analysispy) · [framing](#框架模板化分析framing_analysispy) · [title_style](#标题端ai-味分析title_style_analysispy) · [title_body](#标题正文-ai-味组合title_body_congruence_analysispy) · [diversity](#文本多样性与节奏深潜diversity_analysispy) · [detector](#检测器诊断detector_diagnosticspy) · [family_lexicon](#模型家族词表指纹family_lexicon_analysispy) · [engagement_structure](#互动结构与ai-味惩罚分解engagement_structure_analysispy) · [engagement_drivers](#互动惩罚的逐特征载体engagement_drivers_analysispy) · [author_style](#作者层分解作者间-vs-人内author_style_analysispy) · [symbol](#话题标签与表情生态symbol_analysispy) · [near_duplicate](#近重复内容与模板复用near_duplicate_analysispy) · [family_transfer](#风格家族迁移野外高-ai-味帖的构成与互动回报family_transfer_analysispy) · [stance](#语气情态层谨慎断言强化与呼语stance_analysispy) · [concreteness](#具体性层数字单位量值地名与模糊量词concreteness_analysispy) · [cta](#互动引导语层评论点赞收藏关注转发与催购cta_analysispy) · [typography](#标点与排版层感叹号结构与短行排版typography_analysispy)
+  - [生成的可视化图表](#生成的可视化图表) · [分析脚本](#分析脚本)
+- [参考资料](#参考资料)
+- [许可证](#许可证)
+
 ## 数据集
 
 **[数据集github](https://github.com/ydli-ai/RedNote-Vibe.git)**
@@ -249,6 +260,17 @@
 4. **CTA 放大而非缓冲 AI 味惩罚**：交互模型（z(P(AI))×z(任一 CTA)）显示，点赞端交互 β=-0.0218 [-0.0343, -0.0105]、评论端 -0.0297 [-0.0390, -0.0200]（bootstrap p=0.000）；P(AI) 的边际斜率在含 CTA 帖中几乎翻倍——点赞 -0.0323 → -0.0956，评论 -0.0622 → -0.1485（每 1 SD P(AI)）。即当高 AI 味文本带上 CTA 时，受到的互动惩罚更强，与「模板化引导语本身就是 AI 味的显性信号」互洽。
 5. **家族指纹与季度趋势**：评论征集密度 Claude 最高（0.0586/百字）；催购催促 Gemini 最高（0.0401）、GLM/Claude 近乎为零（0.0045/0.0068）。探索集季度趋势：点赞收藏类密度显著上升（ρ=+0.917，p=0.001；固定领域权重 +0.733，p=0.025），2023Q2 的 0.0067 → 2025Q1 的 0.0177；评论征集/关注转发/催购催促无显著单调趋势（固定权重后催购催促 ρ=+0.600，p=0.088，边缘上升）。
 
+### 标点与排版层：感叹号、结构与短行排版（`typography_analysis.py`）
+
+把「AI 味」再下沉到**标点符号与帖子排版**层：用 12 个先验标点族（感叹号、问号、省略号、波浪号、逗号、顿号、句号、冒号、分号、引号、括号、破折号，展开为 34 个全角/半角标记，不做数据驱动筛选）统计三子集的字符层密度与逐标记 AIGC 过量使用，并用 7 个排版指标（行数、平均行长、碎片化行占比（<15 字）、列表行占比、冒号行占比、单行帖、标点族数量）刻画版式画像；同时在探索集内检验 P(AI) 梯度（含长度分层），并用与 `engagement_drivers_analysis.py` 同协议的月份×领域 FE + 整群 bootstrap 估计「只控制其余标点族与 P(AI)/正文长度/标签数」的互动偏效应（点赞/收藏/评论三端）。结果图在 `insights/typography_lexicon.png`、`typography_gradient.png`、`typography_layout.png`，数据在 `typography_results.json` 与 `typography_results.md`。人类/探索集按 note_id 去重，正文 ≥50 字，p_ai 按行序对齐（content_len mismatch=0）：
+
+1. **生成集「喊出来」：感叹号密度是人类 3.4 倍**：密度（次/百字）human / aigc / exploring —— 感叹号 0.420/1.423/0.486、波浪号 0.156/0.267/0.096、问号 0.109/0.175/0.137、冒号 0.454/0.611/0.543；逐标记 AIGC−人类过量最大的是「！」（+101.7/万字符）、「：」（+18.7）、「～」（+10.4）、「？」（+7.0），同时 AIGC 反而欠用句号（-17.6）、顿号（-8.2）、逗号（-3.4）、破折号（-4.0）与半角标点（`!` -1.4、`:` -3.1、`,` -2.1、`(`/`)` 各约 -1.2/-1.1），并更爱用直角引号「」『』（约 +0.7–1.2）与单引号 ‘ ’（约 +0.8–0.9）——生成端的标点偏好是「全角 + 情绪化 + 结构化」，不是简单的「标点更多」（标点总量 7.78/8.86/8.12）。
+2. **排版画像差异巨大**：人类 75.7% 是单行帖、平均 4.4 行、行长 360 字；AIGC 单行 39.6%、6.7 行、行长 131 字；探索集单行仅 12.7%、11.0 行、行长 52 字。列表行占比 human 4.6% / aigc 6.2% / exploring 7.8%，冒号行 8.2%/11.5%/9.5%——生成集与野外现实都采用「短行 + 列表」的排版，人类前 LLM 语料则是单行长文。标点丰富度（一篇帖子用到的标点族数量）human 4.42 / aigc 4.62 / exploring 3.76 类。
+3. **野外梯度：感叹号是标点层最强的「AI 味」信号**：探索集（39,941 篇去重笔记 / 313 个单元）感叹号单元内加权 ρ=+0.297（长度分层 +0.354，首尾十分位 δ=+0.548，仅 1.1% 单元为负），问号 +0.143、标点总量 +0.173（分层 +0.335）、波浪号 +0.070；逗号（-0.010）、句号（+0.030）、顿号（-0.035）、冒号（+0.001）等常规标点在单元内接近零，长度分层后整体转正（+0.04–+0.16）。逐标记负端以半角标点与括号为主（`（` -0.068、`）` -0.066、`:` -0.052、`,` -0.047）。
+4. **排版指标与 P(AI) 的关联偏弱且方向相反**：单元内行数 ρ=-0.139（更多行=更 AI）、平均行长 -0.090（行长越长=越像人），而标点族数量 +0.060、长度分层后 +0.377——长文被切成更多行、行又更短，是野外高 P(AI) 帖的版式画像；单行帖本身与 P(AI) 基本无关（单元内 +0.007，长度分层 -0.122）。
+5. **互动偏效应：逗号密度仍是最大负载体，情绪标点不降互动**：只控制其余标点族与 P(AI)/正文长度/标签数（n=54,969、116 个单元、整群 bootstrap 300 次），逗号 β=-0.099 [-0.113, -0.083]（点赞）/ -0.083（收藏）为全场最负，句号 -0.050/-0.050/-0.072、冒号 -0.034（点赞）/ -0.051（评论）、分号 -0.025/-0.020/-0.027、引号 -0.021（点赞）/ -0.065（评论）；感叹号反而略正（点赞 +0.021、评论 +0.031），波浪号 +0.027/+0.030，问号点赞 -0.038 但评论 +0.018——「问大家」型互动在评论端确有回报。P(AI) 自身在加入 12 个标点族后仍显著为负（点赞 -0.031、评论 -0.068）。
+6. **家族指纹与季度趋势**：Gemini 感叹号密度 3.204/百字，是其余家族（0.74–1.35）的 2.4–4.3 倍，省略号也最高（0.198）；DeepSeek 逗号最低（1.825，其余 3.3–4.8）而波浪号最高（0.397）；GPT/GLM 最「规整」（感叹号 0.738/0.986）。探索集季度趋势：括号 ρ=+0.867（p=0.002，固定领域权重 +0.917，p=0.001）、冒号 +0.800（p=0.010）显著上升，分号 -0.767（p=0.016）显著下降，感叹号 +0.633（p=0.067）边缘上升——版式在向「更多括号/冒号的结构化写作」演化（观察性关联，不作因果解读）。
+
 ### 生成的可视化图表
 
 | 文件 | 描述 |
@@ -285,6 +307,9 @@
 | `insights/concreteness_gradient.png` | 具体性梯度图（P(AI) 十分位曲线、单元内 ρ（含长度分层）、互动偏效应森林图、季度趋势、家族指纹热力图、单标记 AUC） |
 | `insights/cta_lexicon.png` | 互动引导语图（三子集四类 CTA 普及率/密度、逐标记 AIGC−人类过量使用、探索集标记命中） |
 | `insights/cta_gradient.png` | CTA 梯度图（P(AI) 十分位曲线、逐标记单元内 ρ、互动偏效应森林图、P(AI)×CTA 交互边际斜率、季度趋势、家族指纹热力图） |
+| `insights/typography_lexicon.png` | 标点词表图（三子集标点族密度、逐标记 AIGC−人类过量使用（symlog）、逐标记探索集标记命中、常规标点密度对比） |
+| `insights/typography_gradient.png` | 标点梯度图（P(AI) 十分位曲线、标点族/逐标记单元内 ρ、互动偏效应森林图、季度趋势、家族指纹热力图） |
+| `insights/typography_layout.png` | 排版画像图（行数/行长/碎片化/列表行/标点族数量的子集画像与 P(AI) 梯度、单行帖占比） |
 | `output/` | 领域、话题、互动等探索性图表合集 |
 | `paper_figs/` | 论文管线图表（检测器、漂移、互动、稳健性） |
 
@@ -320,11 +345,12 @@
 - `stance_analysis.py` - 语气情态：谨慎/断言/强化/呼语四类先验词表的跨子集密度、P(AI) 梯度（含长度分层）、互动偏效应（月份×领域 FE + 整群 bootstrap）与家族指纹（输出 `insights/stance_*.png`、`stance_results.json/md`）
 - `concreteness_analysis.py` - 具体性/实指表达：数字/单位量值/模糊量词/地名的跨子集发生率与密度、领域标准化与长度匹配控制、P(AI) 梯度（含长度分层）、互动偏效应与单标记 AUC（输出 `insights/concreteness_*.png`、`concreteness_results.json/md`）
 - `cta_analysis.py` - 互动引导语：评论征集/点赞收藏/关注转发/催购催促四类先验短语的跨子集普及率与密度、P(AI) 梯度（含长度分层）、互动偏效应（含评论端）、P(AI)×CTA 交互模型与家族指纹（输出 `insights/cta_*.png`、`cta_results.json/md`）
+- `typography_analysis.py` - 标点与排版：12 个先验标点族/34 个标记的跨子集密度与逐标记过量使用、7 个排版指标画像、P(AI) 梯度（含长度分层）、互动偏效应（月份×领域 FE + 整群 bootstrap）、家族指纹与季度趋势（输出 `insights/typography_*.png`、`typography_results.json/md`）
 - `quick_start.py` - BERT 基线训练
 
-深潜分析套件可一键顺序执行：`python3 run_fork_pipeline.py`（`--list` / `--from N` / `--only 脚本名`，编排 deep_dive / framing / title_style / title_body_congruence / diversity / detector_diagnostics / family_lexicon / engagement_structure / engagement_drivers / author_style / user_clustering / symbol / near_duplicate / family_transfer / stance / concreteness / cta 共 17 步，输出统一落在 `insights/`）。两个管线运行器共用 `pipeline_common.py` 的步骤选择与顺序执行实现（含未知脚本名校验），其单元测试见 `tests/test_pipeline_common.py`。
+深潜分析套件可一键顺序执行：`python3 run_fork_pipeline.py`（`--list` / `--from N` / `--only 脚本名`，编排 deep_dive / framing / title_style / title_body_congruence / diversity / detector_diagnostics / family_lexicon / engagement_structure / engagement_drivers / author_style / user_clustering / symbol / near_duplicate / family_transfer / stance / concreteness / cta / typography 共 18 步，输出统一落在 `insights/`）。两个管线运行器共用 `pipeline_common.py` 的步骤选择与顺序执行实现（含未知脚本名校验），其单元测试见 `tests/test_pipeline_common.py`。
 
-运行环境：`pip install -r requirements.txt`；公共工具位于 `analysis_utils.py`（含概率校准、阈值指标、单元内秩相关、长度分箱/十分位表/固定权重时间序列等跨脚本复用工具），单元测试见 `tests/`（`python3 -m unittest discover -s tests`，覆盖 `analysis_utils.py`、`framing_analysis.py` 及标题/标题正文组合/多样性/符号/近重复/互动载体/作者层分解/家族迁移/语气/具体性/互动引导语分析的纯函数与共享管线运行器）。
+运行环境：`pip install -r requirements.txt`；公共工具位于 `analysis_utils.py`（含概率校准、阈值指标、单元内秩相关、长度分箱/十分位表/固定权重时间序列等跨脚本复用工具），单元测试见 `tests/`（`python3 -m unittest discover -s tests`，覆盖 `analysis_utils.py`、`framing_analysis.py` 及标题/标题正文组合/多样性/符号/近重复/互动载体/作者层分解/家族迁移/语气/具体性/互动引导语/标点排版分析的纯函数与共享管线运行器）。
 
 中文字体由 `setup_chinese_fonts()` 自动解析：依次扫描 `REDNOTE_FONT_DIR`、`assets/fonts/`、系统字体目录（Noto Sans CJK/SC、思源黑体、文泉驿等），找不到时回退下载 Noto Sans SC（另含单色 emoji 字体）并缓存到 `~/.cache/rednote-vibe/fonts`；也可用 `REDNOTE_FONT_PATH` 直接指定字体文件，或设 `REDNOTE_FONT_DOWNLOAD=0` 禁用联网下载。写回 CSV 时使用内容比较（`write_csv_gz_if_changed`），内容未变则不触碰文件；`paper_drift.py --figs-only` 可只重绘图表、完全不写 `paper_exploring_scores.csv.gz`。
 

@@ -6,7 +6,7 @@
 或全量扫描原始 JSONL，互不写坏对方输出，可以任意单独重跑。
 
 用法：
-  python3 run_fork_pipeline.py                     # 运行全部 17 步
+  python3 run_fork_pipeline.py                     # 运行全部 18 步
   python3 run_fork_pipeline.py --list              # 只打印步骤
   python3 run_fork_pipeline.py --from 3            # 从第 3 步开始
   python3 run_fork_pipeline.py --only detector_diagnostics.py family_lexicon_analysis.py
@@ -53,6 +53,8 @@ STEPS = [
      "具体性：数字/单位量值/模糊量词/地名的梯度、长度控制与互动 -> concreteness_results.{json,md} + 2 图"),
     ("cta_analysis.py",
      "互动引导语：评论/点赞收藏/关注转发/催购四类 CTA 的梯度、互动与 p_ai 调节 -> cta_results.{json,md} + 2 图"),
+    ("typography_analysis.py",
+     "标点与排版：12 个标点族/34 个标记的跨子集密度、P(AI) 梯度、互动偏效应、家族指纹与季度趋势 -> typography_results.{json,md} + 3 图"),
 ]
 
 

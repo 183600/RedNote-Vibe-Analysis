@@ -381,7 +381,12 @@ def main() -> None:
     title_model = load_title_model()
     detector = load_detector_model()
 
-    exploring = pd.read_csv(BASE + "paper_features_exploring.csv.gz")
+    exploring = pd.read_csv(
+        BASE + "paper_features_exploring.csv.gz",
+        usecols=list(dict.fromkeys(
+            list(title_model["features"]) + list(detector["robust_features"])
+            + ["content_len", "n_hashtags", "month", "domain", "likes",
+               "collections", "comments"])))
     scores = pd.read_csv(BASE + "paper_exploring_scores.csv.gz",
                          usecols=["content_len"])
     if len(scores) != len(exploring) or not np.array_equal(
@@ -407,10 +412,17 @@ def main() -> None:
     print(f"观察窗口 n={len(window):,}，标题-正文 ρ={rho_all:.4f}")
 
     # ---- 1. 三子集象限构成 ----
-    human = add_scores(pd.read_csv(BASE + "paper_features_human.csv.gz"),
+    # 打分只用标题模型特征 + 稳健检测器特征；AIGC 侧另需 model/model_family
+    # 做模型级汇总。读取时按需裁列，语义与整表读取完全一致。
+    score_cols = list(dict.fromkeys(
+        list(title_model["features"]) + list(detector["robust_features"])))
+    human = add_scores(pd.read_csv(BASE + "paper_features_human.csv.gz",
+                                   usecols=score_cols),
                        title_model, detector)
-    aigc = add_scores(pd.read_csv(BASE + "paper_features_aigc.csv.gz"),
-                      title_model, detector)
+    aigc = add_scores(pd.read_csv(
+        BASE + "paper_features_aigc.csv.gz",
+        usecols=list(dict.fromkeys(score_cols + ["model_family", "model"]))),
+        title_model, detector)
     corpus = {}
     for name, frame in (("exploring_all", exploring), ("exploring_window", window),
                         ("aigc_train", aigc), ("human_train", human)):

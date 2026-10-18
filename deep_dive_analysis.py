@@ -172,6 +172,10 @@ def collect(path: str) -> dict:
         return records, groups
 
     content_dup, content_dup_groups = dup_share(content_seen)
+    content_unique = len(content_seen)
+    # 逐记录正文 Counter 只用于上面的重复统计；笔记级重复统计另建 Counter，
+    # 提前释放可避免两份全量正文键同时在内存中。
+    del content_seen
     title_dup, title_dup_groups = dup_share(title_seen)
     note_content_seen = Counter(rep["raw"] for rep in notes.values() if rep["raw"])
     note_dup, note_dup_groups = dup_share(note_content_seen)
@@ -191,7 +195,7 @@ def collect(path: str) -> dict:
         "sent_body_len": sent_body_len,
         "content_dup_records": content_dup,
         "content_dup_groups": content_dup_groups,
-        "content_unique": len(content_seen),
+        "content_unique": content_unique,
         "title_dup_records": title_dup,
         "title_dup_groups": title_dup_groups,
         "title_unique": len(title_seen),

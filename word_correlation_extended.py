@@ -29,9 +29,11 @@ def main():
     print("Loading...")
     user_word_total = defaultdict(int)
     word_doc_freq = Counter()
-    # 第一遍顺手记下每条有效记录的 (user_id, 行起始字节偏移)；第二遍只回读
-    # 活跃用户的行，不再整份重新解码+解析大文件（空词记录对计数无贡献，跳过）。
-    record_offsets = []
+    # 第一遍顺手按用户记下每条有效记录的起始字节偏移（int 而非
+    # (user_id, pos) 元组，省掉每条记录的元组对象）；第二遍只回读活跃
+    # 用户的行，不再整份重新解码+解析大文件（空词记录对计数无贡献，跳过）。
+    # 按用户分组遍历不改变任何用户的词频累计结果（各用户计数相互独立）。
+    offsets_by_user = defaultdict(list)
 
     with open(PATH, "rb") as f:
         while True:
@@ -47,7 +49,7 @@ def main():
                     continue
                 words = _record_words(item)
                 if words:
-                    record_offsets.append((user_id, pos))
+                    offsets_by_user[user_id].append(pos)
                     user_word_total[user_id] += len(words)
                     word_doc_freq.update(set(words))
             except:
@@ -66,18 +68,17 @@ def main():
     top_word_set = set(top_words)
     note_by_user = defaultdict(lambda: defaultdict(int))
     with open(PATH, "rb") as f:
-        for user_id, pos in record_offsets:
-            if user_id not in active_users:
-                continue
-            try:
-                f.seek(pos)
-                item = json.loads(f.readline().decode("utf-8"))
-                counts = note_by_user[user_id]
-                for w in _record_words(item):
-                    if w in top_word_set:
-                        counts[w] += 1
-            except:
-                pass
+        for user_id in active_users:
+            for pos in offsets_by_user[user_id]:
+                try:
+                    f.seek(pos)
+                    item = json.loads(f.readline().decode("utf-8"))
+                    counts = note_by_user[user_id]
+                    for w in _record_words(item):
+                        if w in top_word_set:
+                            counts[w] += 1
+                except:
+                    pass
 
     word_to_idx = {w: i for i, w in enumerate(top_words)}
     user_ids = random.Random(42).sample(

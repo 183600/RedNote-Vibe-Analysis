@@ -128,7 +128,8 @@ def analyze_user_behavior_detailed(aggs):
         gini_coef = 0
         if post_counts:
             n = len(post_counts)
-            sorted_counts = sorted(post_counts)
+            # post_counts 已按降序排序，逆序即升序，省掉一次 O(n log n) 排序
+            sorted_counts = post_counts[::-1]
             cumsum = np.cumsum(sorted_counts)
             gini_coef = (
                 (

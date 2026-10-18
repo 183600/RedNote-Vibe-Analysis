@@ -25,9 +25,14 @@ setup_chinese_fonts()
 with open(BASE + "paper_detector_model.json", encoding="utf-8") as f:
     model = json.load(f)
 # 人类基线用 5 折折外得分（口径同 paper_detector 的 CV），避免 in-sample 自评；
-# 需要完整特征列，同时读入 AIGC 特征以重建训练集
-human = pd.read_csv(BASE + "paper_features_human.csv.gz")
-aigc = pd.read_csv(BASE + "paper_features_aigc.csv.gz")
+# 训练/打分的全部输入只有稳健模型特征（detector_oof_scores 只取 [feats]），
+# 人类侧另外只用 month / likes 做分组与筛选；读入时按需裁剪列，避免把
+# 未使用的元数据列全部解析进内存。
+robust_feats = list(model["robust_features"])
+human = pd.read_csv(BASE + "paper_features_human.csv.gz",
+                    usecols=list(dict.fromkeys(["month", "likes"] + robust_feats)))
+aigc = pd.read_csv(BASE + "paper_features_aigc.csv.gz",
+                   usecols=list(dict.fromkeys(robust_feats)))
 human["month"] = human["month"].astype(str)
 human["p_ai"] = detector_oof_scores(human, aigc, model, robust=True)
 # 探索集逐帖稳健得分已由 paper_drift.py 落盘（p_ai 列即稳健模型分），

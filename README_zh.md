@@ -8,7 +8,7 @@
 - [📄 论文](#-论文)
 - [📊 Fork 分析](#-fork-分析)
   - [数据集概览](#数据集概览) · [词频相关性矩阵](#词频相关性矩阵) · [关键发现](#关键发现) · [常见词分析](#常见词助词虚词分析)
-  - 深潜分析：[deep_dive](#深潜分析deep_dive_analysispy) · [framing](#框架模板化分析framing_analysispy) · [title_style](#标题端ai-味分析title_style_analysispy) · [title_body](#标题正文-ai-味组合title_body_congruence_analysispy) · [diversity](#文本多样性与节奏深潜diversity_analysispy) · [detector](#检测器诊断detector_diagnosticspy) · [family_lexicon](#模型家族词表指纹family_lexicon_analysispy) · [engagement_structure](#互动结构与ai-味惩罚分解engagement_structure_analysispy) · [engagement_drivers](#互动惩罚的逐特征载体engagement_drivers_analysispy) · [author_style](#作者层分解作者间-vs-人内author_style_analysispy) · [symbol](#话题标签与表情生态symbol_analysispy) · [near_duplicate](#近重复内容与模板复用near_duplicate_analysispy) · [family_transfer](#风格家族迁移野外高-ai-味帖的构成与互动回报family_transfer_analysispy) · [stance](#语气情态层谨慎断言强化与呼语stance_analysispy) · [concreteness](#具体性层数字单位量值地名与模糊量词concreteness_analysispy) · [cta](#互动引导语层评论点赞收藏关注转发与催购cta_analysispy) · [typography](#标点与排版层感叹号结构与短行排版typography_analysispy) · [discourse](#篇章连接层因果转折递进序列举例与总结discourse_analysispy) · [axis_synthesis](#跨轴综合五轴风格指标的共现结构独立信号与互动堆叠axis_synthesis_analysispy)
+  - 深潜分析：[deep_dive](#深潜分析deep_dive_analysispy) · [framing](#框架模板化分析framing_analysispy) · [title_style](#标题端ai-味分析title_style_analysispy) · [title_body](#标题正文-ai-味组合title_body_congruence_analysispy) · [diversity](#文本多样性与节奏深潜diversity_analysispy) · [detector](#检测器诊断detector_diagnosticspy) · [family_lexicon](#模型家族词表指纹family_lexicon_analysispy) · [engagement_structure](#互动结构与ai-味惩罚分解engagement_structure_analysispy) · [engagement_drivers](#互动惩罚的逐特征载体engagement_drivers_analysispy) · [author_style](#作者层分解作者间-vs-人内author_style_analysispy) · [symbol](#话题标签与表情生态symbol_analysispy) · [near_duplicate](#近重复内容与模板复用near_duplicate_analysispy) · [family_transfer](#风格家族迁移野外高-ai-味帖的构成与互动回报family_transfer_analysispy) · [stance](#语气情态层谨慎断言强化与呼语stance_analysispy) · [concreteness](#具体性层数字单位量值地名与模糊量词concreteness_analysispy) · [cta](#互动引导语层评论点赞收藏关注转发与催购cta_analysispy) · [typography](#标点与排版层感叹号结构与短行排版typography_analysispy) · [discourse](#篇章连接层因果转折递进序列举例与总结discourse_analysispy) · [axis_synthesis](#跨轴综合五轴风格指标的共现结构独立信号与互动堆叠axis_synthesis_analysispy) · [redundancy](#正文自重复与句式复读redundancy_analysispy)
   - [生成的可视化图表](#生成的可视化图表) · [分析脚本](#分析脚本)
 - [参考资料](#参考资料)
 - [许可证](#许可证)
@@ -291,6 +291,15 @@
 4. **轴叠加单调推高 P(AI)**：以五轴联合 β 的符号定义「同向轴数」，同向轴数从 0 到 5 时平均 P(AI) 由 0.340 单调升到 0.750（单元内 ρ=+0.193，94 个单元无一为负）；37.1% 的帖子同向 2 轴、23.1% 同向 3 轴，五轴全同向仅 0.6%——AI 腔在野外以「多轴叠加」形态出现（观察性关联）。
 5. **轴数本身不加重互动惩罚**：五轴同场进入互动 FE（点赞/收藏），可见负载体集中在标点排版（点赞 β=-0.098 [-0.114, -0.081]、收藏 -0.072 [-0.090, -0.054]）与 P(AI) 本身（点赞 -0.022 [-0.039, -0.005]），语气情态点赞端略正（+0.018 [+0.005, +0.032]）；而「每多 1 个同向轴」的点赞 β=-0.005 [-0.020, +0.012]、收藏 +0.000 [-0.015, +0.017] 均不显著——互动惩罚由具体风格因子承载，而非「轴数」这一计数（观察性关联，不作因果解读）。
 
+### 正文自重复与句式复读（`redundancy_analysis.py`）
+
+既有重复分析都在跨文档层面（完全重复、近重复模板），本分析第一次把「单篇正文内部的自重复」作为一条独立风格轴，用四个先验指标刻画（全部为纯函数）：片段复读率（重复字符 6-gram 占比，64 位滚动哈希）、句间最大相似度（实义句两两字符 3-gram Jaccard 最大值）、近重复句占比（Jaccard ≥0.5 的实义句比例）、复读句首占比（句首 3 字复读的实义句比例）。结果图在 `insights/redundancy_lexicon.png`、`insights/redundancy_gradient.png`，数据在 `redundancy_results.json` 与 `redundancy_results.md`。人类/探索集按 note_id 去重，正文 ≥50 字，实义句（≥6 字）≥2 句才有句子层指标，p_ai 按行序对齐（content_len mismatch=0）：
+
+1. **生成集并不比人类更「复读」，探索集则全面更高**：按人类长度分布加权后，AIGC−人类的片段复读率为 -0.0162 [-0.0174, -0.0150]、复读句首占比 -0.0026（CI 跨 0）、近重复句占比 -0.0007（CI 跨 0），仅句间最大相似度 +0.0104 [+0.0040, +0.0169]；探索集−人类四项全为正：片段复读 +0.0196、句间最大相似度 +0.0501、近重复句占比 +0.0043、复读句首 +0.0028（CI 均不含 0）——受控生成文本更干净，而野外后 LLM 语料整体更复读。
+2. **野外反向梯度：越像 AI 的帖子反而越不复读**：探索集（39,941 篇去重笔记、89–94 个单元）四项指标与 P(AI) 的单元内加权 ρ 全为负：句间最大相似度 -0.2334（97.8% 单元为负，首尾十分位 δ=-0.450，长度分层后 -0.0744）、复读句首 -0.1202（δ=-0.181）、近重复句占比 -0.0706、片段复读率 -0.0704（长度分层后更强，-0.1809）；「存在近重复句」普及率 5.0%、ρ=-0.0705。控制长度后仍全为负——自重复更像人类口头禅/模板化表达，P(AI) 高的帖子（更书面、更有结构）反而更少自我重复；且片段复读与句子层指标相关性近 0（-0.15~+0.12），「片段复读」与「句式复读」是两条弱相关的信号（观察性关联，不作因果解读）。
+3. **互动偏效应两极分化**：控制 P(AI)、正文长度与标签数后（n=51,672、112 个单元、整群 bootstrap 300 次），复读句首占比三端全负（点赞 -0.0375 [-0.0544, -0.0237]、收藏 -0.0273、评论 -0.0562），句间最大相似度只压评论（-0.0425），近重复句占比只抬评论（+0.0457）；片段复读率在点赞/收藏端显著为正（+0.0767/+0.0783）。P(AI) 自身三端仍全负（-0.0402/-0.0205/-0.0789），说明 AI 味互动惩罚并非由自重复承载（观察性关联，不作因果解读）。
+4. **家族指纹与季度趋势**：长度标准化后 Gemini 句间最大相似度最高（+0.0296）、DeepSeek 最低（-0.0165），Claude 片段复读最高（+0.0092）、DeepSeek 最低（-0.0095），GLM 偏复读句首（+0.0054）；探索集片段复读率季度显著上升（2023Q2 0.0494 → 2025Q2 0.0982，ρ=+0.833，固定领域×长度权重后 +0.750），近重复句占比原始趋势 +0.750（控制后 +0.500 不显著），句间最大相似度与复读句首无显著趋势（观察性关联，不作因果解读）。
+
 ### 生成的可视化图表
 
 | 文件 | 描述 |
@@ -335,6 +344,8 @@
 | `insights/discourse_register.png` | 语域图（口语/书面连接跨子集密度与书面占比、P(AI) 梯度、季度趋势） |
 | `insights/axis_synthesis_structure.png` | 跨轴结构图（30 类别单元内共现热力图、五轴复合相关矩阵、跨子集 log2 使用率比画像） |
 | `insights/axis_synthesis_signal.png` | 跨轴信号图（五轴联合 P(AI) 偏效应森林图、轴空间 CV AUC、轴堆叠分层与 P(AI)、联合互动偏效应森林图） |
+| `insights/redundancy_lexicon.png` | 自重复画像图（三子集四指标均值与 95% CI、跨子集长度匹配差异森林图、指标随长度走势、句间最大相似度分布） |
+| `insights/redundancy_gradient.png` | 自重复梯度图（P(AI) 十分位曲线、四指标单元内 ρ 与长度分层 ρ、互动偏效应森林图（点赞/收藏/评论）、家族指纹热力图、季度趋势、近重复句普及率） |
 | `output/` | 领域、话题、互动等探索性图表合集 |
 | `paper_figs/` | 论文管线图表（检测器、漂移、互动、稳健性） |
 
@@ -373,11 +384,12 @@
 - `typography_analysis.py` - 标点与排版：12 个先验标点族/34 个标记的跨子集密度与逐标记过量使用、7 个排版指标画像、P(AI) 梯度（含长度分层）、互动偏效应（月份×领域 FE + 整群 bootstrap）、家族指纹与季度趋势（输出 `insights/typography_*.png`、`typography_results.json/md`）
 - `discourse_analysis.py` - 篇章连接：因果/转折/递进/序列/举例/总结 6 类先验连接词（37 词）+ 口语/书面语域，跨子集密度与逐词过量使用、帖均类别数、P(AI) 梯度（含长度分层）、互动偏效应（点赞/收藏/评论）、家族指纹与季度趋势（输出 `insights/discourse_*.png`、`discourse_results.json/md`）
 - `axis_synthesis_analysis.py` - 跨轴综合：五轴 30 类别的单元内共现、联合 P(AI) 独立信号（复合 + 30 类别全模型 FE，整群 bootstrap CI）、轴空间 CV AUC（human vs AIGC）、轴堆叠（0–5 同向轴）与联合互动偏效应（输出 `insights/axis_synthesis_*.png`、`axis_synthesis_results.json/md`）
+- `redundancy_analysis.py` - 正文自重复：片段复读率/句间最大相似度/近重复句占比/复读句首占比的跨子集长度匹配差异、探索集 P(AI) 梯度（单元内 ρ 与长度分层 ρ）、互动偏效应（点赞/收藏/评论，月份×领域 FE + 整群 bootstrap CI）、家族/模型指纹与季度趋势（输出 `insights/redundancy_*.png`、`redundancy_results.json/md`）
 - `quick_start.py` - BERT 基线训练
 
-深潜分析套件可一键顺序执行：`python3 run_fork_pipeline.py`（`--list` / `--from N` / `--only 脚本名`，编排 deep_dive / framing / title_style / title_body_congruence / diversity / detector_diagnostics / family_lexicon / engagement_structure / engagement_drivers / author_style / user_clustering / symbol / near_duplicate / family_transfer / stance / concreteness / cta / typography / discourse / axis_synthesis 共 20 步，输出统一落在 `insights/`）。两个管线运行器共用 `pipeline_common.py` 的步骤选择与顺序执行实现（含未知脚本名校验），其单元测试见 `tests/test_pipeline_common.py`。
+深潜分析套件可一键顺序执行：`python3 run_fork_pipeline.py`（`--list` / `--from N` / `--only 脚本名`，编排 deep_dive / framing / title_style / title_body_congruence / diversity / detector_diagnostics / family_lexicon / engagement_structure / engagement_drivers / author_style / user_clustering / symbol / near_duplicate / family_transfer / stance / concreteness / cta / typography / discourse / axis_synthesis / redundancy 共 21 步，输出统一落在 `insights/`）。两个管线运行器共用 `pipeline_common.py` 的步骤选择与顺序执行实现（含未知脚本名校验），其单元测试见 `tests/test_pipeline_common.py`。
 
-运行环境：`pip install -r requirements.txt`；公共工具位于 `analysis_utils.py`（含概率校准、阈值指标、单元内秩相关、长度分箱/十分位表/固定权重时间序列等跨脚本复用工具），单元测试见 `tests/`（`python3 -m unittest discover -s tests`，覆盖 `analysis_utils.py`、`framing_analysis.py` 及标题/标题正文组合/多样性/符号/近重复/互动载体/作者层分解/家族迁移/语气/具体性/互动引导语/标点排版/篇章连接/跨轴综合分析的纯函数与共享管线运行器）。
+运行环境：`pip install -r requirements.txt`；公共工具位于 `analysis_utils.py`（含概率校准、阈值指标、单元内秩相关、长度分箱/十分位表/固定权重时间序列等跨脚本复用工具），单元测试见 `tests/`（`python3 -m unittest discover -s tests`，覆盖 `analysis_utils.py`、`framing_analysis.py` 及标题/标题正文组合/多样性/符号/近重复/互动载体/作者层分解/家族迁移/语气/具体性/互动引导语/标点排版/篇章连接/跨轴综合/正文自重复分析的纯函数与共享管线运行器）。
 
 中文字体由 `setup_chinese_fonts()` 自动解析：依次扫描 `REDNOTE_FONT_DIR`、`assets/fonts/`、系统字体目录（Noto Sans CJK/SC、思源黑体、文泉驿等），找不到时回退下载 Noto Sans SC（另含单色 emoji 字体）并缓存到 `~/.cache/rednote-vibe/fonts`；也可用 `REDNOTE_FONT_PATH` 直接指定字体文件，或设 `REDNOTE_FONT_DOWNLOAD=0` 禁用联网下载。写回 CSV 时使用内容比较（`write_csv_gz_if_changed`），内容未变则不触碰文件；`paper_drift.py --figs-only` 可只重绘图表、完全不写 `paper_exploring_scores.csv.gz`。
 

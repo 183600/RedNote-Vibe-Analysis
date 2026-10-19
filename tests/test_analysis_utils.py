@@ -28,7 +28,8 @@ from analysis_utils import (post_text, content_of, clean_body, body_cache,
                             reliability_bins, expected_calibration_error,
                             LENGTH_BINS, decile_table, length_bin_codes,
                             standardize_weights, domain_standardized_series,
-                            run_parallel)
+                            ngram_repeat_share, length_matched_mean_gap,
+                            length_residualize, run_parallel)
 
 
 class TestJsonlHelpers(unittest.TestCase):
@@ -534,6 +535,68 @@ class TestLengthBinCodes(unittest.TestCase):
         codes = length_bin_codes([50, 999_999_999])
         self.assertEqual(codes[0], 0)
         self.assertEqual(codes[1], len(LENGTH_BINS) - 1)
+
+
+class TestNgramRepeatShare(unittest.TestCase):
+    def test_no_repeat_is_zero(self):
+        self.assertEqual(ngram_repeat_share("abcdef", n=3), 0.0)
+
+    def test_known_repeat_ratio(self):
+        # "abababab" 的 2-gram 共 7 个，唯一 2 个 -> 1 - 2/7
+        self.assertAlmostEqual(ngram_repeat_share("abababab", n=2), 5 / 7)
+
+    def test_constant_text_all_repeat(self):
+        self.assertAlmostEqual(ngram_repeat_share("x" * 100, n=6), 1 - 1 / 95)
+
+    def test_undefined_short_text(self):
+        self.assertTrue(np.isnan(ngram_repeat_share("abcd", n=6)))
+        self.assertTrue(np.isnan(ngram_repeat_share("", n=6)))
+        self.assertTrue(np.isnan(ngram_repeat_share(None, n=6)))
+
+
+class TestLengthMatchedMeanGap(unittest.TestCase):
+    def test_constant_shift_exact(self):
+        lens = np.full(400, 100)
+        a = np.full(200, 3.0)
+        b = np.full(200, 1.0)
+        rec = length_matched_mean_gap(a, lens[:200], b, lens[:200])
+        self.assertAlmostEqual(rec["gap"], 2.0)
+        self.assertEqual(rec["used_bins"], 1)
+        self.assertEqual(rec["n_a"], 200)
+
+    def test_missing_bin_renormalizes(self):
+        # a 侧只有 100 字分箱，b 侧只有 400 字分箱：没有共同分箱
+        rec = length_matched_mean_gap([1.0], [100], [2.0], [400])
+        self.assertTrue(np.isnan(rec["gap"]))
+        self.assertEqual(rec["used_bins"], 0)
+
+    def test_weights_follow_side_b(self):
+        # b 侧 90% 在 100 字分箱、10% 在 400 字分箱；a 侧两侧均有
+        a = np.array([1.0, 5.0])
+        la = np.array([100, 400])
+        b = np.array([0.0] * 9 + [0.0])
+        lb = np.array([100] * 9 + [400])
+        rec = length_matched_mean_gap(a, la, b, lb)
+        self.assertAlmostEqual(rec["gap"], 0.9 * 1.0 + 0.1 * 5.0)
+
+
+class TestLengthResidualize(unittest.TestCase):
+    def test_residuals_are_zero_within_bins(self):
+        lens = np.array([100.0, 120.0, 200.0, 250.0])
+        vals = np.array([1.0, 3.0, -1.0, 1.0])
+        res = length_residualize(vals, lens)
+        np.testing.assert_allclose(res, [-1.0, 1.0, -1.0, 1.0])
+
+    def test_nan_preserved(self):
+        res = length_residualize([1.0, np.nan], [100, 100])
+        self.assertAlmostEqual(res[0], 0.0)
+        self.assertTrue(np.isnan(res[1]))
+
+    def test_reference_sample_used(self):
+        # 参考样本在 100 字分箱均值为 10，待标准化值减 10
+        res = length_residualize([12.0], [100], ref_values=[9.0, 11.0],
+                                 ref_lens=[100, 100])
+        self.assertAlmostEqual(res[0], 2.0)
 
 
 class TestDecileTable(unittest.TestCase):

@@ -766,6 +766,32 @@ def prefix_ngram_stats(texts, n: int = 4, k: int = 20) -> dict:
     }
 
 
+_NGRAM_HASH_BASE = np.uint64(1_000_003)
+
+
+def ngram_repeat_share(text: str | None, n: int = 6) -> float:
+    """正文内重复 n-gram 片段占比：1 − 唯一 n-gram 数 / n-gram 总数。
+
+    滑动窗口按字符取 n-gram（中文按字，无需分词），用 64 位多项式滚动哈希
+    把整篇正文的窗口一次向量化（乘以 `_NGRAM_HASH_BASE` 后逐窗口累加字符码，
+    numpy uint64 回绕），再 `np.unique` 计数。碰撞只可能发生在**同一篇正文
+    内部**：单帖窗口数最多数千，两两碰撞概率 ~ (L²/2)·2⁻⁶⁴，可忽略；跨帖
+    数值互不影响，因此哈希空间不需要更宽。
+
+    返回 [0, 1)：0 表示没有任何片段重复；长度不足 n（或无正文）返回 NaN，
+    由调用方按「未定义」处理。常用于度量模板化文本的自我复读程度。
+    """
+    if not text or len(text) < n:
+        return float("nan")
+    codes = np.frombuffer(text.encode("utf-32-le"), dtype="<u4").astype(np.uint64)
+    total = len(codes) - n + 1
+    h = codes[:total].copy()
+    for k in range(1, n):
+        h *= _NGRAM_HASH_BASE
+        h += codes[k:k + total]
+    return float(1.0 - np.unique(h).size / total)
+
+
 _CLEAN_BODY_RES = None
 
 
@@ -1040,6 +1066,76 @@ def length_bin_codes(lengths, bins=LENGTH_BINS) -> np.ndarray:
     for i, (lo, hi, _) in enumerate(bins):
         codes[(arr >= lo) & (arr < hi)] = i
     return codes
+
+
+def length_matched_mean_gap(values_a, lens_a, values_b, lens_b,
+                            bins=LENGTH_BINS) -> dict:
+    """按固定长度权重加权的两侧均值差及解析 SE（连续指标的「长度匹配」版）。
+
+    与 `concreteness_analysis.length_matched_gap`（发生率版）同一思路：
+    `values_a/lens_a`、`values_b/lens_b` 为两侧样本，`bins` 为长度分箱；
+    先在每个分箱内分别求均值与方差（ddof=1），再用 **b 侧的长度分布**
+    作固定权重（缺失分箱按剩余权重重新归一化），返回
+    {gap: mean_a − mean_b, se, ci_low, ci_high, used_bins, n_a, n_b}。
+
+    传入前请自行过滤未定义值（NaN）；任一侧某分箱为空时该分箱不参与。
+    """
+    va = np.asarray(values_a, dtype=float)
+    vb = np.asarray(values_b, dtype=float)
+    ca = length_bin_codes(lens_a, bins)
+    cb = length_bin_codes(lens_b, bins)
+    k = len(bins)
+    n_a = np.zeros(k)
+    n_b = np.zeros(k)
+    mean_a = np.zeros(k)
+    mean_b = np.zeros(k)
+    var_a = np.zeros(k)
+    var_b = np.zeros(k)
+    for b in range(k):
+        xa = va[ca == b]
+        xb = vb[cb == b]
+        n_a[b], n_b[b] = xa.size, xb.size
+        if xa.size:
+            mean_a[b] = float(xa.mean())
+            var_a[b] = float(xa.var(ddof=1)) if xa.size > 1 else 0.0
+        if xb.size:
+            mean_b[b] = float(xb.mean())
+            var_b[b] = float(xb.var(ddof=1)) if xb.size > 1 else 0.0
+    ok = (n_a > 0) & (n_b > 0)
+    if not ok.any():
+        return {"gap": float("nan"), "se": float("nan"), "ci_low": float("nan"),
+                "ci_high": float("nan"), "used_bins": 0, "n_a": 0, "n_b": 0}
+    w = standardize_weights({i: n_b[i] if ok[i] else 0.0 for i in range(k)})
+    w = np.asarray([w[i] for i in range(k)])
+    gap = float(np.sum(w * (mean_a - mean_b)))
+    var = float(np.sum(w ** 2 * (var_a / np.maximum(n_a, 1)
+                                 + var_b / np.maximum(n_b, 1))))
+    se = float(np.sqrt(var))
+    return {"gap": gap, "se": se, "ci_low": gap - 1.96 * se,
+            "ci_high": gap + 1.96 * se, "used_bins": int(ok.sum()),
+            "n_a": int(n_a.sum()), "n_b": int(n_b.sum())}
+
+
+def length_residualize(values, lens, ref_values=None, ref_lens=None,
+                       bins=LENGTH_BINS) -> np.ndarray:
+    """减去参考样本同一长度分箱的均值（长度直接标准化），返回残差数组。
+
+    `values/lens` 为待标准化样本；`ref_values/ref_lens` 为参照样本（缺省
+    即用自身）。参考样本中缺失的分箱回退到参考样本全样本均值（NaN 忽略）；
+    待标准化样本中的 NaN 原样保留。用于让不同长度构成的家族/时段均值可比。
+    """
+    v = np.asarray(values, dtype=float)
+    codes = length_bin_codes(lens, bins)
+    rv = v if ref_values is None else np.asarray(ref_values, dtype=float)
+    rcodes = length_bin_codes(lens if ref_lens is None else ref_lens, bins)
+    out = v.copy()
+    overall = float(np.nanmean(rv)) if np.isfinite(rv).any() else 0.0
+    for b in range(len(bins)):
+        sel = rv[rcodes == b]
+        ref = float(np.nanmean(sel)) if np.isfinite(sel).any() else overall
+        m = (codes == b) & np.isfinite(v)
+        out[m] = v[m] - ref
+    return out
 
 
 def decile_table(values, scores, n_bins: int = 10) -> list[dict]:

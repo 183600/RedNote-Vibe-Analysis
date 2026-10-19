@@ -599,7 +599,9 @@ def main() -> None:
     dom_all = feats["domain"].astype(str).to_numpy()
     metric_all = {k: expl[k].astype(float) for k in METRIC_ORDER}
     multi = expl["n_sent"] >= 2
-    keep_eng = ((month_all >= MONTH_FROM)
+    keep_mask = np.zeros(len(expl["body_len"]), dtype=bool)
+    keep_mask[keep] = True
+    keep_eng = (keep_mask & (month_all >= MONTH_FROM)
                 & (expl["body_len"] >= MIN_BODY_LEN) & multi
                 & np.isfinite(expl["gram6"].astype(float))
                 & np.isfinite(expl["max_sim"].astype(float))

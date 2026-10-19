@@ -155,6 +155,10 @@ def scan_sentence_stats(path: str) -> dict:
     slot_of: dict = {}
     metrics: list[dict] = []
     offsets: list[int] = []
+    # 去重后保留记录的字节偏移（与 metrics 一一对应）：后续词法抽样必须从
+    # 这批偏移里抽，否则会按「快照条数」而不是「笔记数」加权，且可能抽到
+    # 已被句法扫描丢弃的重复快照，两个分析口径不一致。
+    dedup_offsets: list[int] = []
     with open(path, "rb") as f:
         while True:
             start = f.tell()
@@ -176,6 +180,7 @@ def scan_sentence_stats(path: str) -> dict:
                 m = doc_metrics(body)
                 m["score"] = score
                 metrics.append(m)
+                dedup_offsets.append(start)
                 continue
             slot = slot_of.get(nid)
             # 只有确定要保留这份记录时才做句法指标（探索集约一半的重复
@@ -185,10 +190,12 @@ def scan_sentence_stats(path: str) -> dict:
                 m["score"] = score
                 slot_of[nid] = len(metrics)
                 metrics.append(m)
+                dedup_offsets.append(start)
             elif score > metrics[slot]["score"]:
                 m = doc_metrics(body)
                 m["score"] = score
                 metrics[slot] = m
+                dedup_offsets[slot] = start
     sent_lens = [l for m in metrics for l in m["sent_lens"]]
     bursts = [m["burst"] for m in metrics if m["burst"] is not None]
     # 平均句长：sum/len 与 np.mean 对整数列表逐位一致，但省掉 15 万次数组构造。
@@ -202,6 +209,7 @@ def scan_sentence_stats(path: str) -> dict:
         "mean_sent": np.asarray(mean_sents, dtype=float),
         "n_sent": np.asarray(n_sents, dtype=np.int64),
         "offsets": offsets,
+        "dedup_offsets": dedup_offsets,
     }
 
 
@@ -424,7 +432,9 @@ def main() -> None:
         mtld_dist, mtld_stats, heaps = {}, {}, {}
         mtld_samples = []
         for name, path in DATASET_PATHS.items():
-            smp = sample_lexical(path, pool, offsets=stats[name].pop("offsets"))
+            # 词法抽样只在 note_id 去重后的记录上进行，与句法扫描口径一致。
+            smp = sample_lexical(path, pool,
+                                 offsets=stats[name].pop("dedup_offsets"))
             vals = smp["mtld"]
             mtld_dist[name] = vals
             mtld_samples.append(vals)

@@ -13,7 +13,8 @@ import jieba
 
 from analysis_utils import BASE, load_posts, make_pool, close_pool
 
-HUATI = re.compile(r"\[话题\]")
+# 与 paper_features 同口径：`#标签[话题]#` 的闭合 `#` 一并删除，避免残留在正文。
+HUATI = re.compile(r"\[话题\]#?")
 HASHTAG = re.compile(r"#[^#\s]{1,30}")
 XHS_EMO = re.compile(r"\[[^\[\]]{1,8}R\]")
 HAN_WORD = re.compile(r"[一-鿿]")

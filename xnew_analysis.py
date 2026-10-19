@@ -73,7 +73,7 @@ def main():
                 else:
                     title_patterns["other"] += 1
 
-            text = str(item.get("desc", "")) + " " + str(item.get("note_content", ""))
+            text = (item.get("desc") or item.get("note_content") or "")
             features["exclaim"] += text.count("!") + text.count("！")
             features["question"] += text.count("?") + text.count("？")
             features["ellipsis"] += (

@@ -735,9 +735,12 @@ def compute_keyword_cooccurrence(ds_grouped, ds_counters):
                 co_word_counts[w].update(hits - {w})
 
         strong_pairs = []
+        seen_pairs = set()
         for w1, counter in co_word_counts.items():
             for w2, count in counter.most_common(3):
-                if count >= 5:
+                pair = (w1, w2) if w1 < w2 else (w2, w1)
+                if count >= 5 and pair not in seen_pairs:
+                    seen_pairs.add(pair)
                     strong_pairs.append((w1, w2, count))
 
         out[domain] = {
@@ -899,6 +902,17 @@ INTENSITY_WORDS = {
     ],
 }
 
+_INTENSITY_CATEGORY = {
+    w: category
+    for category, words in INTENSITY_WORDS.items()
+    for w in words
+}
+# 单次最长优先交替匹配：同一段文字只归属一个词，避免 "太喜欢" 同时计入
+# "喜欢"、"太棒了" 同时计入 "棒" 这类重叠字符串的重复计数。
+_INTENSITY_RE = re.compile(
+    "|".join(re.escape(w) for w in
+             sorted(_INTENSITY_CATEGORY, key=len, reverse=True)))
+
 # fork 子进程经该模块级上下文读取域分桶结果：任务只 pickle (数据集, 域)，
 # 不复制整份文本；各 (数据集, 域) 的计数彼此独立，结果与串行逐项统计一致。
 _EMOTION_CTX: dict = {}
@@ -909,18 +923,17 @@ def _emotion_domain_task(key):
     domain_items = _EMOTION_CTX["grouped"][ds_name][domain]
     if not domain_items:
         return None
-    pos_strong = pos_mild = neg_strong = neg_mild = 0
+    counts = Counter()
     for item in domain_items:
-        text = get_text(item)
-        for w in INTENSITY_WORDS["positive_strong"]:
-            pos_strong += text.count(w)
-        for w in INTENSITY_WORDS["positive_mild"]:
-            pos_mild += text.count(w)
-        for w in INTENSITY_WORDS["negative_strong"]:
-            neg_strong += text.count(w)
-        for w in INTENSITY_WORDS["negative_mild"]:
-            neg_mild += text.count(w)
-    return pos_strong, pos_mild, neg_strong, neg_mild
+        counts.update(_INTENSITY_RE.findall(get_text(item)))
+    return (sum(c for w, c in counts.items()
+                if _INTENSITY_CATEGORY[w] == "positive_strong"),
+            sum(c for w, c in counts.items()
+                if _INTENSITY_CATEGORY[w] == "positive_mild"),
+            sum(c for w, c in counts.items()
+                if _INTENSITY_CATEGORY[w] == "negative_strong"),
+            sum(c for w, c in counts.items()
+                if _INTENSITY_CATEGORY[w] == "negative_mild"))
 
 
 def analyze_emotion_intensity(grouped, token_totals):
@@ -1119,7 +1132,10 @@ def analyze_hashtag_usage(grouped):
     def extract_hashtags(text):
         if not text:
             return []
-        hashtags = RE_HASHTAG.findall(str(text))
+        # 先整体剥离 "#标签[话题]#" 形式的话题标记，否则其中 "#标签" 会被
+        # RE_HASHTAG 当成普通 hashtag 统计。
+        text = RE_TOPIC_TAG.sub(" ", str(text))
+        hashtags = RE_HASHTAG.findall(text)
         return [h for h in hashtags if "话题" not in h]
 
     results = {}

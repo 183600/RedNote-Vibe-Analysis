@@ -62,23 +62,30 @@ def main():
     print("Active: " + str(len(active_users)))
 
     MIN_USERS = 30
-    top_words = [w for w, c in word_doc_freq.most_common(100) if c >= MIN_USERS]
-    print("Words: " + str(len(top_words)))
+    # 文档频次只用来挑候选词；“至少 30 名用户使用过”必须按用户去重统计，
+    # 否则同一用户发多条笔记会把一个词重复累计成多个“用户”。
+    candidate_words = [w for w, c in word_doc_freq.most_common(100)]
+    candidate_set = set(candidate_words)
 
-    top_word_set = set(top_words)
     note_by_user = defaultdict(lambda: defaultdict(int))
+    word_user_count = Counter()
     with open(PATH, "rb") as f:
-        for user_id in active_users:
-            for pos in offsets_by_user[user_id]:
+        for user_id, positions in offsets_by_user.items():
+            seen_words = set()
+            for pos in positions:
                 try:
                     f.seek(pos)
                     item = json.loads(f.readline().decode("utf-8"))
-                    counts = note_by_user[user_id]
-                    for w in _record_words(item):
-                        if w in top_word_set:
-                            counts[w] += 1
+                    hits = [w for w in _record_words(item) if w in candidate_set]
+                    if user_id in active_users:
+                        note_by_user[user_id].update(hits)
+                    seen_words.update(hits)
                 except:
                     pass
+            word_user_count.update(seen_words)
+    top_words = [w for w in candidate_words
+                 if word_user_count[w] >= MIN_USERS]
+    print("Words: " + str(len(top_words)))
 
     word_to_idx = {w: i for i, w in enumerate(top_words)}
     user_ids = random.Random(42).sample(

@@ -67,22 +67,32 @@ def main():
     user_ids = [u for u, n in note_counts.items() if n >= MIN_NOTES]
 
     MIN_USERS = 3
-    topWords = [w for w, c in word_doc_freq.most_common(200) if c >= MIN_USERS]
+    # 先按文档频次取候选词，再在第二遍里按用户去重统计“有多少名用户用过”。
+    # 直接用 word_doc_freq 过滤会把“至少 3 名用户”误实现成“至少 3 条笔记”。
+    candidate_words = [w for w, c in word_doc_freq.most_common(200)]
+    candidate_set = set(candidate_words)
 
     print("Counting top words...")
-    top_word_set = set(topWords)
     wanted_users = set(user_ids)
     user_totals = defaultdict(Counter)
+    word_user_count = Counter()
     with open(PATH, "rb") as f:
-        for user_id in wanted_users:
-            for pos in offsets_by_user[user_id]:
+        for user_id, positions in offsets_by_user.items():
+            seen_words = set()
+            for pos in positions:
                 try:
                     f.seek(pos)
                     item = json.loads(f.readline())
-                    user_totals[user_id].update(
-                        w for w in _record_words(item) if w in top_word_set)
+                    words = _record_words(item)
+                    hits = [w for w in words if w in candidate_set]
+                    if user_id in wanted_users:
+                        user_totals[user_id].update(hits)
+                    seen_words.update(hits)
                 except:
                     continue
+            word_user_count.update(seen_words)
+    topWords = [w for w in candidate_words
+                if word_user_count[w] >= MIN_USERS]
 
     all_words = topWords
     word_to_idx = {w: i for i, w in enumerate(all_words)}

@@ -29,8 +29,11 @@ import matplotlib.pyplot as plt
 import jieba
 
 from analysis_utils import (BASE, INSIGHTS, content_of, init_plot_style,
-                            save_fig, save_json, iter_jsonl, post_text,
+                            save_fig, save_json, post_text,
                             make_pool, close_pool)
+# AIGC 语料经共享派生缓存读取（只用 PROJECT_KEYS 内字段）；缓存缺失时
+# 自动逐位回退到逐行 iter_jsonl，分词与统计口径不变。
+from derived_cache import iter_cached
 from paper_lexicon import clean, count_clean_words
 from paper_features import AI_WORDS
 
@@ -271,7 +274,7 @@ def main() -> None:
     pool = make_pool(preload=jieba.initialize)
     try:
         raw, weighted, ai_dens, ai_docs, n_records = collect_group_stats(
-            iter_jsonl(BASE + "training_set_aigc.jsonl"), pool)
+            iter_cached(BASE + "training_set_aigc.jsonl"), pool)
     finally:
         close_pool(pool)
     print(f"AIGC 记录数: {n_records}")

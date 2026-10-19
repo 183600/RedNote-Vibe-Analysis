@@ -60,8 +60,11 @@ from scipy.stats import spearmanr
 
 from analysis_utils import (BASE, INSIGHTS, PALETTE, init_plot_style, save_fig,
                             save_json, wilson_ci, clean_body, content_of,
-                            engagement_of, iter_jsonl, parse_local_time,
-                            run_parallel)
+                            engagement_of, parse_local_time, run_parallel)
+# 三个数据集全部经共享派生缓存读取（`derived_cache.py` 是 fork 管线第一步）；
+# 本脚本只读取 PROJECT_KEYS 白名单内的字段，缓存缺失时自动逐位回退到
+# 逐行 `iter_jsonl`，统计口径不变。
+from derived_cache import iter_cached
 
 DATASETS = {
     "human": BASE + "training_set_human_fixed.jsonl",
@@ -431,7 +434,7 @@ def scan_dataset(key: str, path: str) -> dict:
     raw: list = []
     n_raw = 0
     month_pool: dict = {}
-    for i, rec in enumerate(iter_jsonl(path)):
+    for i, rec in enumerate(iter_cached(path)):
         n_raw += 1
         body = clean_body(content_of(rec))
         likes, colls, comms = engagement_of(rec)

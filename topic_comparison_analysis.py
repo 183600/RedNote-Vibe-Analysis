@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
-import json
 import re
+from array import array
 
 import numpy as np
 from analysis_utils import init_plot_style
+# 两个语料均经共享派生缓存读取（只用 PROJECT_KEYS 内字段）；缓存缺失时
+# 自动逐位回退到逐行 JSON 解析，统计口径不变。
+from derived_cache import iter_cached
 import matplotlib
 
 matplotlib.use("Agg")
@@ -223,15 +226,18 @@ def clean_tokenize(text):
 
 
 def load_aggregates(filepath):
+    # 逐记录指标只用于均值/中位数，用紧凑的 array('d')（8 字节/值）替代
+    # Python 列表（~36 字节/值），内存从「记录数 × 5 × 36B」降为 1/4 以下；
+    # 聚合结果（np.mean/np.median）与列表口径完全一致。
     domains = {}
     for domain in DOMAIN_LIST:
         domains[domain] = {
             "count": 0,
-            "lengths": [],
-            "emoji": [],
-            "liked": [],
-            "collected": [],
-            "comments": [],
+            "lengths": array("d"),
+            "emoji": array("d"),
+            "liked": array("d"),
+            "collected": array("d"),
+            "comments": array("d"),
             "words": Counter(),
             "pos": 0,
             "neg": 0,
@@ -239,31 +245,26 @@ def load_aggregates(filepath):
         }
     domain_counter = Counter()
     total = 0
-    with open(filepath, "r", encoding="utf-8") as f:
-        for line in f:
-            try:
-                item = json.loads(line)
-            except Exception:
-                continue
-            total += 1
-            domain = item.get("domain")
-            domain_counter[domain] += 1
-            if domain in domains:
-                d = domains[domain]
-                d["count"] += 1
-                desc = item.get("desc", "") or item.get("note_content", "")
-                d["lengths"].append(len(desc))
-                d["emoji"].append(extract_face_emojis(desc))
-                d["liked"].append(item.get("liked_count", 0))
-                d["collected"].append(item.get("collected_count", 0))
-                d["comments"].append(item.get("comments_count", 0))
-                words = clean_tokenize(desc)
-                d["words"].update(words)
-                d["total_words"] += len(words)
-                for w in words:
-                    pos_n, neg_n = count_sentiment_words(w)
-                    d["pos"] += pos_n
-                    d["neg"] += neg_n
+    for item in iter_cached(filepath):
+        total += 1
+        domain = item.get("domain")
+        domain_counter[domain] += 1
+        if domain in domains:
+            d = domains[domain]
+            d["count"] += 1
+            desc = item.get("desc", "") or item.get("note_content", "")
+            d["lengths"].append(len(desc))
+            d["emoji"].append(extract_face_emojis(desc))
+            d["liked"].append(item.get("liked_count", 0))
+            d["collected"].append(item.get("collected_count", 0))
+            d["comments"].append(item.get("comments_count", 0))
+            words = clean_tokenize(desc)
+            d["words"].update(words)
+            d["total_words"] += len(words)
+            for w in words:
+                pos_n, neg_n = count_sentiment_words(w)
+                d["pos"] += pos_n
+                d["neg"] += neg_n
     return {"total": total, "domain_counter": domain_counter, "domains": domains}
 
 

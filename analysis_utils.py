@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import mmap
 import os
 import random
 import re
@@ -548,50 +549,152 @@ def count_jsonl_lines(path: str) -> int:
         return n
 
 
+class _SparseFallback(Exception):
+    """快路径无法保证与文本模式逐行语义一致时，切换到回退实现。"""
+
+
+# 可能构成「纯空白行」的首字节（ASCII 空白/控制符）；其余首字节若 <0x80
+# 必然含非空白字符。首字节 >=0x80 的多字节字符再解码后用 str.isspace()
+# 精确判断（与文本模式一致）。
+_SPARSE_WS_START = frozenset(
+    (9, 10, 11, 12, 13, 28, 29, 30, 31, 32))
+
+# mmap 顺序扫描时定期丢弃已经处理过的页，避免整份大文件常驻 RSS。
+try:
+    _MMAP_PAGE = os.sysconf("SC_PAGE_SIZE")
+except (AttributeError, ValueError, OSError):
+    _MMAP_PAGE = 4096
+_MMAP_DROP_BYTES = 4 << 20
+_MADV_SEQUENTIAL = getattr(mmap, "MADV_SEQUENTIAL", None)
+_MADV_DONTNEED = getattr(mmap, "MADV_DONTNEED", None)
+
+
+def _advise_mmap(mm, option, start: int, length: int) -> None:
+    """对 mmap 调用 madvise；平台不支持或参数非法时静默忽略。"""
+    if option is None or not hasattr(mm, "madvise") or length < 0:
+        return
+    try:
+        mm.madvise(option, start, length)
+    except (OSError, ValueError):
+        pass
+
+
+def _iter_jsonl_sparse_fast(path: str, wanted, relaxed: bool,
+                            targets: list[int]) -> Iterator[tuple[int, dict]]:
+    """mmap 行定位快路径：只切片/解码被抽中的行。
+
+    文本模式按通用换行切行；快路径先确认文件不含 `\\r`（否则结果可能不同，
+    直接回退）。空行/纯空白行判定与 `str.isspace()` 同口径：首字节是 ASCII
+    空白或 >=0x80 时才切片解码核对，普通 JSON 行（`{` 开头）完全跳过解码。
+    """
+    with open(path, "rb") as f:
+        # 先用普通读分块检查 \r：直接 mm.find 会把整份文件映射进 RSS，
+        # 在丢弃页之前就抬高峰值；普通读只占用一个固定大小缓冲区。
+        while True:
+            chunk = f.read(_COUNT_CHUNK)
+            if not chunk:
+                break
+            if b"\r" in chunk:
+                raise _SparseFallback
+        try:
+            mm = mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ)
+        except (ValueError, OSError):
+            raise _SparseFallback
+        try:
+            _advise_mmap(mm, _MADV_SEQUENTIAL, 0, 0)
+            size = len(mm)
+            pos = 0
+            dropped = 0
+            i = -1
+            w = 0
+            n_targets = len(targets)
+            while w < n_targets:
+                end = mm.find(b"\n", pos)
+                if end < 0:
+                    end = size
+                if end > pos:
+                    first = mm[pos]
+                    if first < 0x80 and first not in _SPARSE_WS_START:
+                        blank = False
+                    else:
+                        text = mm[pos:end].decode("utf-8")
+                        blank = not text or text.isspace()
+                else:
+                    blank = True
+                if not blank:
+                    i += 1
+                    if i == targets[w]:
+                        line = mm[pos:end].decode("utf-8")
+                        if relaxed:
+                            try:
+                                rec = json.loads(line)
+                            except json.JSONDecodeError:
+                                pass
+                            else:
+                                yield i, rec
+                        else:
+                            yield i, json.loads(line)
+                        w += 1
+                if end >= size:
+                    break
+                pos = end + 1
+                if pos - dropped >= _MMAP_DROP_BYTES:
+                    stop = pos - pos % _MMAP_PAGE
+                    _advise_mmap(mm, _MADV_DONTNEED, dropped, stop - dropped)
+                    dropped = stop
+        finally:
+            mm.close()
+
+
+def _iter_jsonl_sparse_text(path: str, wanted,
+                            relaxed: bool) -> Iterator[tuple[int, dict]]:
+    """精确回退：与 `iter_jsonl` 完全相同的文本模式逐行语义。"""
+    remaining = len(wanted)
+    with open(path, encoding="utf-8") as f:
+        i = -1
+        for line in f:
+            if not line or line.isspace():
+                continue
+            i += 1
+            if i not in wanted:
+                continue
+            if relaxed:
+                try:
+                    rec = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+            else:
+                rec = json.loads(line)
+            yield i, rec
+            remaining -= 1
+            if remaining == 0:
+                break
+
+
+def _iter_jsonl_sparse(path: str, wanted, relaxed: bool
+                       ) -> Iterator[tuple[int, dict]]:
+    if not wanted:
+        return
+    targets = sorted(wanted)
+    try:
+        yield from _iter_jsonl_sparse_fast(path, wanted, relaxed, targets)
+    except _SparseFallback:
+        yield from _iter_jsonl_sparse_text(path, wanted, relaxed)
+
+
 def iter_jsonl_sparse(path: str, wanted) -> Iterator[tuple[int, dict]]:
     """只解析并产出索引在 `wanted` 中的记录（(索引, 记录) 对）。
 
     行/空行规则与 `iter_jsonl` 完全一致；未被抽中的行不调用 `json.loads`，
     数据文件每行均为合法 JSON 时结果与整份解析后按索引取子集完全相同。
+    无 `\\r` 的文件走 mmap 行定位快路径，只解码抽中的行。
     """
-    if not wanted:
-        return
-    remaining = len(wanted)
-    with open(path, encoding="utf-8") as f:
-        i = -1
-        for line in f:
-            if not line or line.isspace():
-                continue
-            i += 1
-            if i not in wanted:
-                continue
-            yield i, json.loads(line)
-            remaining -= 1
-            if remaining == 0:
-                break
+    yield from _iter_jsonl_sparse(path, wanted, relaxed=False)
 
 
 def iter_jsonl_relaxed_sparse(path: str, wanted) -> Iterator[tuple[int, dict]]:
     """`iter_jsonl_sparse` 的容错版本（跳过无法解析的行，口径同 relaxed）。"""
-    if not wanted:
-        return
-    remaining = len(wanted)
-    with open(path, encoding="utf-8") as f:
-        i = -1
-        for line in f:
-            if not line or line.isspace():
-                continue
-            i += 1
-            if i not in wanted:
-                continue
-            try:
-                rec = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            yield i, rec
-            remaining -= 1
-            if remaining == 0:
-                break
+    yield from _iter_jsonl_sparse(path, wanted, relaxed=True)
 
 
 def _stream_sample(factory, sample: int | None, seed: int, count=None,

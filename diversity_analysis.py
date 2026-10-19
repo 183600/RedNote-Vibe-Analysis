@@ -27,7 +27,6 @@
 """
 from __future__ import annotations
 
-import json
 import random
 import re
 from collections import Counter
@@ -43,10 +42,11 @@ from scipy.stats import mannwhitneyu
 from analysis_utils import (BASE, INSIGHTS, PALETTE, init_plot_style,
                             save_fig, save_json, bootstrap_median_ci,
                             cliffs_delta_from_u, clean_body, content_of,
-                            engagement_of, load_records_with_total,
-                            make_pool, close_pool,
+                            engagement_of, iter_jsonl_sparse,
+                            load_records_with_total, make_pool, close_pool,
                             mtld, parse_local_time, split_sentences, burstiness,
                             DATASET_LABELS)
+from derived_cache import iter_cached
 
 DATASET_PATHS = {
     "human": BASE + "training_set_human_fixed.jsonl",
@@ -149,53 +149,43 @@ def heaps_beta(tokens: np.ndarray, types: np.ndarray,
 def scan_sentence_stats(path: str) -> dict:
     """全量流式扫描：按 note_id 去重后收集每帖句长指标（无 note_id 全部保留）。
 
-    扫描时顺带记录每条记录的字节偏移（`offsets`），供后续按索引抽样时直接
-    seek 定位、免去对同一文件再做两次全量解析。
+    扫描时记录每条保留记录在 `iter_cached` 输出中的序号，供后续按索引抽样
+    时用 `iter_jsonl_sparse` 直接定位、免去对同一文件再做两次全量解析。
     """
     slot_of: dict = {}
     metrics: list[dict] = []
-    offsets: list[int] = []
-    # 去重后保留记录的字节偏移（与 metrics 一一对应）：后续词法抽样必须从
-    # 这批偏移里抽，否则会按「快照条数」而不是「笔记数」加权，且可能抽到
+    # 去重后保留记录的逻辑序号（与 metrics 一一对应）：后续词法抽样必须从
+    # 这些记录里抽，否则会按「快照条数」而不是「笔记数」加权，且可能抽到
     # 已被句法扫描丢弃的重复快照，两个分析口径不一致。
-    dedup_offsets: list[int] = []
-    with open(path, "rb") as f:
-        while True:
-            start = f.tell()
-            line = f.readline()
-            if not line:
-                break
-            if line.isspace():
-                continue
-            rec = json.loads(line)
-            offsets.append(start)
-            body = clean_body(content_of(rec))
-            likes, colls, comms = engagement_of(rec)
-            dt = parse_local_time(rec.get("local_time"))
-            has_meta = bool(rec.get("user_id")) and rec.get("domain") not in (None, "", "未知")
-            score = (int(has_meta) + int(bool(likes)) + int(bool(colls))
-                     + int(bool(comms)) + int(dt is not None) + int(bool(body)))
-            nid = rec.get("note_id")
-            if nid is None:
-                m = doc_metrics(body)
-                m["score"] = score
-                metrics.append(m)
-                dedup_offsets.append(start)
-                continue
-            slot = slot_of.get(nid)
-            # 只有确定要保留这份记录时才做句法指标（探索集约一半的重复
-            # 记录会在去重时被丢弃，省掉它们的 split/burstiness 计算）。
-            if slot is None:
-                m = doc_metrics(body)
-                m["score"] = score
-                slot_of[nid] = len(metrics)
-                metrics.append(m)
-                dedup_offsets.append(start)
-            elif score > metrics[slot]["score"]:
-                m = doc_metrics(body)
-                m["score"] = score
-                metrics[slot] = m
-                dedup_offsets[slot] = start
+    dedup_indices: list[int] = []
+    for rec_idx, rec in enumerate(iter_cached(path)):
+        body = clean_body(content_of(rec))
+        likes, colls, comms = engagement_of(rec)
+        dt = parse_local_time(rec.get("local_time"))
+        has_meta = bool(rec.get("user_id")) and rec.get("domain") not in (None, "", "未知")
+        score = (int(has_meta) + int(bool(likes)) + int(bool(colls))
+                 + int(bool(comms)) + int(dt is not None) + int(bool(body)))
+        nid = rec.get("note_id")
+        if nid is None:
+            m = doc_metrics(body)
+            m["score"] = score
+            metrics.append(m)
+            dedup_indices.append(rec_idx)
+            continue
+        slot = slot_of.get(nid)
+        # 只有确定要保留这份记录时才做句法指标（探索集约一半的重复
+        # 记录会在去重时被丢弃，省掉它们的 split/burstiness 计算）。
+        if slot is None:
+            m = doc_metrics(body)
+            m["score"] = score
+            slot_of[nid] = len(metrics)
+            metrics.append(m)
+            dedup_indices.append(rec_idx)
+        elif score > metrics[slot]["score"]:
+            m = doc_metrics(body)
+            m["score"] = score
+            metrics[slot] = m
+            dedup_indices[slot] = rec_idx
     sent_lens = [l for m in metrics for l in m["sent_lens"]]
     bursts = [m["burst"] for m in metrics if m["burst"] is not None]
     # 平均句长：sum/len 与 np.mean 对整数列表逐位一致，但省掉 15 万次数组构造。
@@ -208,33 +198,28 @@ def scan_sentence_stats(path: str) -> dict:
         "burst": np.asarray(bursts, dtype=float),
         "mean_sent": np.asarray(mean_sents, dtype=float),
         "n_sent": np.asarray(n_sents, dtype=np.int64),
-        "offsets": offsets,
-        "dedup_offsets": dedup_offsets,
+        "dedup_indices": dedup_indices,
     }
 
 
-def sample_records_at_offsets(path: str, offsets: list[int], sample: int,
-                              seed: int) -> list[dict]:
+def sample_records_by_index(path: str, indices: list[int], sample: int,
+                            seed: int) -> list[dict]:
     """按 `random.Random(seed).sample(range(n), sample)` 的索引顺序解析抽样记录。
 
     与 `load_records_with_total(path, sample=..., seed=...)` 的返回列表完全一致
-    （同样的抽样索引、同样的顺序），但借助预记录的字节偏移只解析被抽中的行，
+    （同样的抽样索引、同样的顺序），但借助预记录的记录序号只解析被抽中的行，
     跳过了计数与逐行解析两次全文件扫描。
     """
-    n = len(offsets)
+    n = len(indices)
     if sample is None or n <= sample:
         idx = range(n)
     else:
         idx = random.Random(seed).sample(range(n), sample)
-    out: list[dict] = []
-    with open(path, "rb") as f:
-        for i in idx:
-            f.seek(offsets[i])
-            out.append(json.loads(f.readline()))
-    return out
+    picked = dict(iter_jsonl_sparse(path, {indices[i] for i in idx}))
+    return [picked[indices[i]] for i in idx]
 
 
-def sample_lexical(path: str, pool=None, offsets=None) -> dict:
+def sample_lexical(path: str, pool=None, indices=None) -> dict:
     """固定种子抽样并分词，单遍流式计算 MTLD 与 Heaps 曲线。
 
     与"先保留全部抽样帖 token 列表、再统一计算"的旧实现结果完全一致，
@@ -242,10 +227,10 @@ def sample_lexical(path: str, pool=None, offsets=None) -> dict:
     Heaps 曲线在遍历过程中增量累积（含 HEAPS_BUDGET 截断语义）。
     传入 pool 时按批并行分词，逐帖结果与串行完全一致且顺序不变。
     """
-    if offsets is not None:
-        recs = sample_records_at_offsets(path, offsets,
-                                         SAMPLE_PER_DATASET, SAMPLE_SEED)
-        total = len(offsets)
+    if indices is not None:
+        recs = sample_records_by_index(path, indices,
+                                       SAMPLE_PER_DATASET, SAMPLE_SEED)
+        total = len(indices)
     else:
         recs, total = load_records_with_total(path, sample=SAMPLE_PER_DATASET,
                                               seed=SAMPLE_SEED)
@@ -434,7 +419,7 @@ def main() -> None:
         for name, path in DATASET_PATHS.items():
             # 词法抽样只在 note_id 去重后的记录上进行，与句法扫描口径一致。
             smp = sample_lexical(path, pool,
-                                 offsets=stats[name].pop("dedup_offsets"))
+                                 indices=stats[name].pop("dedup_indices"))
             vals = smp["mtld"]
             mtld_dist[name] = vals
             mtld_samples.append(vals)

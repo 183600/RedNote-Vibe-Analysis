@@ -78,8 +78,7 @@ def extract(title, content):
     feats = {}
     content = HUATI.sub("", content or "")
     title = HUATI.sub("", title or "")
-    hashtags = HASHTAG.findall(content)
-    body = HASHTAG.sub(" ", content)
+    body, n_hashtags = HASHTAG.subn(" ", content)
     body = body.strip()
     n = len(body)
     n_safe = max(n, 1)
@@ -89,7 +88,7 @@ def extract(title, content):
     feats["content_len"] = n
     feats["n_lines"] = len(lines)
     feats["avg_line_len"] = round(n / n_lines, 2)
-    feats["n_hashtags"] = len(hashtags)
+    feats["n_hashtags"] = n_hashtags
     feats["colon_line_ratio"] = round(
         sum(1 for l in lines if ("：" in l[:14] or ":" in l[:14])) / n_lines, 4)
     feats["list_line_ratio"] = round(
@@ -176,7 +175,7 @@ def process(path, dataset, out_writer, pool=None):
     with open(path, encoding="utf-8") as f:
         lines = (line for line in f if line and not line.isspace())
         for row in pool.imap(partial(row_from_line, dataset=dataset), lines,
-                             chunksize=64):
+                             chunksize=512):
             out_writer.writerow(row)
             n += 1
     return n

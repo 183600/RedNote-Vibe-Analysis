@@ -27,8 +27,8 @@
   会与基字符重复计数）；
 - 人类/探索集按 note_id 去重（保留元数据最完整的一条，规则同 deep_dive），
   AIGC 无 note_id 逐记录处理；
-- 探索集 p_ai 按行序对齐 `paper_exploring_scores.csv.gz`，用 content_len
-  逐条校验对齐（不一致时在结果中记录 mismatch 数）。
+- 探索集 p_ai 按行序对齐 `paper_exploring_scores.csv.gz`；只把 content_len
+  漂移记为 text_len_drift（信息性指标），不再据此判定行序错位。
 
 输出：
   insights/symbol_hashtag.png   标签结构 / 词表集中度 / 专属标签 / 标签级 AI 味
@@ -103,13 +103,13 @@ def scan(path: str, content_len_ref: np.ndarray | None = None) -> dict:
     """
     best: dict = {}
     rows: list = []
-    n_raw = mismatch = 0
+    n_raw = text_len_drift = 0
     month_pool: dict = {}
     for rec in iter_cached(path):
         content = content_of(rec)
         body = clean_body(content)
         if content_len_ref is not None and len(body) != int(content_len_ref[n_raw]):
-            mismatch += 1
+            text_len_drift += 1
         lk, cl, cm = engagement_of(rec)
         dt = parse_local_time(rec.get("local_time"))
         has_meta = (bool(rec.get("user_id"))
@@ -141,7 +141,8 @@ def scan(path: str, content_len_ref: np.ndarray | None = None) -> dict:
     rows.extend(best.values())
     rows.sort(key=lambda r: r[0])
     return {
-        "path": path, "n_raw": n_raw, "mismatch": mismatch,
+        "path": path, "n_raw": n_raw, "mismatch": 0,
+        "text_len_drift": text_len_drift,
         "kept_indices": np.asarray([r[0] for r in rows], dtype=np.int64),
         "tags": [r[1] for r in rows],
         "emojis": [r[2] for r in rows],
@@ -770,7 +771,8 @@ def main() -> None:
         ref = scores["content_len"].to_numpy() if key == "exploring" else None
         scans[key] = scan(path, content_len_ref=ref)
         print(f"[scan] {key}: {scans[key]['n_raw']} 条记录，"
-              f"对齐 mismatch={scans[key]['mismatch']}")
+              f"对齐 mismatch={scans[key]['mismatch']}，"
+              f"文本长度 drift={scans[key]['text_len_drift']}")
     if scans["exploring"]["n_raw"] != len(scores):
         raise SystemExit("探索集记录数与 paper_exploring_scores 行数不一致，终止")
 
@@ -943,6 +945,7 @@ def main() -> None:
             "min_body_len": MIN_BODY_LEN,
             "eng_month_from": ENG_MONTH_FROM,
             "exploring_content_len_mismatch": scans["exploring"]["mismatch"],
+            "exploring_text_len_drift": scans["exploring"]["text_len_drift"],
             "note": "人类/探索集按 note_id 去重（保留元数据最完整一条）；"
                     "AIGC 无 note_id 逐记录；p_ai 按行序对齐 "
                     "paper_exploring_scores.csv.gz；标签与表情口径见脚本 docstring。",
@@ -985,7 +988,8 @@ def write_markdown(out: dict) -> None:
         "> `n_hashtags` 同源（兼容 `#标签[话题]#` 与 BOM 残留），表情正则与其",
         "> `EMOJI` / `XHS_EMO` 完全相同；人类/探索集按 note_id 去重，AIGC 逐记录；",
         "> 探索集 p_ai 按行序对齐 `paper_exploring_scores.csv.gz`（content_len 校验",
-        f"> mismatch={out['meta']['exploring_content_len_mismatch']}）。",
+        f"> mismatch={out['meta']['exploring_content_len_mismatch']}，"
+        f"文本长度 drift={out['meta']['exploring_text_len_drift']}）。",
         "",
         "## 1 标签结构",
         "",

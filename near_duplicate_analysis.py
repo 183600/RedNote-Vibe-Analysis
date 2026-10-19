@@ -34,7 +34,7 @@
 - 人类/探索集按 note_id 去重（保留元数据最完整的一条，规则同
   `symbol_analysis.py`；AIGC 无 note_id 逐记录处理）；
 - 探索集 p_ai 按行序对齐 `paper_exploring_scores.csv.gz`（逐条 content_len
-  校验，不一致计入 mismatch）；AIGC 无时间字段，季度/十分位只统计可解析的文档；
+  漂移只作信息性记录）；AIGC 无时间字段，季度/十分位只统计可解析的文档；
 - 清洗后不足 `MIN_SHINGLES=20` 个 unique 5-gram（约 24 字符正文）的
   「空正文/纯标签」帖不参与匹配，按子集单独计数报出。
 
@@ -635,7 +635,8 @@ def md_summary(out: dict) -> str:
         f"完整集合精确 Jaccard；链接键 df ∈ [2, {DF_CAP}]。",
         f"> 人类/探索集按 note_id 去重；探索集 p_ai 按行序对齐 "
         f"`paper_exploring_scores.csv.gz`（content_len 校验 "
-        f"mismatch={out['meta']['exploring_content_len_mismatch']}）。",
+        f"mismatch={out['meta']['exploring_content_len_mismatch']}，"
+        f"文本长度 drift={out['meta']['exploring_text_len_drift']}）。",
         f"> 清洗后不足 {out['meta']['min_shingles']} 个 unique 5-gram 的"
         f"「空正文/纯标签」帖（human {exc['human']:,}、aigc {exc['aigc']:,}、"
         f"exploring {exc['exploring']:,}，合计 {out['meta']['n_docs_excluded_short']:,} 篇）"
@@ -918,7 +919,8 @@ def collect_stats(docs: list, dataset: np.ndarray, within_j: np.ndarray,
     p_ai_all = scores["p_ai"].to_numpy(dtype=float)
     ok = raw_idx < p_ai_all.size
     p_ai[ok] = p_ai_all[raw_idx[ok]]
-    mismatch = int((~ok).sum()) + int(
+    mismatch = int((~ok).sum())
+    text_len_drift = int(
         (lengths[exp_idx[ok]] != clen_all[raw_idx[ok]]).sum())
     valid = ~np.isnan(p_ai)
     dec = decile_rates(p_ai[valid], within_j[exp_idx][valid] >= GRADIENT_J)
@@ -1015,6 +1017,7 @@ def collect_stats(docs: list, dataset: np.ndarray, within_j: np.ndarray,
                      "largest": largest},
         "examples": {"top_pairs": top_pairs, "cross_pairs": cross_examples},
         "_exploring_mismatch": mismatch,
+        "_exploring_text_len_drift": text_len_drift,
     }
 
 
@@ -1081,6 +1084,7 @@ def main() -> int:
     scores = pd.read_csv(SCORES_PATH, usecols=["p_ai", "content_len"])
     out = collect_stats(docs, dataset, within_j, pairs, shingle_counts, scores)
     mismatch = out.pop("_exploring_mismatch")
+    text_len_drift = out.pop("_exploring_text_len_drift")
     out["meta"] = {
         "shingle_chars": SHINGLE_N, "sketch_k": SKETCH_K, "df_cap": DF_CAP,
         "min_shingles": MIN_SHINGLES,
@@ -1092,6 +1096,7 @@ def main() -> int:
         "n_pairs_min_j": len(pairs),
         "datasets": scan_meta,
         "exploring_content_len_mismatch": mismatch,
+        "exploring_text_len_drift": text_len_drift,
         "recall": recall,
     }
 

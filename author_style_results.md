@@ -1,6 +1,6 @@
 # 作者层分解：作者间 vs 人内（Author-level Decomposition）
 
-> 由 `author_style_analysis.py` 全量运行生成；数据源 `paper_exploring_scores.csv.gz` + `exploring_set_fixed.jsonl`（content_len 逐条对齐，mismatch=0）；月份窗口 ≥2023.01，口径与 `paper_engagement.py` 一致。作者子集 = 去重后带 `user_id` 的笔记（该子集内每篇笔记恰一条记录）。
+> 由 `author_style_analysis.py` 全量运行生成；数据源 `paper_exploring_scores.csv.gz` + `exploring_set_fixed.jsonl`（month/domain 逐条对齐，mismatch=0）；月份窗口 ≥2023.01，口径与 `paper_engagement.py` 一致。作者子集 = 去重后带 `user_id` 的笔记（该子集内每篇笔记恰一条记录）。
 
 ## 1 覆盖与选择检查（去重口径）
 

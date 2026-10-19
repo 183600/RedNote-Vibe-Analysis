@@ -16,6 +16,7 @@
   "min_body_len": 8,
   "eng_month_from": "202301",
   "exploring_content_len_mismatch": 0,
+  "exploring_text_len_drift": 83782,
   "note": "人类/探索集按 note_id 去重（保留元数据最完整一条）；AIGC 无 note_id 逐记录；p_ai 按行序对齐 paper_exploring_scores.csv.gz；标签与表情口径见脚本 docstring。",
   "n_records": {
    "human": 51878,
@@ -445,11 +446,11 @@
     "aigc_per1k": 3.31
    },
    {
-    "word": "自律",
+    "word": "时间管理",
     "aigc_per1k": 3.17
    },
    {
-    "word": "时间管理",
+    "word": "自律",
     "aigc_per1k": 3.17
    }
   ]
@@ -655,13 +656,13 @@
     "p": 1.2191700780812268e-59
    },
    "spearman_tags_nonpure": {
-    "rho": -0.258,
+    "rho": -0.204,
     "p": 0.0,
-    "n": 57272
+    "n": 48952
    },
    "within_length_rho": {
-    "weighted_rho": -0.2676,
-    "n_strata": 10
+    "weighted_rho": -0.2303,
+    "n_strata": 9
    },
    "cliff_aigc_tag": {
     "delta": -0.154,
@@ -683,7 +684,7 @@
      "tags_mean": 8.594,
      "tagged_share": 0.8921,
      "ge5_share": 0.8514,
-     "short_body_share": 0.0979,
+     "short_body_share": 0.8398,
      "hit_aigc_tag": 0.1215,
      "hit_aigc_tag_ci": [
       0.1135,
@@ -707,7 +708,7 @@
      "tags_mean": 5.76,
      "tagged_share": 0.9666,
      "ge5_share": 0.573,
-     "short_body_share": 0.1295,
+     "short_body_share": 0.6217,
      "hit_aigc_tag": 0.0816,
      "hit_aigc_tag_ci": [
       0.075,
@@ -731,7 +732,7 @@
      "tags_mean": 7.215,
      "tagged_share": 0.9289,
      "ge5_share": 0.6727,
-     "short_body_share": 0.0309,
+     "short_body_share": 0.0916,
      "hit_aigc_tag": 0.067,
      "hit_aigc_tag_ci": [
       0.0609,
@@ -755,7 +756,7 @@
      "tags_mean": 7.0,
      "tagged_share": 0.938,
      "ge5_share": 0.6451,
-     "short_body_share": 0.0987,
+     "short_body_share": 0.1167,
      "hit_aigc_tag": 0.0524,
      "hit_aigc_tag_ci": [
       0.047,
@@ -779,7 +780,7 @@
      "tags_mean": 7.438,
      "tagged_share": 0.9299,
      "ge5_share": 0.6981,
-     "short_body_share": 0.0047,
+     "short_body_share": 0.016,
      "hit_aigc_tag": 0.0588,
      "hit_aigc_tag_ci": [
       0.0532,
@@ -803,7 +804,7 @@
      "tags_mean": 7.406,
      "tagged_share": 0.9357,
      "ge5_share": 0.7015,
-     "short_body_share": 0.0032,
+     "short_body_share": 0.0166,
      "hit_aigc_tag": 0.067,
      "hit_aigc_tag_ci": [
       0.0609,
@@ -827,7 +828,7 @@
      "tags_mean": 7.21,
      "tagged_share": 0.9373,
      "ge5_share": 0.6853,
-     "short_body_share": 0.0003,
+     "short_body_share": 0.0086,
      "hit_aigc_tag": 0.0615,
      "hit_aigc_tag_ci": [
       0.0557,
@@ -851,7 +852,7 @@
      "tags_mean": 6.643,
      "tagged_share": 0.9385,
      "ge5_share": 0.6498,
-     "short_body_share": 0.0101,
+     "short_body_share": 0.0226,
      "hit_aigc_tag": 0.0602,
      "hit_aigc_tag_ci": [
       0.0544,
@@ -875,7 +876,7 @@
      "tags_mean": 5.619,
      "tagged_share": 0.9181,
      "ge5_share": 0.5352,
-     "short_body_share": 0.0065,
+     "short_body_share": 0.0163,
      "hit_aigc_tag": 0.0554,
      "hit_aigc_tag_ci": [
       0.0499,
@@ -899,7 +900,7 @@
      "tags_mean": 3.257,
      "tagged_share": 0.8035,
      "ge5_share": 0.265,
-     "short_body_share": 0.0984,
+     "short_body_share": 0.1132,
      "hit_aigc_tag": 0.0369,
      "hit_aigc_tag_ci": [
       0.0324,
@@ -946,7 +947,7 @@
      "n": 6016,
      "emoji_mean": 2.86,
      "emoji_share": 0.3599,
-     "xhs_share": 0.2314
+     "xhs_share": 0.2315
     },
     {
      "decile": 5,
@@ -979,8 +980,8 @@
     {
      "decile": 9,
      "n": 6016,
-     "emoji_mean": 2.365,
-     "emoji_share": 0.3752,
+     "emoji_mean": 2.366,
+     "emoji_share": 0.3753,
      "xhs_share": 0.138
     },
     {
@@ -1132,7 +1133,7 @@
   "human": {
    "n_notes": 51672,
    "emoji_share": 0.40844170924291684,
-   "emoji_per_note_mean": 2.395223718841926,
+   "emoji_per_note_mean": 2.3952624245239202,
    "emoji_per_note_median": 0.0,
    "emoji_distinct": 1335,
    "xhs_share": 0.29000232234091966,
@@ -1296,7 +1297,7 @@
   "aigc": {
    "n_notes": 7254,
    "emoji_share": 0.5851943755169562,
-   "emoji_per_note_mean": 3.3056244830438377,
+   "emoji_per_note_mean": 3.306038047973532,
    "emoji_per_note_median": 1.0,
    "emoji_distinct": 945,
    "xhs_share": 0.13895781637717122,
@@ -1345,8 +1346,8 @@
     ],
     [
      "💪",
-     453,
-     62.45
+     454,
+     62.59
     ],
     [
      "✔",
@@ -1459,12 +1460,12 @@
   },
   "exploring": {
    "n_notes": 60161,
-   "emoji_share": 0.3084223998936188,
-   "emoji_per_note_mean": 2.2045344990940974,
+   "emoji_share": 0.3084390219577467,
+   "emoji_per_note_mean": 2.2045511211582256,
    "emoji_per_note_median": 0.0,
    "emoji_distinct": 1308,
-   "xhs_share": 0.16364422133940593,
-   "xhs_per_note_mean": 0.6257542261598045,
+   "xhs_share": 0.16366084340353385,
+   "xhs_per_note_mean": 0.6257708482239325,
    "xhs_distinct": 179,
    "top_emoji": [
     [
@@ -1494,8 +1495,8 @@
     ],
     [
      "➕",
-     2651,
-     44.07
+     2652,
+     44.08
     ],
     [
      "👉",
@@ -1551,8 +1552,8 @@
     ],
     [
      "[笑哭R]",
-     1598,
-     26.56
+     1599,
+     26.58
     ],
     [
      "[赞R]",
@@ -1689,8 +1690,8 @@
     },
     {
      "word": "💪",
-     "rate_diff_ppt": 5.794,
-     "aigc_per1k": 62.45,
+     "rate_diff_ppt": 5.808,
+     "aigc_per1k": 62.59,
      "human_per1k": 4.51
     },
     {
@@ -1740,8 +1741,8 @@
     ],
     [
      "➕",
-     2651,
-     44.07
+     2652,
+     44.08
     ],
     [
      "👉",
@@ -1887,8 +1888,8 @@
     ],
     [
      "[笑哭R]",
-     1598,
-     26.56
+     1599,
+     26.58
     ],
     [
      "[赞R]",

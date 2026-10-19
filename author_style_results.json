@@ -8,7 +8,7 @@
   "n_dedup_notes": 60161,
   "n_author_notes": 33219,
   "author_share": 0.5525,
-  "content_len_mismatch": 0,
+  "row_mismatch": 0,
   "n_boot": 500,
   "n_boot_two_way": 300,
   "seed": 42

@@ -763,6 +763,55 @@ def dataset_path(name: str, base: str = BASE) -> str:
     return os.path.join(base, filename)
 
 
+# 派生特征/得分表与原始 JSONL 的行序校验字段：全部是原始记录里的
+# 未清洗字段，不受正文清洗口径（话题/标签剥离方式）变化的影响。
+ALIGNMENT_FIELDS = ("month", "domain", "likes", "collections", "comments")
+
+
+def alignment_mismatch(scan: dict, frame: pd.DataFrame,
+                       fields: tuple[str, ...] = ALIGNMENT_FIELDS) -> dict:
+    """按行序比较原始扫描结果与派生特征表，返回 {字段: 不一致行数}。
+
+    `scan` 为分析脚本全量扫描得到的列字典（如 month/domain/likes/...），
+    `frame` 为 `paper_features_*.csv.gz` / `paper_exploring_scores.csv.gz`
+    读出的 DataFrame。两表由同一份 JSONL 按同一顺序生成，因此行序必须逐条
+    一致；这里用未清洗的原始字段校验，避免把「正文清洗版本不同导致的
+    content_len 差异」误判成行序错位（content_len 仅作信息性指标）。
+
+    只比较双方都存在的字段；`scan` 中缺失的字段会被跳过。长度不一致时该
+    字段记为两表行数差（正数），便于调用方直接报错。
+    """
+    n = len(frame)
+    out: dict[str, int] = {}
+    for name in fields:
+        if name not in scan or name not in frame.columns:
+            continue
+        arr = np.asarray(scan[name], dtype=object)
+        if len(arr) != n:
+            out[name] = abs(len(arr) - n)
+            continue
+        ref = frame[name].to_numpy(dtype=object)
+        if name == "month":
+            left = np.asarray(["" if v is None else str(v) for v in arr])
+            right = np.asarray(["" if v is None or pd.isna(v) else str(v)
+                                for v in ref])
+        else:
+            left, right = arr, ref
+        out[name] = int((left != right).sum())
+    return out
+
+
+def require_row_alignment(scan: dict, frame: pd.DataFrame, source: str,
+                          fields: tuple[str, ...] = ALIGNMENT_FIELDS) -> dict:
+    """校验行序；任何未清洗字段不一致即抛 `SystemExit`，否则返回不一致统计。"""
+    mism = alignment_mismatch(scan, frame, fields)
+    bad = {k: v for k, v in mism.items() if v}
+    if bad:
+        detail = ", ".join(f"{k}={v}" for k, v in bad.items())
+        raise SystemExit(f"{source} 行序未对齐（{detail}）")
+    return mism
+
+
 def title_of(rec: dict) -> str:
     """取标题（缺失时返回空串），与正文口径分开。"""
     return rec.get("note_title") or ""

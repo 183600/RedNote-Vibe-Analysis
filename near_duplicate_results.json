@@ -6,7 +6,7 @@
     "0.5": 1.198,
     "0.7": 0.898,
     "0.9": 0.627,
-    "1.0": 0.3
+    "1.0": 0.302
    },
    "max_j_quantiles": {
     "0.5": 0.0,
@@ -15,7 +15,7 @@
    }
   },
   "aigc": {
-   "n_docs": 7175,
+   "n_docs": 7154,
    "twin_share_pct": {
     "0.5": 0.0,
     "0.7": 0.0,
@@ -29,17 +29,17 @@
    }
   },
   "exploring": {
-   "n_docs": 44849,
+   "n_docs": 42576,
    "twin_share_pct": {
-    "0.5": 3.492,
-    "0.7": 2.602,
-    "0.9": 1.469,
-    "1.0": 0.671
+    "0.5": 3.549,
+    "0.7": 2.699,
+    "0.9": 1.646,
+    "1.0": 0.916
    },
    "max_j_quantiles": {
     "0.5": 0.0,
     "0.9": 0.0,
-    "0.99": 0.9601
+    "0.99": 0.9849
    }
   }
  },
@@ -51,7 +51,7 @@
     "aigc-aigc": 0,
     "aigc-exploring": 5,
     "exploring-human": 1,
-    "exploring-exploring": 2383
+    "exploring-exploring": 2311
    },
    "0.7": {
     "human-human": 475,
@@ -59,7 +59,7 @@
     "aigc-aigc": 0,
     "aigc-exploring": 1,
     "exploring-human": 0,
-    "exploring-exploring": 1496
+    "exploring-exploring": 1506
    },
    "0.9": {
     "human-human": 324,
@@ -67,7 +67,7 @@
     "aigc-aigc": 0,
     "aigc-exploring": 0,
     "exploring-human": 0,
-    "exploring-exploring": 613
+    "exploring-exploring": 748
    }
   },
   "combos": {
@@ -89,7 +89,7 @@
    "aigc-exploring": {
     "pairs_0.5": 5,
     "pairs_0.7": 1,
-    "doc_share_0.5_pct": 0.019
+    "doc_share_0.5_pct": 0.02
    },
    "exploring-human": {
     "pairs_0.5": 1,
@@ -97,141 +97,141 @@
     "doc_share_0.5_pct": 0.002
    },
    "exploring-exploring": {
-    "pairs_0.5": 2383,
-    "pairs_0.7": 1496,
-    "doc_share_0.5_pct": 3.492
+    "pairs_0.5": 2311,
+    "pairs_0.7": 1506,
+    "doc_share_0.5_pct": 3.549
    }
   }
  },
  "exploring_gradient": [
   {
    "decile": 0,
-   "n": 4485,
-   "hits": 93,
-   "share_pct": 2.074,
-   "ci_low_pct": 1.696,
-   "ci_high_pct": 2.533,
-   "v_lo": 2.20072341787936e-08,
-   "v_hi": 0.1009504828528214
+   "n": 4258,
+   "hits": 94,
+   "share_pct": 2.208,
+   "ci_low_pct": 1.807,
+   "ci_high_pct": 2.694,
+   "v_lo": 3.345639547720616e-05,
+   "v_hi": 0.1011079637304158
   },
   {
    "decile": 1,
-   "n": 4485,
-   "hits": 131,
-   "share_pct": 2.921,
-   "ci_low_pct": 2.467,
-   "ci_high_pct": 3.455,
-   "v_lo": 0.1009524227495764,
-   "v_hi": 0.2050642922109172
+   "n": 4258,
+   "hits": 128,
+   "share_pct": 3.006,
+   "ci_low_pct": 2.534,
+   "ci_high_pct": 3.563,
+   "v_lo": 0.1011156844590649,
+   "v_hi": 0.2043163161944003
   },
   {
    "decile": 2,
-   "n": 4485,
-   "hits": 114,
-   "share_pct": 2.542,
-   "ci_low_pct": 2.12,
-   "ci_high_pct": 3.045,
-   "v_lo": 0.2051077052118063,
-   "v_hi": 0.3155269490151575
+   "n": 4257,
+   "hits": 108,
+   "share_pct": 2.537,
+   "ci_low_pct": 2.106,
+   "ci_high_pct": 3.054,
+   "v_lo": 0.2043177526712753,
+   "v_hi": 0.3132981969916757
   },
   {
    "decile": 3,
-   "n": 4485,
-   "hits": 119,
-   "share_pct": 2.653,
-   "ci_low_pct": 2.222,
-   "ci_high_pct": 3.166,
-   "v_lo": 0.3155764945525847,
-   "v_hi": 0.4321572218673542
+   "n": 4258,
+   "hits": 122,
+   "share_pct": 2.865,
+   "ci_low_pct": 2.405,
+   "ci_high_pct": 3.41,
+   "v_lo": 0.3133239407084668,
+   "v_hi": 0.4285243015944695
   },
   {
    "decile": 4,
-   "n": 4485,
-   "hits": 140,
-   "share_pct": 3.122,
-   "ci_low_pct": 2.651,
-   "ci_high_pct": 3.672,
-   "v_lo": 0.4321850255445809,
-   "v_hi": 0.5534752566818338
+   "n": 4257,
+   "hits": 130,
+   "share_pct": 3.054,
+   "ci_low_pct": 2.578,
+   "ci_high_pct": 3.614,
+   "v_lo": 0.428670178681572,
+   "v_hi": 0.5481078412066431
   },
   {
    "decile": 5,
-   "n": 4484,
-   "hits": 136,
-   "share_pct": 3.033,
-   "ci_low_pct": 2.57,
-   "ci_high_pct": 3.577,
-   "v_lo": 0.5534799099523362,
-   "v_hi": 0.6755192895931769
+   "n": 4258,
+   "hits": 139,
+   "share_pct": 3.264,
+   "ci_low_pct": 2.771,
+   "ci_high_pct": 3.842,
+   "v_lo": 0.5481127371652396,
+   "v_hi": 0.6692322688092087
   },
   {
    "decile": 6,
-   "n": 4485,
-   "hits": 108,
-   "share_pct": 2.408,
-   "ci_low_pct": 1.998,
-   "ci_high_pct": 2.899,
-   "v_lo": 0.675542082578743,
-   "v_hi": 0.7960171718829496
+   "n": 4257,
+   "hits": 105,
+   "share_pct": 2.467,
+   "ci_low_pct": 2.042,
+   "ci_high_pct": 2.977,
+   "v_lo": 0.6693004906363125,
+   "v_hi": 0.788385204915224
   },
   {
    "decile": 7,
-   "n": 4485,
-   "hits": 90,
-   "share_pct": 2.007,
-   "ci_low_pct": 1.635,
-   "ci_high_pct": 2.46,
-   "v_lo": 0.7960416208275071,
-   "v_hi": 0.8969090598136692
+   "n": 4258,
+   "hits": 85,
+   "share_pct": 1.996,
+   "ci_low_pct": 1.617,
+   "ci_high_pct": 2.462,
+   "v_lo": 0.7883855397301105,
+   "v_hi": 0.8905212176504477
   },
   {
    "decile": 8,
-   "n": 4489,
-   "hits": 97,
-   "share_pct": 2.161,
-   "ci_low_pct": 1.775,
-   "ci_high_pct": 2.629,
-   "v_lo": 0.8969122388555213,
-   "v_hi": 0.968993255391054
+   "n": 4257,
+   "hits": 91,
+   "share_pct": 2.138,
+   "ci_low_pct": 1.744,
+   "ci_high_pct": 2.617,
+   "v_lo": 0.8905879349561296,
+   "v_hi": 0.9667999500722654
   },
   {
    "decile": 9,
-   "n": 4481,
-   "hits": 139,
-   "share_pct": 3.102,
-   "ci_low_pct": 2.633,
-   "ci_high_pct": 3.651,
-   "v_lo": 0.9690255276067002,
+   "n": 4258,
+   "hits": 147,
+   "share_pct": 3.452,
+   "ci_low_pct": 2.945,
+   "ci_high_pct": 4.044,
+   "v_lo": 0.9668071534775476,
    "v_hi": 0.999999999841579
   }
  ],
  "exploring_gradient_spearman": {
-  "rho": 0.042,
-  "p": 0.9073638178128159
+  "rho": 0.018,
+  "p": 0.9602404181286242
  },
  "aigc_family": {
   "anthropic": {
-   "n": 727,
+   "n": 725,
    "twin_share_pct": 0.0,
    "cross_human_share_pct": 0.0
   },
   "deepseek": {
-   "n": 1559,
+   "n": 1555,
    "twin_share_pct": 0.0,
    "cross_human_share_pct": 0.064
   },
   "gemini": {
-   "n": 1152,
+   "n": 1151,
    "twin_share_pct": 0.0,
    "cross_human_share_pct": 0.0
   },
   "glm": {
-   "n": 781,
+   "n": 773,
    "twin_share_pct": 0.0,
-   "cross_human_share_pct": 2.817
+   "cross_human_share_pct": 2.846
   },
   "gpt": {
-   "n": 1707,
+   "n": 1701,
    "twin_share_pct": 0.0,
    "cross_human_share_pct": 0.0
   },
@@ -244,63 +244,63 @@
  "quarterly": [
   {
    "quarter": "2023Q1",
-   "n": 312,
-   "share_0.5_pct": 6.09,
-   "share_0.7_pct": 5.128
+   "n": 302,
+   "share_0.5_pct": 6.291,
+   "share_0.7_pct": 5.298
   },
   {
    "quarter": "2023Q2",
-   "n": 374,
-   "share_0.5_pct": 3.743,
-   "share_0.7_pct": 2.941
+   "n": 367,
+   "share_0.5_pct": 3.542,
+   "share_0.7_pct": 2.997
   },
   {
    "quarter": "2023Q3",
-   "n": 629,
-   "share_0.5_pct": 3.18,
-   "share_0.7_pct": 2.385
+   "n": 610,
+   "share_0.5_pct": 3.115,
+   "share_0.7_pct": 2.623
   },
   {
    "quarter": "2023Q4",
-   "n": 654,
-   "share_0.5_pct": 3.517,
-   "share_0.7_pct": 3.058
+   "n": 616,
+   "share_0.5_pct": 3.734,
+   "share_0.7_pct": 3.247
   },
   {
    "quarter": "2024Q1",
-   "n": 3210,
-   "share_0.5_pct": 3.364,
-   "share_0.7_pct": 2.679
+   "n": 3108,
+   "share_0.5_pct": 3.475,
+   "share_0.7_pct": 2.703
   },
   {
    "quarter": "2024Q2",
-   "n": 3843,
-   "share_0.5_pct": 2.42,
-   "share_0.7_pct": 1.848
+   "n": 3701,
+   "share_0.5_pct": 2.486,
+   "share_0.7_pct": 1.972
   },
   {
    "quarter": "2024Q3",
-   "n": 5196,
-   "share_0.5_pct": 1.79,
-   "share_0.7_pct": 1.347
+   "n": 4956,
+   "share_0.5_pct": 1.917,
+   "share_0.7_pct": 1.352
   },
   {
    "quarter": "2024Q4",
-   "n": 5344,
-   "share_0.5_pct": 2.545,
-   "share_0.7_pct": 1.815
+   "n": 5083,
+   "share_0.5_pct": 2.656,
+   "share_0.7_pct": 1.967
   },
   {
    "quarter": "2025Q1",
-   "n": 8161,
-   "share_0.5_pct": 3.602,
-   "share_0.7_pct": 2.733
+   "n": 7762,
+   "share_0.5_pct": 3.659,
+   "share_0.7_pct": 2.912
   },
   {
    "quarter": "2025Q2",
-   "n": 17095,
-   "share_0.5_pct": 4.475,
-   "share_0.7_pct": 3.264
+   "n": 16040,
+   "share_0.5_pct": 4.501,
+   "share_0.7_pct": 3.342
   }
  ],
  "quarterly_spearman": {
@@ -310,13 +310,13 @@
   }
  },
  "clusters": {
-  "n_components": 657,
+  "n_components": 651,
   "size_hist": {
-   "2": 522,
-   "3": 71,
+   "2": 520,
+   "3": 69,
    "4": 26,
-   "5–6": 20,
-   "7–10": 13,
+   "5–6": 19,
+   "7–10": 12,
    "11–20": 4,
    "21+": 1
   },
@@ -341,20 +341,20 @@
     "months": {
      "202503": 17
     },
-    "sample": "再一次，挑战行业极限\n #\n轻薄小直屏，趁手又称心\n4 月 10 日，全球首发\n #  #\n #"
+    "sample": "再一次，挑战行业极限\n \n轻薄小直屏，趁手又称心\n4 月 10 日，全球首发"
    },
    {
-    "size": 13,
+    "size": 16,
     "datasets": {
-     "exploring": 13
+     "exploring": 16
     },
     "months": {
      "202501": 1,
      "202502": 1,
      "202503": 1,
-     "202504": 4,
-     "202505": 2,
-     "202506": 4
+     "202504": 5,
+     "202505": 3,
+     "202506": 5
     },
     "sample": "本人女，特别特别粘人！想找一个嘎嘎深情，有占有欲的，爱吃醋的，会撒娇的，黏人的，消息秒回（不一定～_ 看到了就会回），圈"
    },
@@ -388,9 +388,9 @@
      "exploring": 10
     },
     "months": {
-     "202506": 10
+     "202503": 10
     },
-    "sample": "本人02，女，谈过一次恋爱  思想成熟 #  性格粘人专一 圈子小  不颜控（好的三观胜过长相）没有不良嗜好  简单干净"
+    "sample": "轻薄小直屏\n别看我小，强到爆表\n4 月 10 日，全球首发"
    },
    {
     "size": 10,
@@ -403,14 +403,14 @@
     "sample": "全新升级的墨藻面霜，面霜中的佼佼者，奢感白乳霜，历经25面潜心研发，将深海远古藻融入黑能珍萃，为肌肤注入源源不断的养分，"
    },
    {
-    "size": 9,
+    "size": 10,
     "datasets": {
-     "exploring": 9
+     "exploring": 10
     },
     "months": {
-     "202503": 9
+     "202506": 10
     },
-    "sample": "#  轻薄小直屏\n别看我小，强到爆表\n4 月 10 日，全球首发"
+    "sample": "本人02，女，谈过一次恋爱  思想成熟   性格粘人专一 圈子小  不颜控（好的三观胜过长相）没有不良嗜好  简单干净温"
    }
   ]
  },
@@ -420,12 +420,25 @@
     "jaccard": 1.0,
     "a": {
      "dataset": "exploring",
-     "n_shingles": 890,
+     "n_shingles": 34,
+     "snippet": "家人们我想问一下 宠物保险有没有必要买啊[叹气R]看了好久了 一直纠结买不买"
+    },
+    "b": {
+     "dataset": "exploring",
+     "n_shingles": 34,
+     "snippet": "家人们我想问一下 宠物保险有没有必要买啊[叹气R]看了好久了 一直纠结买不买"
+    }
+   },
+   {
+    "jaccard": 1.0,
+    "a": {
+     "dataset": "exploring",
+     "n_shingles": 883,
      "snippet": "狗狗好多技能天生是不会的，这个时候需要主人耐心教导，狗子才能可爱又听话，带出去倍有面子。\n-\n定点上厕所\n①把握排便时间"
     },
     "b": {
      "dataset": "exploring",
-     "n_shingles": 890,
+     "n_shingles": 883,
      "snippet": "狗狗好多技能天生是不会的，这个时候需要主人耐心教导，狗子才能可爱又听话，带出去倍有面子。\n-\n定点上厕所\n①把握排便时间"
     }
    },
@@ -433,12 +446,12 @@
     "jaccard": 1.0,
     "a": {
      "dataset": "exploring",
-     "n_shingles": 890,
+     "n_shingles": 883,
      "snippet": "狗狗好多技能天生是不会的，这个时候需要主人耐心教导，狗子才能可爱又听话，带出去倍有面子。\n-\n定点上厕所\n①把握排便时间"
     },
     "b": {
      "dataset": "exploring",
-     "n_shingles": 890,
+     "n_shingles": 883,
      "snippet": "狗狗好多技能天生是不会的，这个时候需要主人耐心教导，狗子才能可爱又听话，带出去倍有面子。\n-\n定点上厕所\n①把握排便时间"
     }
    },
@@ -446,12 +459,12 @@
     "jaccard": 1.0,
     "a": {
      "dataset": "exploring",
-     "n_shingles": 890,
+     "n_shingles": 883,
      "snippet": "狗狗好多技能天生是不会的，这个时候需要主人耐心教导，狗子才能可爱又听话，带出去倍有面子。\n-\n定点上厕所\n①把握排便时间"
     },
     "b": {
      "dataset": "exploring",
-     "n_shingles": 890,
+     "n_shingles": 883,
      "snippet": "狗狗好多技能天生是不会的，这个时候需要主人耐心教导，狗子才能可爱又听话，带出去倍有面子。\n-\n定点上厕所\n①把握排便时间"
     }
    },
@@ -459,25 +472,64 @@
     "jaccard": 1.0,
     "a": {
      "dataset": "exploring",
-     "n_shingles": 39,
-     "snippet": "[kissR]        ﻿   [色色R]        ﻿           ﻿   [红色心形R]     "
+     "n_shingles": 883,
+     "snippet": "狗狗好多技能天生是不会的，这个时候需要主人耐心教导，狗子才能可爱又听话，带出去倍有面子。\n-\n定点上厕所\n①把握排便时间"
     },
     "b": {
      "dataset": "exploring",
-     "n_shingles": 39,
-     "snippet": "[kissR]         ﻿   [色色R]         ﻿            ﻿   [红色心形R]  "
+     "n_shingles": 883,
+     "snippet": "狗狗好多技能天生是不会的，这个时候需要主人耐心教导，狗子才能可爱又听话，带出去倍有面子。\n-\n定点上厕所\n①把握排便时间"
     }
    },
    {
     "jaccard": 1.0,
     "a": {
      "dataset": "exploring",
-     "n_shingles": 108,
+     "n_shingles": 883,
+     "snippet": "狗狗好多技能天生是不会的，这个时候需要主人耐心教导，狗子才能可爱又听话，带出去倍有面子。\n-\n定点上厕所\n①把握排便时间"
+    },
+    "b": {
+     "dataset": "exploring",
+     "n_shingles": 883,
+     "snippet": "狗狗好多技能天生是不会的，这个时候需要主人耐心教导，狗子才能可爱又听话，带出去倍有面子。\n-\n定点上厕所\n①把握排便时间"
+    }
+   },
+   {
+    "jaccard": 1.0,
+    "a": {
+     "dataset": "exploring",
+     "n_shingles": 883,
+     "snippet": "狗狗好多技能天生是不会的，这个时候需要主人耐心教导，狗子才能可爱又听话，带出去倍有面子。\n-\n定点上厕所\n①把握排便时间"
+    },
+    "b": {
+     "dataset": "exploring",
+     "n_shingles": 883,
+     "snippet": "狗狗好多技能天生是不会的，这个时候需要主人耐心教导，狗子才能可爱又听话，带出去倍有面子。\n-\n定点上厕所\n①把握排便时间"
+    }
+   },
+   {
+    "jaccard": 1.0,
+    "a": {
+     "dataset": "exploring",
+     "n_shingles": 38,
+     "snippet": "[kissR]        ﻿  [色色R]        ﻿          ﻿  [红色心形R]        "
+    },
+    "b": {
+     "dataset": "exploring",
+     "n_shingles": 38,
+     "snippet": "[kissR]         ﻿  [色色R]         ﻿           ﻿  [红色心形R]     "
+    }
+   },
+   {
+    "jaccard": 1.0,
+    "a": {
+     "dataset": "exploring",
+     "n_shingles": 99,
      "snippet": "这个的空间设计，健身人的狂喜！\n现代感十足.\n-\nROJECT NAMPE：工业风健身室\nROJECT PRICE：8W"
     },
     "b": {
      "dataset": "exploring",
-     "n_shingles": 108,
+     "n_shingles": 99,
      "snippet": "这个的空间设计，健身人的狂喜！\n现代感十足.\n-\nROJECT NAMPE：工业风健身室\nROJECT PRICE：8W"
     }
    },
@@ -485,65 +537,13 @@
     "jaccard": 1.0,
     "a": {
      "dataset": "exploring",
-     "n_shingles": 23,
-     "snippet": "自我肯定、觉察成长，用积极力量疗愈内心﻿   ﻿   ﻿   ﻿   ﻿   ﻿   ﻿   ﻿   ﻿   ﻿"
+     "n_shingles": 22,
+     "snippet": "自我肯定、觉察成长，用积极力量疗愈内心﻿  ﻿  ﻿  ﻿  ﻿  ﻿  ﻿  ﻿  ﻿  ﻿"
     },
     "b": {
      "dataset": "exploring",
-     "n_shingles": 23,
-     "snippet": "自我肯定、觉察成长，用积极力量疗愈内心﻿   ﻿   ﻿   ﻿   ﻿   ﻿   ﻿   ﻿   ﻿   ﻿"
-    }
-   },
-   {
-    "jaccard": 1.0,
-    "a": {
-     "dataset": "exploring",
-     "n_shingles": 852,
-     "snippet": "雅思口语虽然恶心 但3h背完 保底7.0\n各位雅思宝们是不是遇到口语就没话说？😰😰😰\n给大家整理了一些《雅思口语万能理由"
-    },
-    "b": {
-     "dataset": "exploring",
-     "n_shingles": 852,
-     "snippet": "雅思口语虽然恶心 但3h背完 保底7.0\n各位雅思宝们是不是遇到口语就没话说？😰😰😰\n给大家整理了一些《雅思口语万能理由"
-    }
-   },
-   {
-    "jaccard": 1.0,
-    "a": {
-     "dataset": "exploring",
-     "n_shingles": 27,
-     "snippet": "戒烟的进来，正能量交流分享互相鼓励打卡群，没有广告，一起加油！"
-    },
-    "b": {
-     "dataset": "exploring",
-     "n_shingles": 27,
-     "snippet": "戒烟的进来，正能量交流分享互相鼓励打卡群，没有广告，一起加油！"
-    }
-   },
-   {
-    "jaccard": 1.0,
-    "a": {
-     "dataset": "exploring",
-     "n_shingles": 21,
-     "snippet": "不同食材果蔬黄金搭配，健康美味又养生 #  #  #  #"
-    },
-    "b": {
-     "dataset": "exploring",
-     "n_shingles": 21,
-     "snippet": "不同食材果蔬黄金搭配，健康美味又养生 #  #  #  #  #  #"
-    }
-   },
-   {
-    "jaccard": 1.0,
-    "a": {
-     "dataset": "exploring",
-     "n_shingles": 216,
-     "snippet": "#\n欢乐燃脂效果好就是我Jo姐了！\n我一周跟练3～4次，夏天太热不想出门\n又想瘦腿瘦腹的宝子们就和我一起练这几个动作\n想"
-    },
-    "b": {
-     "dataset": "exploring",
-     "n_shingles": 216,
-     "snippet": "#\n欢乐燃脂效果好就是我Jo姐了！\n我一周跟练3～4次，夏天太热不想出门\n又想瘦腿瘦腹的宝子们就和我一起练这几个动作\n想"
+     "n_shingles": 22,
+     "snippet": "自我肯定、觉察成长，用积极力量疗愈内心﻿  ﻿  ﻿  ﻿  ﻿  ﻿  ﻿  ﻿  ﻿  ﻿"
     }
    }
   ],
@@ -640,15 +640,15 @@
     }
    },
    {
-    "jaccard": 0.7543,
+    "jaccard": 0.7629,
     "a": {
      "dataset": "human",
-     "n_shingles": 949,
+     "n_shingles": 946,
      "snippet": "㊙️来自小桔子的灵魂拷问  你上一次看见雪山是什么时候？  上一次沉浸式仰望星空✨是什么时候？  你，有没有听过川西? "
     },
     "b": {
      "dataset": "aigc",
-     "n_shingles": 907,
+     "n_shingles": 905,
      "snippet": "你上一次看见雪山是什么时候？上一次沉浸式仰望星空✨是什么时候？你，有没有听过川西? . 川西在哪里❓ 川西主要指的是阿坝"
     }
    },
@@ -690,16 +690,16 @@
    0.7,
    0.9
   ],
-  "n_docs": 103693,
-  "n_docs_excluded_short": 15394,
+  "n_docs": 101399,
+  "n_docs_excluded_short": 17688,
   "excluded_short_by_dataset": {
    "human": 3,
-   "aigc": 79,
-   "exploring": 15312
+   "aigc": 100,
+   "exploring": 17585
   },
-  "n_candidate_pairs": 7034112,
-  "n_verified_pairs": 1291530,
-  "n_pairs_min_j": 3152,
+  "n_candidate_pairs": 6947460,
+  "n_verified_pairs": 1229411,
+  "n_pairs_min_j": 3080,
   "datasets": {
    "human": {
     "n_raw": 51878,
@@ -715,11 +715,12 @@
    }
   },
   "exploring_content_len_mismatch": 0,
+  "exploring_text_len_drift": 38604,
   "recall": {
    "n_sample": 1000,
    "min_j": 0.5,
-   "true_pairs": 73,
-   "found_pairs": 73,
+   "true_pairs": 117,
+   "found_pairs": 117,
    "recall_pct": 100.0
   }
  }

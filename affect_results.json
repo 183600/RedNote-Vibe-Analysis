@@ -1,0 +1,7862 @@
+{
+ "meta": {
+  "min_body_len": 50,
+  "min_cell_n": 100,
+  "month_from": "202301",
+  "n_boot": 300,
+  "boot_seed": 42,
+  "min_quarter_n": 300,
+  "exploring_content_len_mismatch": 0,
+  "exploring_text_len_drift": 83782,
+  "note": "人类/探索集按 note_id 去重（保留元数据最完整一条）；AIGC 无 note_id 逐记录；p_ai 按行序对齐 paper_exploring_scores.csv.gz；行序用原始 month/domain/likes/collections/comments 校验；所有关联为观察性。"
+ },
+ "lexicon": {
+  "joy": {
+   "label": "喜悦",
+   "words": [
+    "开心",
+    "快乐",
+    "高兴",
+    "愉快",
+    "兴奋",
+    "惊喜",
+    "幸福",
+    "满足",
+    "满意",
+    "治愈",
+    "美好",
+    "可爱",
+    "漂亮",
+    "好看",
+    "好吃",
+    "好喝",
+    "舒服",
+    "轻松",
+    "放心",
+    "省心",
+    "实用",
+    "划算",
+    "超值",
+    "真香",
+    "太棒",
+    "绝了",
+    "好评",
+    "值得",
+    "惊艳",
+    "宝藏",
+    "推荐",
+    "种草",
+    "回购",
+    "空瓶",
+    "好用",
+    "神器",
+    "必入",
+    "不踩雷",
+    "无雷",
+    "笑死",
+    "哈哈",
+    "嘻嘻",
+    "嘿嘿",
+    "美滋滋",
+    "优秀",
+    "完美",
+    "赞",
+    "棒",
+    "开森",
+    "yyds",
+    "绝绝子",
+    "爱了"
+   ]
+  },
+  "affection": {
+   "label": "喜爱依恋",
+   "words": [
+    "爱",
+    "喜爱",
+    "喜欢",
+    "心动",
+    "心水",
+    "宝贝",
+    "亲爱的",
+    "姐妹",
+    "宝宝",
+    "老公",
+    "老婆",
+    "男朋友",
+    "女朋友",
+    "闺蜜",
+    "家人",
+    "妈妈",
+    "爸爸",
+    "陪伴",
+    "温暖",
+    "温柔",
+    "贴心",
+    "拥抱",
+    "亲亲",
+    "想你",
+    "思念",
+    "恋爱",
+    "甜蜜",
+    "甜",
+    "感恩",
+    "感谢",
+    "谢谢",
+    "珍惜",
+    "守护",
+    "萌",
+    "心软",
+    "依赖",
+    "安全感",
+    "归属感"
+   ]
+  },
+  "anxiety": {
+   "label": "焦虑担忧",
+   "words": [
+    "焦虑",
+    "担心",
+    "害怕",
+    "紧张",
+    "压力",
+    "纠结",
+    "犹豫",
+    "不安",
+    "恐慌",
+    "慌",
+    "急",
+    "愁",
+    "烦",
+    "烦恼",
+    "郁闷",
+    "失眠",
+    "熬夜",
+    "疲惫",
+    "心累",
+    "无奈",
+    "无助",
+    "迷茫",
+    "内耗",
+    "emo",
+    "抑郁",
+    "可怕",
+    "恐怖",
+    "吓人",
+    "忐忑",
+    "心慌",
+    "焦躁",
+    "烦躁",
+    "压力山大",
+    "精神内耗",
+    "七上八下",
+    "发愁",
+    "犯愁"
+   ]
+  },
+  "sadness": {
+   "label": "悲伤失落",
+   "words": [
+    "难过",
+    "伤心",
+    "悲伤",
+    "哭",
+    "眼泪",
+    "泪目",
+    "失落",
+    "沮丧",
+    "低落",
+    "孤独",
+    "寂寞",
+    "遗憾",
+    "可惜",
+    "心疼",
+    "心碎",
+    "委屈",
+    "绝望",
+    "丧",
+    "消沉",
+    "怀念",
+    "舍不得",
+    "离别",
+    "分手",
+    "失去",
+    "离开",
+    "错过",
+    "后悔",
+    "惨",
+    "可怜",
+    "叹气",
+    "鼻酸",
+    "破防",
+    "泪崩",
+    "压抑",
+    "麻木",
+    "空落落",
+    "心酸",
+    "酸楚",
+    "痛苦",
+    "难受",
+    "心寒",
+    "寒心"
+   ]
+  },
+  "anger": {
+   "label": "愤怒批评",
+   "words": [
+    "生气",
+    "愤怒",
+    "火大",
+    "暴躁",
+    "气死",
+    "恼火",
+    "发火",
+    "骂",
+    "吐槽",
+    "无语",
+    "离谱",
+    "恶心",
+    "讨厌",
+    "憎恨",
+    "恨",
+    "坑",
+    "骗",
+    "欺骗",
+    "虚假",
+    "智商税",
+    "割韭菜",
+    "黑心",
+    "差评",
+    "避雷",
+    "劝退",
+    "翻车",
+    "踩雷",
+    "气人",
+    "抓狂",
+    "崩溃",
+    "怒",
+    "不满",
+    "抗议",
+    "投诉",
+    "维权",
+    "曝光",
+    "举报",
+    "垃圾",
+    "糟糕",
+    "失望",
+    "气炸",
+    "气哭",
+    "坑人",
+    "踩坑",
+    "避坑",
+    "不值得",
+    "浪费",
+    "难用",
+    "难吃",
+    "难看"
+   ]
+  }
+ },
+ "composites": {
+  "positive": {
+   "label": "正向情绪合计",
+   "parts": [
+    "joy",
+    "affection"
+   ]
+  },
+  "negative": {
+   "label": "负向情绪合计",
+   "parts": [
+    "anxiety",
+    "sadness",
+    "anger"
+   ]
+  },
+  "net": {
+   "label": "净效价（正−负）",
+   "parts": [
+    "positive",
+    "negative"
+   ]
+  }
+ },
+ "subset_rates": {
+  "human": {
+   "n": 51672,
+   "chars": 24351759,
+   "categories": {
+    "joy": {
+     "n": 51672,
+     "chars": 24351759,
+     "density100": 0.4162,
+     "share": 0.6819
+    },
+    "affection": {
+     "n": 51672,
+     "chars": 24351759,
+     "density100": 0.4752,
+     "share": 0.6498
+    },
+    "anxiety": {
+     "n": 51672,
+     "chars": 24351759,
+     "density100": 0.1233,
+     "share": 0.2954
+    },
+    "sadness": {
+     "n": 51672,
+     "chars": 24351759,
+     "density100": 0.1202,
+     "share": 0.2689
+    },
+    "anger": {
+     "n": 51672,
+     "chars": 24351759,
+     "density100": 0.0744,
+     "share": 0.2039
+    },
+    "positive": {
+     "n": 51672,
+     "chars": 24351759,
+     "density100": 0.8914,
+     "share": 0.841
+    },
+    "negative": {
+     "n": 51672,
+     "chars": 24351759,
+     "density100": 0.3179,
+     "share": 0.5253
+    },
+    "net": {
+     "n": 51672,
+     "chars": 24351759,
+     "density100": 0.5734,
+     "share": 0.6781
+    }
+   }
+  },
+  "aigc": {
+   "n": 6953,
+   "chars": 2294651,
+   "categories": {
+    "joy": {
+     "n": 6953,
+     "chars": 2294651,
+     "density100": 0.5835,
+     "share": 0.7052
+    },
+    "affection": {
+     "n": 6953,
+     "chars": 2294651,
+     "density100": 0.5996,
+     "share": 0.7066
+    },
+    "anxiety": {
+     "n": 6953,
+     "chars": 2294651,
+     "density100": 0.1591,
+     "share": 0.3085
+    },
+    "sadness": {
+     "n": 6953,
+     "chars": 2294651,
+     "density100": 0.1136,
+     "share": 0.2405
+    },
+    "anger": {
+     "n": 6953,
+     "chars": 2294651,
+     "density100": 0.0722,
+     "share": 0.168
+    },
+    "positive": {
+     "n": 6953,
+     "chars": 2294651,
+     "density100": 1.1831,
+     "share": 0.877
+    },
+    "negative": {
+     "n": 6953,
+     "chars": 2294651,
+     "density100": 0.3449,
+     "share": 0.5091
+    },
+    "net": {
+     "n": 6953,
+     "chars": 2294651,
+     "density100": 0.8382,
+     "share": 0.7229
+    }
+   }
+  },
+  "exploring": {
+   "n": 36297,
+   "chars": 13681309,
+   "categories": {
+    "joy": {
+     "n": 36297,
+     "chars": 13681309,
+     "density100": 0.346,
+     "share": 0.5395
+    },
+    "affection": {
+     "n": 36297,
+     "chars": 13681309,
+     "density100": 0.3979,
+     "share": 0.499
+    },
+    "anxiety": {
+     "n": 36297,
+     "chars": 13681309,
+     "density100": 0.1808,
+     "share": 0.3045
+    },
+    "sadness": {
+     "n": 36297,
+     "chars": 13681309,
+     "density100": 0.1411,
+     "share": 0.2408
+    },
+    "anger": {
+     "n": 36297,
+     "chars": 13681309,
+     "density100": 0.1071,
+     "share": 0.2237
+    },
+    "positive": {
+     "n": 36297,
+     "chars": 13681309,
+     "density100": 0.744,
+     "share": 0.711
+    },
+    "negative": {
+     "n": 36297,
+     "chars": 13681309,
+     "density100": 0.429,
+     "share": 0.5106
+    },
+    "net": {
+     "n": 36297,
+     "chars": 13681309,
+     "density100": 0.315,
+     "share": 0.5249
+    }
+   }
+  }
+ },
+ "word_rates": {
+  "开心": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 1.8311,
+    "share": 0.0679
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 1.9001,
+    "share": 0.0552
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 1.6534,
+    "share": 0.0499
+   }
+  },
+  "快乐": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 1.7629,
+    "share": 0.0603
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 1.9567,
+    "share": 0.0574
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 1.5876,
+    "share": 0.0472
+   }
+  },
+  "高兴": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.2411,
+    "share": 0.0102
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0567,
+    "share": 0.0016
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.1762,
+    "share": 0.0061
+   }
+  },
+  "愉快": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.2858,
+    "share": 0.0124
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.231,
+    "share": 0.0073
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.2661,
+    "share": 0.0093
+   }
+  },
+  "兴奋": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1602,
+    "share": 0.0068
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.2266,
+    "share": 0.0075
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.1557,
+    "share": 0.0055
+   }
+  },
+  "惊喜": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.634,
+    "share": 0.0268
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 2.0962,
+    "share": 0.0637
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.6045,
+    "share": 0.0209
+   }
+  },
+  "幸福": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 1.2262,
+    "share": 0.0405
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 2.0439,
+    "share": 0.0616
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 1.3602,
+    "share": 0.0389
+   }
+  },
+  "满足": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 1.1753,
+    "share": 0.0474
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 1.6517,
+    "share": 0.0509
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 1.1673,
+    "share": 0.0371
+   }
+  },
+  "满意": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.4681,
+    "share": 0.0202
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.3791,
+    "share": 0.0121
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.5869,
+    "share": 0.0193
+   }
+  },
+  "治愈": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.51,
+    "share": 0.019
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 1.4643,
+    "share": 0.045
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.698,
+    "share": 0.0228
+   }
+  },
+  "美好": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.9712,
+    "share": 0.0376
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 1.364,
+    "share": 0.0404
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 1.122,
+    "share": 0.0344
+   }
+  },
+  "可爱": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 1.4693,
+    "share": 0.0532
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 1.9437,
+    "share": 0.0557
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.7865,
+    "share": 0.0234
+   }
+  },
+  "漂亮": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.5519,
+    "share": 0.0227
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.2615,
+    "share": 0.0082
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.6344,
+    "share": 0.0204
+   }
+  },
+  "好看": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 2.2171,
+    "share": 0.0773
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 1.8478,
+    "share": 0.0531
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 1.7944,
+    "share": 0.0515
+   }
+  },
+  "好吃": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 3.624,
+    "share": 0.1018
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 1.9959,
+    "share": 0.0532
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 2.1036,
+    "share": 0.0479
+   }
+  },
+  "好喝": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.6809,
+    "share": 0.0245
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.5273,
+    "share": 0.0147
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.19,
+    "share": 0.0062
+   }
+  },
+  "舒服": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 1.6147,
+    "share": 0.0611
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 2.3751,
+    "share": 0.0696
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 1.8785,
+    "share": 0.0564
+   }
+  },
+  "轻松": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.9765,
+    "share": 0.0403
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 2.8327,
+    "share": 0.0849
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 1.7878,
+    "share": 0.0575
+   }
+  },
+  "放心": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.7166,
+    "share": 0.0309
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.8498,
+    "share": 0.0272
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.5065,
+    "share": 0.0175
+   }
+  },
+  "省心": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0961,
+    "share": 0.0043
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.2702,
+    "share": 0.0089
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.2017,
+    "share": 0.0072
+   }
+  },
+  "实用": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.3901,
+    "share": 0.0156
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 1.2202,
+    "share": 0.0373
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.8822,
+    "share": 0.0295
+   }
+  },
+  "划算": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.2768,
+    "share": 0.0119
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.5404,
+    "share": 0.0171
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.2595,
+    "share": 0.009
+   }
+  },
+  "超值": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0628,
+    "share": 0.0028
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.2963,
+    "share": 0.0095
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0468,
+    "share": 0.0017
+   }
+  },
+  "真香": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1133,
+    "share": 0.0051
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.2397,
+    "share": 0.0076
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0811,
+    "share": 0.0028
+   }
+  },
+  "太棒": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1203,
+    "share": 0.0054
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.2833,
+    "share": 0.0091
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0475,
+    "share": 0.0017
+   }
+  },
+  "绝了": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.4213,
+    "share": 0.0178
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 2.8719,
+    "share": 0.0882
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.2989,
+    "share": 0.0104
+   }
+  },
+  "好评": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1257,
+    "share": 0.005
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.061,
+    "share": 0.002
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.1506,
+    "share": 0.005
+   }
+  },
+  "值得": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 1.1334,
+    "share": 0.0474
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 1.5384,
+    "share": 0.0477
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 1.2886,
+    "share": 0.0422
+   }
+  },
+  "惊艳": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.3733,
+    "share": 0.0162
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.767,
+    "share": 0.0247
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.3413,
+    "share": 0.0121
+   }
+  },
+  "宝藏": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.6357,
+    "share": 0.026
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 1.7475,
+    "share": 0.0559
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.5606,
+    "share": 0.019
+   }
+  },
+  "推荐": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 4.2761,
+    "share": 0.136
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 5.7046,
+    "share": 0.145
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 3.0034,
+    "share": 0.072
+   }
+  },
+  "种草": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.6714,
+    "share": 0.0199
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.8062,
+    "share": 0.0213
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.7704,
+    "share": 0.0138
+   }
+  },
+  "回购": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.2456,
+    "share": 0.0097
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.3094,
+    "share": 0.0101
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0979,
+    "share": 0.0029
+   }
+  },
+  "空瓶": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0263,
+    "share": 0.0011
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0349,
+    "share": 0.0012
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.011,
+    "share": 0.0004
+   }
+  },
+  "好用": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.5967,
+    "share": 0.0228
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.5753,
+    "share": 0.0183
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.5065,
+    "share": 0.0162
+   }
+  },
+  "神器": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.2805,
+    "share": 0.0109
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 1.2072,
+    "share": 0.036
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.315,
+    "share": 0.0104
+   }
+  },
+  "必入": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.032,
+    "share": 0.0013
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0872,
+    "share": 0.0029
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0073,
+    "share": 0.0003
+   }
+  },
+  "不踩雷": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0854,
+    "share": 0.0038
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.1177,
+    "share": 0.0039
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.106,
+    "share": 0.0038
+   }
+  },
+  "无雷": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0029,
+    "share": 0.0001
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0044,
+    "share": 0.0001
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0037,
+    "share": 0.0001
+   }
+  },
+  "笑死": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0329,
+    "share": 0.0013
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.1002,
+    "share": 0.0033
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0263,
+    "share": 0.001
+   }
+  },
+  "哈哈": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 2.8791,
+    "share": 0.0746
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 2.0875,
+    "share": 0.0555
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 1.5327,
+    "share": 0.0326
+   }
+  },
+  "嘻嘻": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1836,
+    "share": 0.008
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.2353,
+    "share": 0.0076
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.1155,
+    "share": 0.0039
+   }
+  },
+  "嘿嘿": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1844,
+    "share": 0.0078
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.3051,
+    "share": 0.0098
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.144,
+    "share": 0.0044
+   }
+  },
+  "美滋滋": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0345,
+    "share": 0.0016
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0872,
+    "share": 0.0029
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0205,
+    "share": 0.0007
+   }
+  },
+  "优秀": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.6607,
+    "share": 0.0248
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.3225,
+    "share": 0.0101
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.5833,
+    "share": 0.018
+   }
+  },
+  "完美": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.7757,
+    "share": 0.0313
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 2.3664,
+    "share": 0.0703
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 1.0167,
+    "share": 0.0307
+   }
+  },
+  "赞": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 3.2688,
+    "share": 0.0967
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 3.4515,
+    "share": 0.0931
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 1.9296,
+    "share": 0.0503
+   }
+  },
+  "棒": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 1.521,
+    "share": 0.0519
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 2.7717,
+    "share": 0.078
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.8354,
+    "share": 0.0264
+   }
+  },
+  "开森": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0082,
+    "share": 0.0004
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0,
+    "share": 0.0
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0066,
+    "share": 0.0002
+   }
+  },
+  "yyds": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1873,
+    "share": 0.0084
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.3617,
+    "share": 0.0119
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0833,
+    "share": 0.003
+   }
+  },
+  "绝绝子": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.2879,
+    "share": 0.0128
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.7365,
+    "share": 0.0242
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0906,
+    "share": 0.0033
+   }
+  },
+  "爱了": {
+   "category": "joy",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.5133,
+    "share": 0.0182
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.8411,
+    "share": 0.0193
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.1798,
+    "share": 0.0058
+   }
+  },
+  "爱": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 9.5792,
+    "share": 0.2467
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 11.7447,
+    "share": 0.2593
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 10.0275,
+    "share": 0.1879
+   }
+  },
+  "喜爱": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.193,
+    "share": 0.0083
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0872,
+    "share": 0.0026
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0724,
+    "share": 0.0027
+   }
+  },
+  "喜欢": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 7.7534,
+    "share": 0.2315
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 5.1816,
+    "share": 0.1312
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 6.4753,
+    "share": 0.1567
+   }
+  },
+  "心动": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.3199,
+    "share": 0.0132
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.7801,
+    "share": 0.0237
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.4393,
+    "share": 0.0139
+   }
+  },
+  "心水": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0267,
+    "share": 0.0012
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0697,
+    "share": 0.0023
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0168,
+    "share": 0.0006
+   }
+  },
+  "宝贝": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.6878,
+    "share": 0.0218
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 1.473,
+    "share": 0.039
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.2368,
+    "share": 0.0079
+   }
+  },
+  "亲爱的": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0973,
+    "share": 0.004
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.3051,
+    "share": 0.0099
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.1659,
+    "share": 0.0056
+   }
+  },
+  "姐妹": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 2.5366,
+    "share": 0.0849
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 9.252,
+    "share": 0.2318
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 2.8309,
+    "share": 0.0752
+   }
+  },
+  "宝宝": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 5.2144,
+    "share": 0.0758
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 5.0901,
+    "share": 0.0608
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 1.665,
+    "share": 0.0313
+   }
+  },
+  "老公": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 1.1962,
+    "share": 0.0281
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.7147,
+    "share": 0.0155
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 1.2345,
+    "share": 0.0185
+   }
+  },
+  "老婆": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1717,
+    "share": 0.0049
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.1874,
+    "share": 0.0043
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.7433,
+    "share": 0.0101
+   }
+  },
+  "男朋友": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.6254,
+    "share": 0.0165
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.475,
+    "share": 0.0128
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.6271,
+    "share": 0.015
+   }
+  },
+  "女朋友": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1827,
+    "share": 0.006
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.1002,
+    "share": 0.0032
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.4758,
+    "share": 0.0088
+   }
+  },
+  "闺蜜": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.5683,
+    "share": 0.0194
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 1.6647,
+    "share": 0.0476
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.3077,
+    "share": 0.009
+   }
+  },
+  "家人": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.9133,
+    "share": 0.035
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.8411,
+    "share": 0.026
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 1.1929,
+    "share": 0.0385
+   }
+  },
+  "妈妈": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 2.985,
+    "share": 0.0644
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 1.534,
+    "share": 0.0355
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 1.0291,
+    "share": 0.022
+   }
+  },
+  "爸爸": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.8656,
+    "share": 0.0233
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.3661,
+    "share": 0.0089
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.2946,
+    "share": 0.007
+   }
+  },
+  "陪伴": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.4603,
+    "share": 0.0173
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.6101,
+    "share": 0.0184
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.565,
+    "share": 0.0171
+   }
+  },
+  "温暖": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.4928,
+    "share": 0.0198
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 1.4468,
+    "share": 0.0431
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.5672,
+    "share": 0.0178
+   }
+  },
+  "温柔": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.8771,
+    "share": 0.031
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 2.5712,
+    "share": 0.0713
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 1.0131,
+    "share": 0.0315
+   }
+  },
+  "贴心": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.3376,
+    "share": 0.0147
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.9326,
+    "share": 0.0298
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.2924,
+    "share": 0.0103
+   }
+  },
+  "拥抱": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1741,
+    "share": 0.0069
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.5317,
+    "share": 0.0171
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.5,
+    "share": 0.0154
+   }
+  },
+  "亲亲": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0411,
+    "share": 0.0016
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0741,
+    "share": 0.002
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0672,
+    "share": 0.002
+   }
+  },
+  "想你": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1289,
+    "share": 0.0045
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.1133,
+    "share": 0.0026
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.1221,
+    "share": 0.0039
+   }
+  },
+  "思念": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0538,
+    "share": 0.002
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0697,
+    "share": 0.0014
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0563,
+    "share": 0.0019
+   }
+  },
+  "恋爱": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.6271,
+    "share": 0.0188
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.889,
+    "share": 0.0221
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 1.4984,
+    "share": 0.0315
+   }
+  },
+  "甜蜜": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1429,
+    "share": 0.006
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.7583,
+    "share": 0.0227
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.2405,
+    "share": 0.0072
+   }
+  },
+  "甜": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 5.113,
+    "share": 0.1204
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 7.6395,
+    "share": 0.1543
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 2.0795,
+    "share": 0.0476
+   }
+  },
+  "感恩": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.2669,
+    "share": 0.0093
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.2223,
+    "share": 0.0062
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.307,
+    "share": 0.0083
+   }
+  },
+  "感谢": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.7609,
+    "share": 0.0298
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.7452,
+    "share": 0.0227
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.6659,
+    "share": 0.0202
+   }
+  },
+  "谢谢": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.3913,
+    "share": 0.015
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.1656,
+    "share": 0.0052
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.3823,
+    "share": 0.0127
+   }
+  },
+  "珍惜": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.2579,
+    "share": 0.0103
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.353,
+    "share": 0.0106
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.353,
+    "share": 0.0117
+   }
+  },
+  "守护": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.108,
+    "share": 0.0044
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.3225,
+    "share": 0.0096
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.2003,
+    "share": 0.0065
+   }
+  },
+  "萌": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 2.8306,
+    "share": 0.0498
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 1.7563,
+    "share": 0.0342
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 1.3778,
+    "share": 0.0214
+   }
+  },
+  "心软": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0246,
+    "share": 0.001
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0305,
+    "share": 0.001
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.057,
+    "share": 0.0018
+   }
+  },
+  "依赖": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1885,
+    "share": 0.007
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.2615,
+    "share": 0.0075
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.4773,
+    "share": 0.0141
+   }
+  },
+  "安全感": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.3031,
+    "share": 0.0111
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.5753,
+    "share": 0.0151
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 1.0796,
+    "share": 0.0225
+   }
+  },
+  "归属感": {
+   "category": "affection",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0209,
+    "share": 0.0009
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0218,
+    "share": 0.0006
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0577,
+    "share": 0.0018
+   }
+  },
+  "焦虑": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 2.1929,
+    "share": 0.0686
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 1.8565,
+    "share": 0.0457
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 3.5954,
+    "share": 0.0731
+   }
+  },
+  "担心": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 1.2512,
+    "share": 0.0501
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 1.8216,
+    "share": 0.0544
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 1.2565,
+    "share": 0.04
+   }
+  },
+  "害怕": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.6546,
+    "share": 0.0237
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.4489,
+    "share": 0.0118
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.9721,
+    "share": 0.0271
+   }
+  },
+  "紧张": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.4727,
+    "share": 0.0179
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.5535,
+    "share": 0.0161
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.6841,
+    "share": 0.0197
+   }
+  },
+  "压力": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.9638,
+    "share": 0.0344
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 1.3771,
+    "share": 0.0403
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 1.5883,
+    "share": 0.0453
+   }
+  },
+  "纠结": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.3684,
+    "share": 0.015
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.6798,
+    "share": 0.0219
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.7346,
+    "share": 0.0237
+   }
+  },
+  "犹豫": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.2509,
+    "share": 0.0111
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.5186,
+    "share": 0.0167
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.3406,
+    "share": 0.0118
+   }
+  },
+  "不安": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.2657,
+    "share": 0.0104
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.2746,
+    "share": 0.0085
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.4656,
+    "share": 0.0137
+   }
+  },
+  "恐慌": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0415,
+    "share": 0.0016
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0305,
+    "share": 0.001
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.076,
+    "share": 0.0019
+   }
+  },
+  "慌": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.253,
+    "share": 0.0102
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.645,
+    "share": 0.02
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.4196,
+    "share": 0.0141
+   }
+  },
+  "急": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 1.2804,
+    "share": 0.0448
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 1.6778,
+    "share": 0.0489
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 1.7922,
+    "share": 0.0518
+   }
+  },
+  "愁": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1425,
+    "share": 0.006
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.17,
+    "share": 0.0056
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.114,
+    "share": 0.004
+   }
+  },
+  "烦": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.7811,
+    "share": 0.0312
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.7452,
+    "share": 0.023
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.8844,
+    "share": 0.0292
+   }
+  },
+  "烦恼": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.3343,
+    "share": 0.0136
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.6493,
+    "share": 0.0206
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.3991,
+    "share": 0.0133
+   }
+  },
+  "郁闷": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0464,
+    "share": 0.0021
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0131,
+    "share": 0.0004
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0424,
+    "share": 0.0014
+   }
+  },
+  "失眠": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.2907,
+    "share": 0.0087
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.4096,
+    "share": 0.0089
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.6125,
+    "share": 0.0125
+   }
+  },
+  "熬夜": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.7096,
+    "share": 0.0223
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 1.181,
+    "share": 0.0289
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.5365,
+    "share": 0.0156
+   }
+  },
+  "疲惫": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.209,
+    "share": 0.0091
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.3791,
+    "share": 0.0116
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.4751,
+    "share": 0.0163
+   }
+  },
+  "心累": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0394,
+    "share": 0.0017
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.1089,
+    "share": 0.0035
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0519,
+    "share": 0.0018
+   }
+  },
+  "无奈": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1643,
+    "share": 0.0074
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.2223,
+    "share": 0.0062
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.1257,
+    "share": 0.0046
+   }
+  },
+  "无助": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0669,
+    "share": 0.0028
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0697,
+    "share": 0.0023
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.1104,
+    "share": 0.0038
+   }
+  },
+  "迷茫": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.248,
+    "share": 0.0098
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.4184,
+    "share": 0.0127
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.4524,
+    "share": 0.0143
+   }
+  },
+  "内耗": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.117,
+    "share": 0.0034
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.2179,
+    "share": 0.006
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.8391,
+    "share": 0.0236
+   }
+  },
+  "emo": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1758,
+    "share": 0.0065
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.3268,
+    "share": 0.0104
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.1776,
+    "share": 0.0055
+   }
+  },
+  "抑郁": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.3737,
+    "share": 0.0098
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.122,
+    "share": 0.0036
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.4605,
+    "share": 0.0108
+   }
+  },
+  "可怕": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1873,
+    "share": 0.0076
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.2266,
+    "share": 0.0066
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.2785,
+    "share": 0.0087
+   }
+  },
+  "恐怖": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0694,
+    "share": 0.0027
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0436,
+    "share": 0.0014
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0577,
+    "share": 0.002
+   }
+  },
+  "吓人": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0419,
+    "share": 0.0018
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.061,
+    "share": 0.002
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0475,
+    "share": 0.0017
+   }
+  },
+  "忐忑": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0485,
+    "share": 0.0022
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0872,
+    "share": 0.0029
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0402,
+    "share": 0.0015
+   }
+  },
+  "心慌": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0448,
+    "share": 0.0018
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0741,
+    "share": 0.0022
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0848,
+    "share": 0.0029
+   }
+  },
+  "焦躁": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0271,
+    "share": 0.0012
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0261,
+    "share": 0.0009
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0307,
+    "share": 0.0011
+   }
+  },
+  "烦躁": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1314,
+    "share": 0.0053
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.1177,
+    "share": 0.0039
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.1842,
+    "share": 0.006
+   }
+  },
+  "压力山大": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0062,
+    "share": 0.0003
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.2179,
+    "share": 0.0072
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0146,
+    "share": 0.0006
+   }
+  },
+  "精神内耗": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0329,
+    "share": 0.0009
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0349,
+    "share": 0.0009
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.046,
+    "share": 0.0017
+   }
+  },
+  "七上八下": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0074,
+    "share": 0.0003
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0349,
+    "share": 0.0012
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0073,
+    "share": 0.0003
+   }
+  },
+  "发愁": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0365,
+    "share": 0.0017
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.061,
+    "share": 0.0019
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0746,
+    "share": 0.0025
+   }
+  },
+  "犯愁": {
+   "category": "anxiety",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0049,
+    "share": 0.0002
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0087,
+    "share": 0.0003
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0029,
+    "share": 0.0001
+   }
+  },
+  "难过": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.3068,
+    "share": 0.0121
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.1482,
+    "share": 0.0047
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.4663,
+    "share": 0.0148
+   }
+  },
+  "伤心": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1298,
+    "share": 0.0055
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0392,
+    "share": 0.0013
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.1579,
+    "share": 0.0051
+   }
+  },
+  "悲伤": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1207,
+    "share": 0.0044
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0654,
+    "share": 0.0022
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.2273,
+    "share": 0.0069
+   }
+  },
+  "哭": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 4.7565,
+    "share": 0.1073
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 3.7173,
+    "share": 0.0892
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 4.1385,
+    "share": 0.0786
+   }
+  },
+  "眼泪": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1955,
+    "share": 0.0078
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.2789,
+    "share": 0.0088
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.2916,
+    "share": 0.009
+   }
+  },
+  "泪目": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0082,
+    "share": 0.0004
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0654,
+    "share": 0.0022
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0058,
+    "share": 0.0002
+   }
+  },
+  "失落": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0673,
+    "share": 0.0029
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.1351,
+    "share": 0.0043
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0987,
+    "share": 0.0034
+   }
+  },
+  "沮丧": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0501,
+    "share": 0.0021
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0305,
+    "share": 0.001
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0921,
+    "share": 0.0033
+   }
+  },
+  "低落": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.062,
+    "share": 0.0027
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0872,
+    "share": 0.0029
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.1864,
+    "share": 0.006
+   }
+  },
+  "孤独": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.301,
+    "share": 0.0085
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.3399,
+    "share": 0.0098
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.6856,
+    "share": 0.0168
+   }
+  },
+  "寂寞": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0723,
+    "share": 0.0031
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0479,
+    "share": 0.0016
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0592,
+    "share": 0.0021
+   }
+  },
+  "遗憾": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.2891,
+    "share": 0.0114
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.244,
+    "share": 0.0075
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.3348,
+    "share": 0.0102
+   }
+  },
+  "可惜": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.2657,
+    "share": 0.0117
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.1961,
+    "share": 0.0062
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.2259,
+    "share": 0.0076
+   }
+  },
+  "心疼": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.2033,
+    "share": 0.0086
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.3574,
+    "share": 0.0116
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.1981,
+    "share": 0.0068
+   }
+  },
+  "心碎": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0177,
+    "share": 0.0008
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.1482,
+    "share": 0.0039
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0344,
+    "share": 0.0011
+   }
+  },
+  "委屈": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.2209,
+    "share": 0.0086
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.3617,
+    "share": 0.0115
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.5672,
+    "share": 0.0172
+   }
+  },
+  "绝望": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1051,
+    "share": 0.0043
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.1046,
+    "share": 0.0033
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.1089,
+    "share": 0.0034
+   }
+  },
+  "丧": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1392,
+    "share": 0.0057
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0567,
+    "share": 0.0017
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.1542,
+    "share": 0.0052
+   }
+  },
+  "消沉": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0131,
+    "share": 0.0006
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0044,
+    "share": 0.0001
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0153,
+    "share": 0.0006
+   }
+  },
+  "怀念": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.085,
+    "share": 0.0032
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0741,
+    "share": 0.0023
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0643,
+    "share": 0.002
+   }
+  },
+  "舍不得": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.14,
+    "share": 0.006
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.1569,
+    "share": 0.0052
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.1235,
+    "share": 0.0042
+   }
+  },
+  "离别": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0283,
+    "share": 0.0013
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0523,
+    "share": 0.0016
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.027,
+    "share": 0.001
+   }
+  },
+  "分手": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.3532,
+    "share": 0.0097
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.3138,
+    "share": 0.0082
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.7814,
+    "share": 0.016
+   }
+  },
+  "失去": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.3827,
+    "share": 0.0145
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.3312,
+    "share": 0.0098
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.6447,
+    "share": 0.0194
+   }
+  },
+  "离开": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.5375,
+    "share": 0.0206
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.2746,
+    "share": 0.0081
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.5109,
+    "share": 0.016
+   }
+  },
+  "错过": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.6652,
+    "share": 0.0277
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 1.364,
+    "share": 0.0413
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.4641,
+    "share": 0.016
+   }
+  },
+  "后悔": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.3437,
+    "share": 0.0139
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.4227,
+    "share": 0.0135
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.4612,
+    "share": 0.0147
+   }
+  },
+  "惨": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1774,
+    "share": 0.0073
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.2223,
+    "share": 0.007
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.1637,
+    "share": 0.0057
+   }
+  },
+  "可怜": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.3113,
+    "share": 0.0103
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.2266,
+    "share": 0.006
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.2185,
+    "share": 0.0058
+   }
+  },
+  "叹气": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.3655,
+    "share": 0.0119
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.244,
+    "share": 0.0069
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.3128,
+    "share": 0.0088
+   }
+  },
+  "鼻酸": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0021,
+    "share": 0.0001
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0,
+    "share": 0.0
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0015,
+    "share": 0.0001
+   }
+  },
+  "破防": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0185,
+    "share": 0.0008
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0479,
+    "share": 0.0016
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0585,
+    "share": 0.002
+   }
+  },
+  "泪崩": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0033,
+    "share": 0.0002
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0174,
+    "share": 0.0006
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0205,
+    "share": 0.0006
+   }
+  },
+  "压抑": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1105,
+    "share": 0.0046
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.1743,
+    "share": 0.0052
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.383,
+    "share": 0.0116
+   }
+  },
+  "麻木": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0435,
+    "share": 0.0019
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0784,
+    "share": 0.0026
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.1001,
+    "share": 0.0034
+   }
+  },
+  "空落落": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0045,
+    "share": 0.0002
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0349,
+    "share": 0.0012
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0161,
+    "share": 0.0006
+   }
+  },
+  "心酸": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0411,
+    "share": 0.0019
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0349,
+    "share": 0.0012
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0373,
+    "share": 0.0013
+   }
+  },
+  "酸楚": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0025,
+    "share": 0.0001
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0131,
+    "share": 0.0004
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0022,
+    "share": 0.0001
+   }
+  },
+  "痛苦": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.5856,
+    "share": 0.0205
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.4489,
+    "share": 0.0125
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 1.0745,
+    "share": 0.0274
+   }
+  },
+  "难受": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.4784,
+    "share": 0.0185
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.3835,
+    "share": 0.0121
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.5599,
+    "share": 0.0175
+   }
+  },
+  "心寒": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0115,
+    "share": 0.0004
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0174,
+    "share": 0.0006
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0227,
+    "share": 0.0009
+   }
+  },
+  "寒心": {
+   "category": "sadness",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0033,
+    "share": 0.0002
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0,
+    "share": 0.0
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0095,
+    "share": 0.0003
+   }
+  },
+  "生气": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.6115,
+    "share": 0.018
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.3661,
+    "share": 0.0106
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 1.0357,
+    "share": 0.0238
+   }
+  },
+  "愤怒": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1372,
+    "share": 0.004
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0872,
+    "share": 0.0026
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.3903,
+    "share": 0.01
+   }
+  },
+  "火大": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0131,
+    "share": 0.0005
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0044,
+    "share": 0.0001
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0117,
+    "share": 0.0004
+   }
+  },
+  "暴躁": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0702,
+    "share": 0.0029
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0479,
+    "share": 0.0016
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0994,
+    "share": 0.0034
+   }
+  },
+  "气死": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0361,
+    "share": 0.0015
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0567,
+    "share": 0.0019
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.019,
+    "share": 0.0006
+   }
+  },
+  "恼火": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0045,
+    "share": 0.0002
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0,
+    "share": 0.0
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0139,
+    "share": 0.0005
+   }
+  },
+  "发火": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0378,
+    "share": 0.0014
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0436,
+    "share": 0.0014
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0672,
+    "share": 0.0022
+   }
+  },
+  "骂": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.3733,
+    "share": 0.0117
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.2179,
+    "share": 0.0063
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.4561,
+    "share": 0.0125
+   }
+  },
+  "吐槽": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.2254,
+    "share": 0.009
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.2789,
+    "share": 0.0086
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.4502,
+    "share": 0.0146
+   }
+  },
+  "无语": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1565,
+    "share": 0.0064
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.1177,
+    "share": 0.0036
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.1294,
+    "share": 0.0045
+   }
+  },
+  "离谱": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0546,
+    "share": 0.0024
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.1743,
+    "share": 0.005
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.1747,
+    "share": 0.0063
+   }
+  },
+  "恶心": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1326,
+    "share": 0.0052
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0784,
+    "share": 0.0022
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.1528,
+    "share": 0.0049
+   }
+  },
+  "讨厌": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.2698,
+    "share": 0.0094
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.1482,
+    "share": 0.0046
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.402,
+    "share": 0.0109
+   }
+  },
+  "憎恨": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0033,
+    "share": 0.0002
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0,
+    "share": 0.0
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0051,
+    "share": 0.0002
+   }
+  },
+  "恨": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.294,
+    "share": 0.0111
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.2571,
+    "share": 0.0078
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.2931,
+    "share": 0.0086
+   }
+  },
+  "坑": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.4123,
+    "share": 0.0146
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.6101,
+    "share": 0.018
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.823,
+    "share": 0.0215
+   }
+  },
+  "骗": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.2821,
+    "share": 0.0099
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.244,
+    "share": 0.007
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.3611,
+    "share": 0.0102
+   }
+  },
+  "欺骗": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0669,
+    "share": 0.0027
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0392,
+    "share": 0.001
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.1016,
+    "share": 0.0033
+   }
+  },
+  "虚假": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0181,
+    "share": 0.0008
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0436,
+    "share": 0.0013
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0665,
+    "share": 0.0021
+   }
+  },
+  "智商税": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0443,
+    "share": 0.0018
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0479,
+    "share": 0.0016
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0556,
+    "share": 0.0019
+   }
+  },
+  "割韭菜": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0123,
+    "share": 0.0005
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0131,
+    "share": 0.0004
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0263,
+    "share": 0.001
+   }
+  },
+  "黑心": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0078,
+    "share": 0.0004
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0174,
+    "share": 0.0003
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0066,
+    "share": 0.0002
+   }
+  },
+  "差评": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0283,
+    "share": 0.001
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0087,
+    "share": 0.0003
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0497,
+    "share": 0.0017
+   }
+  },
+  "避雷": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0485,
+    "share": 0.002
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.1395,
+    "share": 0.004
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.2595,
+    "share": 0.0074
+   }
+  },
+  "劝退": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0423,
+    "share": 0.0019
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.061,
+    "share": 0.002
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0899,
+    "share": 0.003
+   }
+  },
+  "翻车": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0719,
+    "share": 0.0029
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.1046,
+    "share": 0.0033
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0651,
+    "share": 0.0022
+   }
+  },
+  "踩雷": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.2419,
+    "share": 0.0102
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.2833,
+    "share": 0.0091
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.1776,
+    "share": 0.0063
+   }
+  },
+  "气人": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0123,
+    "share": 0.0005
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0261,
+    "share": 0.0009
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0146,
+    "share": 0.0004
+   }
+  },
+  "抓狂": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.2345,
+    "share": 0.0061
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.3704,
+    "share": 0.0095
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.383,
+    "share": 0.0067
+   }
+  },
+  "崩溃": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.2308,
+    "share": 0.0091
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.5404,
+    "share": 0.0173
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.4883,
+    "share": 0.0147
+   }
+  },
+  "怒": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1807,
+    "share": 0.0074
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.244,
+    "share": 0.0066
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.3348,
+    "share": 0.0104
+   }
+  },
+  "不满": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1807,
+    "share": 0.0077
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.122,
+    "share": 0.0037
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.3136,
+    "share": 0.0103
+   }
+  },
+  "抗议": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0082,
+    "share": 0.0004
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0261,
+    "share": 0.0009
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0183,
+    "share": 0.0005
+   }
+  },
+  "投诉": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0468,
+    "share": 0.0017
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0523,
+    "share": 0.0016
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.1104,
+    "share": 0.0028
+   }
+  },
+  "维权": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.007,
+    "share": 0.0003
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0392,
+    "share": 0.0012
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0643,
+    "share": 0.0018
+   }
+  },
+  "曝光": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0899,
+    "share": 0.003
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0697,
+    "share": 0.002
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0767,
+    "share": 0.0025
+   }
+  },
+  "举报": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0222,
+    "share": 0.0008
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0087,
+    "share": 0.0003
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0365,
+    "share": 0.0011
+   }
+  },
+  "垃圾": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.363,
+    "share": 0.0125
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.4489,
+    "share": 0.0129
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.6067,
+    "share": 0.0183
+   }
+  },
+  "糟糕": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1179,
+    "share": 0.0047
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0872,
+    "share": 0.0029
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.1593,
+    "share": 0.0054
+   }
+  },
+  "失望": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 1.4015,
+    "share": 0.0442
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.6058,
+    "share": 0.0168
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 1.1804,
+    "share": 0.0311
+   }
+  },
+  "气炸": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1199,
+    "share": 0.0032
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.231,
+    "share": 0.0043
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0409,
+    "share": 0.0012
+   }
+  },
+  "气哭": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0062,
+    "share": 0.0003
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0087,
+    "share": 0.0003
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0051,
+    "share": 0.0002
+   }
+  },
+  "坑人": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0041,
+    "share": 0.0002
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0087,
+    "share": 0.0003
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0095,
+    "share": 0.0003
+   }
+  },
+  "踩坑": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0407,
+    "share": 0.0017
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0872,
+    "share": 0.0029
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.1133,
+    "share": 0.0039
+   }
+  },
+  "避坑": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0287,
+    "share": 0.0011
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.1787,
+    "share": 0.0055
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.2427,
+    "share": 0.0067
+   }
+  },
+  "不值得": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1006,
+    "share": 0.0043
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0959,
+    "share": 0.003
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.1571,
+    "share": 0.0055
+   }
+  },
+  "浪费": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.3959,
+    "share": 0.0166
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.4053,
+    "share": 0.0127
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.4429,
+    "share": 0.0152
+   }
+  },
+  "难用": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.009,
+    "share": 0.0004
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0174,
+    "share": 0.0006
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0139,
+    "share": 0.0005
+   }
+  },
+  "难吃": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0895,
+    "share": 0.0037
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0305,
+    "share": 0.001
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0651,
+    "share": 0.002
+   }
+  },
+  "难看": {
+   "category": "anger",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0571,
+    "share": 0.0025
+   },
+   "aigc": {
+    "n": 6953,
+    "per10k_chars": 0.0261,
+    "share": 0.0009
+   },
+   "exploring": {
+    "n": 36297,
+    "per10k_chars": 0.0534,
+    "share": 0.0018
+   }
+  }
+ },
+ "length_matched": {
+  "joy": {
+   "aigc": {
+    "incidence_gap": {
+     "gap": -0.09187,
+     "se": 0.00603,
+     "ci_low": -0.10369,
+     "ci_high": -0.08005,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 6953
+    },
+    "density_gap": {
+     "gap": -0.11965,
+     "se": 0.00845,
+     "ci_low": -0.13622,
+     "ci_high": -0.10309,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 6953
+    }
+   },
+   "exploring": {
+    "incidence_gap": {
+     "gap": 0.04709,
+     "se": 0.00363,
+     "ci_low": 0.03997,
+     "ci_high": 0.05421,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 36297
+    },
+    "density_gap": {
+     "gap": 0.08586,
+     "se": 0.00383,
+     "ci_low": 0.07835,
+     "ci_high": 0.09336,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 36297
+    }
+   }
+  },
+  "affection": {
+   "aigc": {
+    "incidence_gap": {
+     "gap": -0.11953,
+     "se": 0.0061,
+     "ci_low": -0.13147,
+     "ci_high": -0.10758,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 6953
+    },
+    "density_gap": {
+     "gap": -0.09887,
+     "se": 0.00944,
+     "ci_low": -0.11738,
+     "ci_high": -0.08037,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 6953
+    }
+   },
+   "exploring": {
+    "incidence_gap": {
+     "gap": 0.06681,
+     "se": 0.00376,
+     "ci_low": 0.05943,
+     "ci_high": 0.07419,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 36297
+    },
+    "density_gap": {
+     "gap": 0.07641,
+     "se": 0.00514,
+     "ci_low": 0.06633,
+     "ci_high": 0.08649,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 36297
+    }
+   }
+  },
+  "anxiety": {
+   "aigc": {
+    "incidence_gap": {
+     "gap": -0.07835,
+     "se": 0.00639,
+     "ci_low": -0.09088,
+     "ci_high": -0.06582,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 6953
+    },
+    "density_gap": {
+     "gap": -0.04277,
+     "se": 0.00414,
+     "ci_low": -0.05089,
+     "ci_high": -0.03465,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 6953
+    }
+   },
+   "exploring": {
+    "incidence_gap": {
+     "gap": -0.08303,
+     "se": 0.00365,
+     "ci_low": -0.09018,
+     "ci_high": -0.07587,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 36297
+    },
+    "density_gap": {
+     "gap": -0.05804,
+     "se": 0.00252,
+     "ci_low": -0.06298,
+     "ci_high": -0.0531,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 36297
+    }
+   }
+  },
+  "sadness": {
+   "aigc": {
+    "incidence_gap": {
+     "gap": -0.02409,
+     "se": 0.00602,
+     "ci_low": -0.0359,
+     "ci_high": -0.01228,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 6953
+    },
+    "density_gap": {
+     "gap": 0.01677,
+     "se": 0.00402,
+     "ci_low": 0.0089,
+     "ci_high": 0.02465,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 6953
+    }
+   },
+   "exploring": {
+    "incidence_gap": {
+     "gap": -0.01024,
+     "se": 0.00353,
+     "ci_low": -0.01715,
+     "ci_high": -0.00333,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 36297
+    },
+    "density_gap": {
+     "gap": -0.0166,
+     "se": 0.00282,
+     "ci_low": -0.02212,
+     "ci_high": -0.01109,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 36297
+    }
+   }
+  },
+  "anger": {
+   "aigc": {
+    "incidence_gap": {
+     "gap": -0.00693,
+     "se": 0.0053,
+     "ci_low": -0.01731,
+     "ci_high": 0.00345,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 6953
+    },
+    "density_gap": {
+     "gap": 0.00759,
+     "se": 0.00284,
+     "ci_low": 0.00203,
+     "ci_high": 0.01316,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 6953
+    }
+   },
+   "exploring": {
+    "incidence_gap": {
+     "gap": -0.07009,
+     "se": 0.0034,
+     "ci_low": -0.07674,
+     "ci_high": -0.06343,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 36297
+    },
+    "density_gap": {
+     "gap": -0.03311,
+     "se": 0.00201,
+     "ci_low": -0.03704,
+     "ci_high": -0.02918,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 36297
+    }
+   }
+  },
+  "positive": {
+   "aigc": {
+    "incidence_gap": {
+     "gap": -0.08768,
+     "se": 0.0041,
+     "ci_low": -0.09571,
+     "ci_high": -0.07965,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 6953
+    },
+    "density_gap": {
+     "gap": -0.21853,
+     "se": 0.01374,
+     "ci_low": -0.24545,
+     "ci_high": -0.1916,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 6953
+    }
+   },
+   "exploring": {
+    "incidence_gap": {
+     "gap": 0.03623,
+     "se": 0.00295,
+     "ci_low": 0.03045,
+     "ci_high": 0.04201,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 36297
+    },
+    "density_gap": {
+     "gap": 0.16227,
+     "se": 0.00682,
+     "ci_low": 0.1489,
+     "ci_high": 0.17565,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 36297
+    }
+   }
+  },
+  "negative": {
+   "aigc": {
+    "incidence_gap": {
+     "gap": -0.06669,
+     "se": 0.00679,
+     "ci_low": -0.08,
+     "ci_high": -0.05338,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 6953
+    },
+    "density_gap": {
+     "gap": -0.01841,
+     "se": 0.00704,
+     "ci_low": -0.03221,
+     "ci_high": -0.0046,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 6953
+    }
+   },
+   "exploring": {
+    "incidence_gap": {
+     "gap": -0.07735,
+     "se": 0.0037,
+     "ci_low": -0.08459,
+     "ci_high": -0.0701,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 36297
+    },
+    "density_gap": {
+     "gap": -0.10775,
+     "se": 0.00468,
+     "ci_low": -0.11692,
+     "ci_high": -0.09858,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 36297
+    }
+   }
+  },
+  "net": {
+   "aigc": {
+    "incidence_gap": {
+     "gap": -0.07435,
+     "se": 0.00605,
+     "ci_low": -0.08622,
+     "ci_high": -0.06249,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 6953
+    },
+    "density_gap": {
+     "gap": -0.20012,
+     "se": 0.01592,
+     "ci_low": -0.23133,
+     "ci_high": -0.16892,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 6953
+    }
+   },
+   "exploring": {
+    "incidence_gap": {
+     "gap": 0.10204,
+     "se": 0.00381,
+     "ci_low": 0.09457,
+     "ci_high": 0.10952,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 36297
+    },
+    "density_gap": {
+     "gap": 0.27002,
+     "se": 0.00819,
+     "ci_low": 0.25398,
+     "ci_high": 0.28607,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 36297
+    }
+   }
+  }
+ },
+ "gradient": {
+  "n": 36297,
+  "short_excluded": 23864,
+  "n_cells": 313,
+  "categories": {
+   "joy": {
+    "deciles": [
+     {
+      "decile": 1,
+      "n": 3630,
+      "mean": 0.4287380454294838,
+      "ci_low": 0.40531030514934346,
+      "ci_high": 0.4521657857096241,
+      "p_range": [
+       4.254682210288514e-05,
+       0.09388736804922741
+      ]
+     },
+     {
+      "decile": 2,
+      "n": 3630,
+      "mean": 0.37030433161832343,
+      "ci_low": 0.35031624949093565,
+      "ci_high": 0.3902924137457112,
+      "p_range": [
+       0.09388736804922741,
+       0.18828290907566528
+      ]
+     },
+     {
+      "decile": 3,
+      "n": 3629,
+      "mean": 0.3626413549317136,
+      "ci_low": 0.3440827439298995,
+      "ci_high": 0.38119996593352773,
+      "p_range": [
+       0.18828290907566528,
+       0.2867571125148244
+      ]
+     },
+     {
+      "decile": 4,
+      "n": 3630,
+      "mean": 0.3383702855879275,
+      "ci_low": 0.32022079368227485,
+      "ci_high": 0.3565197774935801,
+      "p_range": [
+       0.2867571125148244,
+       0.3946342058074075
+      ]
+     },
+     {
+      "decile": 5,
+      "n": 3629,
+      "mean": 0.37702897154661413,
+      "ci_low": 0.35644876758414873,
+      "ci_high": 0.39760917550907954,
+      "p_range": [
+       0.3946342058074075,
+       0.5028035638682977
+      ]
+     },
+     {
+      "decile": 6,
+      "n": 3630,
+      "mean": 0.36619847781196707,
+      "ci_low": 0.3462951149716656,
+      "ci_high": 0.38610184065226855,
+      "p_range": [
+       0.5028035638682977,
+       0.6193758465606809
+      ]
+     },
+     {
+      "decile": 7,
+      "n": 3630,
+      "mean": 0.3997883679758059,
+      "ci_low": 0.3776220064984881,
+      "ci_high": 0.42195472945312373,
+      "p_range": [
+       0.6193758465606809,
+       0.7343716615972322
+      ]
+     },
+     {
+      "decile": 8,
+      "n": 3629,
+      "mean": 0.4231524410197687,
+      "ci_low": 0.40016953773352765,
+      "ci_high": 0.4461353443060097,
+      "p_range": [
+       0.7343716615972322,
+       0.8444248551777227
+      ]
+     },
+     {
+      "decile": 9,
+      "n": 3630,
+      "mean": 0.46444234373226095,
+      "ci_low": 0.4403781168953001,
+      "ci_high": 0.4885065705692218,
+      "p_range": [
+       0.8444248551777227,
+       0.9400504750806077
+      ]
+     },
+     {
+      "decile": 10,
+      "n": 3630,
+      "mean": 0.706936496857172,
+      "ci_low": 0.6732363294989732,
+      "ci_high": 0.7406366642153708,
+      "p_range": [
+       0.9400504750806077,
+       0.9999998685800257
+      ]
+     }
+    ],
+    "weighted_rho": 0.0132,
+    "neg_cell_share": 0.4051,
+    "n_cells": 79,
+    "stratified_rho": 0.0709,
+    "stratified_cells": 101,
+    "cliff_delta_top_vs_bottom": 0.0928,
+    "cliff_p": 4.3252201992250157e-13,
+    "decile_p_range": [
+     4.254682210288514e-05,
+     0.9999998685800257
+    ]
+   },
+   "affection": {
+    "deciles": [
+     {
+      "decile": 1,
+      "n": 3630,
+      "mean": 0.5095426034834799,
+      "ci_low": 0.4797339974841857,
+      "ci_high": 0.5393512094827742,
+      "p_range": [
+       4.254682210288514e-05,
+       0.09388736804922741
+      ]
+     },
+     {
+      "decile": 2,
+      "n": 3630,
+      "mean": 0.43055756206827167,
+      "ci_low": 0.4061599252236673,
+      "ci_high": 0.45495519891287606,
+      "p_range": [
+       0.09388736804922741,
+       0.18828290907566528
+      ]
+     },
+     {
+      "decile": 3,
+      "n": 3629,
+      "mean": 0.4263593469889498,
+      "ci_low": 0.40174680403911567,
+      "ci_high": 0.4509718899387839,
+      "p_range": [
+       0.18828290907566528,
+       0.2867571125148244
+      ]
+     },
+     {
+      "decile": 4,
+      "n": 3630,
+      "mean": 0.40710060814921933,
+      "ci_low": 0.38443082019687724,
+      "ci_high": 0.4297703961015614,
+      "p_range": [
+       0.2867571125148244,
+       0.3946342058074075
+      ]
+     },
+     {
+      "decile": 5,
+      "n": 3629,
+      "mean": 0.4365362203349006,
+      "ci_low": 0.410706612750355,
+      "ci_high": 0.46236582791944614,
+      "p_range": [
+       0.3946342058074075,
+       0.5028035638682977
+      ]
+     },
+     {
+      "decile": 6,
+      "n": 3630,
+      "mean": 0.432735117516706,
+      "ci_low": 0.40725269826972177,
+      "ci_high": 0.45821753676369026,
+      "p_range": [
+       0.5028035638682977,
+       0.6193758465606809
+      ]
+     },
+     {
+      "decile": 7,
+      "n": 3630,
+      "mean": 0.45742102025036674,
+      "ci_low": 0.43143012576041473,
+      "ci_high": 0.48341191474031875,
+      "p_range": [
+       0.6193758465606809,
+       0.7343716615972322
+      ]
+     },
+     {
+      "decile": 8,
+      "n": 3629,
+      "mean": 0.48013649505527933,
+      "ci_low": 0.45328872287238786,
+      "ci_high": 0.5069842672381708,
+      "p_range": [
+       0.7343716615972322,
+       0.8444248551777227
+      ]
+     },
+     {
+      "decile": 9,
+      "n": 3630,
+      "mean": 0.501812401706311,
+      "ci_low": 0.47371696941919417,
+      "ci_high": 0.5299078339934279,
+      "p_range": [
+       0.8444248551777227,
+       0.9400504750806077
+      ]
+     },
+     {
+      "decile": 10,
+      "n": 3630,
+      "mean": 0.6014006815392725,
+      "ci_low": 0.5681700087491143,
+      "ci_high": 0.6346313543294307,
+      "p_range": [
+       0.9400504750806077,
+       0.9999998685800257
+      ]
+     }
+    ],
+    "weighted_rho": 0.0049,
+    "neg_cell_share": 0.4557,
+    "n_cells": 79,
+    "stratified_rho": 0.0595,
+    "stratified_cells": 101,
+    "cliff_delta_top_vs_bottom": -0.0188,
+    "cliff_p": 0.13329050083372157,
+    "decile_p_range": [
+     4.254682210288514e-05,
+     0.9999998685800257
+    ]
+   },
+   "anxiety": {
+    "deciles": [
+     {
+      "decile": 1,
+      "n": 3630,
+      "mean": 0.17727482760212293,
+      "ci_low": 0.16319864447529706,
+      "ci_high": 0.1913510107289488,
+      "p_range": [
+       4.254682210288514e-05,
+       0.09388736804922741
+      ]
+     },
+     {
+      "decile": 2,
+      "n": 3630,
+      "mean": 0.17699666852803825,
+      "ci_low": 0.16344716705593157,
+      "ci_high": 0.19054617000014493,
+      "p_range": [
+       0.09388736804922741,
+       0.18828290907566528
+      ]
+     },
+     {
+      "decile": 3,
+      "n": 3629,
+      "mean": 0.1612685495245936,
+      "ci_low": 0.14967233487934783,
+      "ci_high": 0.17286476416983937,
+      "p_range": [
+       0.18828290907566528,
+       0.2867571125148244
+      ]
+     },
+     {
+      "decile": 4,
+      "n": 3630,
+      "mean": 0.17274719484178774,
+      "ci_low": 0.15974901019489415,
+      "ci_high": 0.18574537948868133,
+      "p_range": [
+       0.2867571125148244,
+       0.3946342058074075
+      ]
+     },
+     {
+      "decile": 5,
+      "n": 3629,
+      "mean": 0.18429429266152664,
+      "ci_low": 0.1684115308351518,
+      "ci_high": 0.20017705448790146,
+      "p_range": [
+       0.3946342058074075,
+       0.5028035638682977
+      ]
+     },
+     {
+      "decile": 6,
+      "n": 3630,
+      "mean": 0.17201158915707845,
+      "ci_low": 0.1592542046374993,
+      "ci_high": 0.1847689736766576,
+      "p_range": [
+       0.5028035638682977,
+       0.6193758465606809
+      ]
+     },
+     {
+      "decile": 7,
+      "n": 3630,
+      "mean": 0.16850466365962516,
+      "ci_low": 0.15559098334788746,
+      "ci_high": 0.18141834397136286,
+      "p_range": [
+       0.6193758465606809,
+       0.7343716615972322
+      ]
+     },
+     {
+      "decile": 8,
+      "n": 3629,
+      "mean": 0.1763371799212048,
+      "ci_low": 0.1615041932547827,
+      "ci_high": 0.19117016658762687,
+      "p_range": [
+       0.7343716615972322,
+       0.8444248551777227
+      ]
+     },
+     {
+      "decile": 9,
+      "n": 3630,
+      "mean": 0.16675386791853442,
+      "ci_low": 0.15311269233686253,
+      "ci_high": 0.1803950435002063,
+      "p_range": [
+       0.8444248551777227,
+       0.9400504750806077
+      ]
+     },
+     {
+      "decile": 10,
+      "n": 3630,
+      "mean": 0.16041231398197428,
+      "ci_low": 0.14502600959791537,
+      "ci_high": 0.1757986183660332,
+      "p_range": [
+       0.9400504750806077,
+       0.9999998685800257
+      ]
+     }
+    ],
+    "weighted_rho": -0.0383,
+    "neg_cell_share": 0.6203,
+    "n_cells": 79,
+    "stratified_rho": 0.0241,
+    "stratified_cells": 101,
+    "cliff_delta_top_vs_bottom": -0.1038,
+    "cliff_p": 9.282541786906862e-24,
+    "decile_p_range": [
+     4.254682210288514e-05,
+     0.9999998685800257
+    ]
+   },
+   "sadness": {
+    "deciles": [
+     {
+      "decile": 1,
+      "n": 3630,
+      "mean": 0.32098395289370374,
+      "ci_low": 0.2886577520509344,
+      "ci_high": 0.35331015373647306,
+      "p_range": [
+       4.254682210288514e-05,
+       0.09388736804922741
+      ]
+     },
+     {
+      "decile": 2,
+      "n": 3630,
+      "mean": 0.20353187427354694,
+      "ci_low": 0.1853973651780026,
+      "ci_high": 0.22166638336909128,
+      "p_range": [
+       0.09388736804922741,
+       0.18828290907566528
+      ]
+     },
+     {
+      "decile": 3,
+      "n": 3629,
+      "mean": 0.1850329548689242,
+      "ci_low": 0.1661358940294962,
+      "ci_high": 0.20393001570835223,
+      "p_range": [
+       0.18828290907566528,
+       0.2867571125148244
+      ]
+     },
+     {
+      "decile": 4,
+      "n": 3630,
+      "mean": 0.18479036250929454,
+      "ci_low": 0.16672975078516833,
+      "ci_high": 0.20285097423342074,
+      "p_range": [
+       0.2867571125148244,
+       0.3946342058074075
+      ]
+     },
+     {
+      "decile": 5,
+      "n": 3629,
+      "mean": 0.1495064493654175,
+      "ci_low": 0.13414821985816414,
+      "ci_high": 0.16486467887267084,
+      "p_range": [
+       0.3946342058074075,
+       0.5028035638682977
+      ]
+     },
+     {
+      "decile": 6,
+      "n": 3630,
+      "mean": 0.16294095535620962,
+      "ci_low": 0.14630124294419997,
+      "ci_high": 0.17958066776821927,
+      "p_range": [
+       0.5028035638682977,
+       0.6193758465606809
+      ]
+     },
+     {
+      "decile": 7,
+      "n": 3630,
+      "mean": 0.15315347359728906,
+      "ci_low": 0.1366276897022347,
+      "ci_high": 0.16967925749234342,
+      "p_range": [
+       0.6193758465606809,
+       0.7343716615972322
+      ]
+     },
+     {
+      "decile": 8,
+      "n": 3629,
+      "mean": 0.14411381510118537,
+      "ci_low": 0.12824414443815027,
+      "ci_high": 0.15998348576422047,
+      "p_range": [
+       0.7343716615972322,
+       0.8444248551777227
+      ]
+     },
+     {
+      "decile": 9,
+      "n": 3630,
+      "mean": 0.14112641264431247,
+      "ci_low": 0.12497184746651524,
+      "ci_high": 0.1572809778221097,
+      "p_range": [
+       0.8444248551777227,
+       0.9400504750806077
+      ]
+     },
+     {
+      "decile": 10,
+      "n": 3630,
+      "mean": 0.13587269214399914,
+      "ci_low": 0.11908473495304786,
+      "ci_high": 0.1526606493349504,
+      "p_range": [
+       0.9400504750806077,
+       0.9999998685800257
+      ]
+     }
+    ],
+    "weighted_rho": -0.0993,
+    "neg_cell_share": 0.8734,
+    "n_cells": 79,
+    "stratified_rho": -0.0759,
+    "stratified_cells": 101,
+    "cliff_delta_top_vs_bottom": -0.1958,
+    "cliff_p": 3.8456626864040143e-87,
+    "decile_p_range": [
+     4.254682210288514e-05,
+     0.9999998685800257
+    ]
+   },
+   "anger": {
+    "deciles": [
+     {
+      "decile": 1,
+      "n": 3630,
+      "mean": 0.14008944927509473,
+      "ci_low": 0.12433826966816434,
+      "ci_high": 0.15584062888202513,
+      "p_range": [
+       4.254682210288514e-05,
+       0.09388736804922741
+      ]
+     },
+     {
+      "decile": 2,
+      "n": 3630,
+      "mean": 0.12779274167633456,
+      "ci_low": 0.11555390471936114,
+      "ci_high": 0.14003157863330798,
+      "p_range": [
+       0.09388736804922741,
+       0.18828290907566528
+      ]
+     },
+     {
+      "decile": 3,
+      "n": 3629,
+      "mean": 0.1171909477105142,
+      "ci_low": 0.10560708886390424,
+      "ci_high": 0.12877480655712417,
+      "p_range": [
+       0.18828290907566528,
+       0.2867571125148244
+      ]
+     },
+     {
+      "decile": 4,
+      "n": 3630,
+      "mean": 0.1097750475262184,
+      "ci_low": 0.09965711321337764,
+      "ci_high": 0.11989298183905917,
+      "p_range": [
+       0.2867571125148244,
+       0.3946342058074075
+      ]
+     },
+     {
+      "decile": 5,
+      "n": 3629,
+      "mean": 0.10817225443542769,
+      "ci_low": 0.09811717696340302,
+      "ci_high": 0.11822733190745235,
+      "p_range": [
+       0.3946342058074075,
+       0.5028035638682977
+      ]
+     },
+     {
+      "decile": 6,
+      "n": 3630,
+      "mean": 0.10004421204087001,
+      "ci_low": 0.09065108486870652,
+      "ci_high": 0.1094373392130335,
+      "p_range": [
+       0.5028035638682977,
+       0.6193758465606809
+      ]
+     },
+     {
+      "decile": 7,
+      "n": 3630,
+      "mean": 0.12194016877979151,
+      "ci_low": 0.10891643787262316,
+      "ci_high": 0.13496389968695985,
+      "p_range": [
+       0.6193758465606809,
+       0.7343716615972322
+      ]
+     },
+     {
+      "decile": 8,
+      "n": 3629,
+      "mean": 0.11448411831442928,
+      "ci_low": 0.10163191543583495,
+      "ci_high": 0.1273363211930236,
+      "p_range": [
+       0.7343716615972322,
+       0.8444248551777227
+      ]
+     },
+     {
+      "decile": 9,
+      "n": 3630,
+      "mean": 0.10865677653734704,
+      "ci_low": 0.09729273247662708,
+      "ci_high": 0.120020820598067,
+      "p_range": [
+       0.8444248551777227,
+       0.9400504750806077
+      ]
+     },
+     {
+      "decile": 10,
+      "n": 3630,
+      "mean": 0.12392070447990838,
+      "ci_low": 0.10966657475579503,
+      "ci_high": 0.13817483420402174,
+      "p_range": [
+       0.9400504750806077,
+       0.9999998685800257
+      ]
+     }
+    ],
+    "weighted_rho": -0.0492,
+    "neg_cell_share": 0.8101,
+    "n_cells": 79,
+    "stratified_rho": 0.0098,
+    "stratified_cells": 101,
+    "cliff_delta_top_vs_bottom": -0.1073,
+    "cliff_p": 1.7051618375750792e-30,
+    "decile_p_range": [
+     4.254682210288514e-05,
+     0.9999998685800257
+    ]
+   },
+   "positive": {
+    "deciles": [
+     {
+      "decile": 1,
+      "n": 3630,
+      "mean": 0.9382806489129637,
+      "ci_low": 0.8986904994693952,
+      "ci_high": 0.9778707983565322,
+      "p_range": [
+       4.254682210288514e-05,
+       0.09388736804922741
+      ]
+     },
+     {
+      "decile": 2,
+      "n": 3630,
+      "mean": 0.8008618936865952,
+      "ci_low": 0.7676266936006466,
+      "ci_high": 0.8340970937725438,
+      "p_range": [
+       0.09388736804922741,
+       0.18828290907566528
+      ]
+     },
+     {
+      "decile": 3,
+      "n": 3629,
+      "mean": 0.7890007019206634,
+      "ci_low": 0.756537548289988,
+      "ci_high": 0.8214638555513388,
+      "p_range": [
+       0.18828290907566528,
+       0.2867571125148244
+      ]
+     },
+     {
+      "decile": 4,
+      "n": 3630,
+      "mean": 0.7454708937371468,
+      "ci_low": 0.7151283742827534,
+      "ci_high": 0.7758134131915402,
+      "p_range": [
+       0.2867571125148244,
+       0.3946342058074075
+      ]
+     },
+     {
+      "decile": 5,
+      "n": 3629,
+      "mean": 0.8135651918815149,
+      "ci_low": 0.7791805969549775,
+      "ci_high": 0.8479497868080522,
+      "p_range": [
+       0.3946342058074075,
+       0.5028035638682977
+      ]
+     },
+     {
+      "decile": 6,
+      "n": 3630,
+      "mean": 0.7989335953286731,
+      "ci_low": 0.7648476228352267,
+      "ci_high": 0.8330195678221196,
+      "p_range": [
+       0.5028035638682977,
+       0.6193758465606809
+      ]
+     },
+     {
+      "decile": 7,
+      "n": 3630,
+      "mean": 0.8572093882261727,
+      "ci_low": 0.8209548174321833,
+      "ci_high": 0.893463959020162,
+      "p_range": [
+       0.6193758465606809,
+       0.7343716615972322
+      ]
+     },
+     {
+      "decile": 8,
+      "n": 3629,
+      "mean": 0.903288936075048,
+      "ci_low": 0.8661490789613574,
+      "ci_high": 0.9404287931887386,
+      "p_range": [
+       0.7343716615972322,
+       0.8444248551777227
+      ]
+     },
+     {
+      "decile": 9,
+      "n": 3630,
+      "mean": 0.966254745438572,
+      "ci_low": 0.9276754910048236,
+      "ci_high": 1.0048339998723204,
+      "p_range": [
+       0.8444248551777227,
+       0.9400504750806077
+      ]
+     },
+     {
+      "decile": 10,
+      "n": 3630,
+      "mean": 1.3083371783964446,
+      "ci_low": 1.2589993026762272,
+      "ci_high": 1.357675054116662,
+      "p_range": [
+       0.9400504750806077,
+       0.9999998685800257
+      ]
+     }
+    ],
+    "weighted_rho": 0.048,
+    "neg_cell_share": 0.2911,
+    "n_cells": 79,
+    "stratified_rho": 0.0834,
+    "stratified_cells": 101,
+    "cliff_delta_top_vs_bottom": 0.1176,
+    "cliff_p": 1.3419672502934473e-18,
+    "decile_p_range": [
+     4.254682210288514e-05,
+     0.9999998685800257
+    ]
+   },
+   "negative": {
+    "deciles": [
+     {
+      "decile": 1,
+      "n": 3630,
+      "mean": 0.6383482297709214,
+      "ci_low": 0.5984015324169258,
+      "ci_high": 0.678294927124917,
+      "p_range": [
+       4.254682210288514e-05,
+       0.09388736804922741
+      ]
+     },
+     {
+      "decile": 2,
+      "n": 3630,
+      "mean": 0.5083212844779197,
+      "ci_low": 0.48091463879329893,
+      "ci_high": 0.5357279301625404,
+      "p_range": [
+       0.09388736804922741,
+       0.18828290907566528
+      ]
+     },
+     {
+      "decile": 3,
+      "n": 3629,
+      "mean": 0.46349245210403206,
+      "ci_low": 0.43666362041124723,
+      "ci_high": 0.4903212837968169,
+      "p_range": [
+       0.18828290907566528,
+       0.2867571125148244
+      ]
+     },
+     {
+      "decile": 4,
+      "n": 3630,
+      "mean": 0.4673126048773007,
+      "ci_low": 0.4407946740075458,
+      "ci_high": 0.4938305357470556,
+      "p_range": [
+       0.2867571125148244,
+       0.3946342058074075
+      ]
+     },
+     {
+      "decile": 5,
+      "n": 3629,
+      "mean": 0.44197299646237176,
+      "ci_low": 0.41605674653895824,
+      "ci_high": 0.4678892463857853,
+      "p_range": [
+       0.3946342058074075,
+       0.5028035638682977
+      ]
+     },
+     {
+      "decile": 6,
+      "n": 3630,
+      "mean": 0.43499675655415804,
+      "ci_low": 0.41043424081727303,
+      "ci_high": 0.45955927229104304,
+      "p_range": [
+       0.5028035638682977,
+       0.6193758465606809
+      ]
+     },
+     {
+      "decile": 7,
+      "n": 3630,
+      "mean": 0.4435983060367057,
+      "ci_low": 0.41762658609441544,
+      "ci_high": 0.46957002597899594,
+      "p_range": [
+       0.6193758465606809,
+       0.7343716615972322
+      ]
+     },
+     {
+      "decile": 8,
+      "n": 3629,
+      "mean": 0.4349351133368194,
+      "ci_low": 0.40844033086811493,
+      "ci_high": 0.46142989580552385,
+      "p_range": [
+       0.7343716615972322,
+       0.8444248551777227
+      ]
+     },
+     {
+      "decile": 9,
+      "n": 3630,
+      "mean": 0.416537057100194,
+      "ci_low": 0.3918567354068414,
+      "ci_high": 0.4412173787935466,
+      "p_range": [
+       0.8444248551777227,
+       0.9400504750806077
+      ]
+     },
+     {
+      "decile": 10,
+      "n": 3630,
+      "mean": 0.4202057106058818,
+      "ci_low": 0.3926724563653418,
+      "ci_high": 0.4477389648464218,
+      "p_range": [
+       0.9400504750806077,
+       0.9999998685800257
+      ]
+     }
+    ],
+    "weighted_rho": -0.058,
+    "neg_cell_share": 0.7722,
+    "n_cells": 79,
+    "stratified_rho": -0.0227,
+    "stratified_cells": 101,
+    "cliff_delta_top_vs_bottom": -0.1841,
+    "cliff_p": 1.0301939301937196e-49,
+    "decile_p_range": [
+     4.254682210288514e-05,
+     0.9999998685800257
+    ]
+   },
+   "net": {
+    "deciles": [
+     {
+      "decile": 1,
+      "n": 3630,
+      "mean": 0.2999324191420422,
+      "ci_low": 0.24356459431642866,
+      "ci_high": 0.3563002439676558,
+      "p_range": [
+       4.254682210288514e-05,
+       0.09388736804922741
+      ]
+     },
+     {
+      "decile": 2,
+      "n": 3630,
+      "mean": 0.2925406092086754,
+      "ci_low": 0.24918337008536204,
+      "ci_high": 0.33589784833198877,
+      "p_range": [
+       0.09388736804922741,
+       0.18828290907566528
+      ]
+     },
+     {
+      "decile": 3,
+      "n": 3629,
+      "mean": 0.32550824981663135,
+      "ci_low": 0.2834702564014081,
+      "ci_high": 0.3675462432318546,
+      "p_range": [
+       0.18828290907566528,
+       0.2867571125148244
+      ]
+     },
+     {
+      "decile": 4,
+      "n": 3630,
+      "mean": 0.27815828885984606,
+      "ci_low": 0.2380428994540375,
+      "ci_high": 0.3182736782656546,
+      "p_range": [
+       0.2867571125148244,
+       0.3946342058074075
+      ]
+     },
+     {
+      "decile": 5,
+      "n": 3629,
+      "mean": 0.37159219541914296,
+      "ci_low": 0.327919103317173,
+      "ci_high": 0.4152652875211129,
+      "p_range": [
+       0.3946342058074075,
+       0.5028035638682977
+      ]
+     },
+     {
+      "decile": 6,
+      "n": 3630,
+      "mean": 0.36393683877451494,
+      "ci_low": 0.3210724902765219,
+      "ci_high": 0.40680118727250797,
+      "p_range": [
+       0.5028035638682977,
+       0.6193758465606809
+      ]
+     },
+     {
+      "decile": 7,
+      "n": 3630,
+      "mean": 0.4136110821894669,
+      "ci_low": 0.36823403821295775,
+      "ci_high": 0.45898812616597606,
+      "p_range": [
+       0.6193758465606809,
+       0.7343716615972322
+      ]
+     },
+     {
+      "decile": 8,
+      "n": 3629,
+      "mean": 0.4683538227382285,
+      "ci_low": 0.4217129638153096,
+      "ci_high": 0.5149946816611474,
+      "p_range": [
+       0.7343716615972322,
+       0.8444248551777227
+      ]
+     },
+     {
+      "decile": 9,
+      "n": 3630,
+      "mean": 0.549717688338378,
+      "ci_low": 0.5026611161228611,
+      "ci_high": 0.5967742605538948,
+      "p_range": [
+       0.8444248551777227,
+       0.9400504750806077
+      ]
+     },
+     {
+      "decile": 10,
+      "n": 3630,
+      "mean": 0.8881314677905625,
+      "ci_low": 0.8300733457119638,
+      "ci_high": 0.9461895898691612,
+      "p_range": [
+       0.9400504750806077,
+       0.9999998685800257
+      ]
+     }
+    ],
+    "weighted_rho": 0.0659,
+    "neg_cell_share": 0.1899,
+    "n_cells": 79,
+    "stratified_rho": 0.0843,
+    "stratified_cells": 101,
+    "cliff_delta_top_vs_bottom": 0.1869,
+    "cliff_p": 4.940809399964987e-44,
+    "decile_p_range": [
+     4.254682210288514e-05,
+     0.9999998685800257
+    ]
+   }
+  },
+  "words": {
+   "开心": {
+    "category": "joy",
+    "weighted_rho": -0.0513,
+    "neg_cell_share": 0.7949,
+    "n_cells": 78
+   },
+   "快乐": {
+    "category": "joy",
+    "weighted_rho": 0.0228,
+    "neg_cell_share": 0.3718,
+    "n_cells": 78
+   },
+   "高兴": {
+    "category": "joy",
+    "weighted_rho": -0.0328,
+    "neg_cell_share": 0.74,
+    "n_cells": 50
+   },
+   "愉快": {
+    "category": "joy",
+    "weighted_rho": -0.012,
+    "neg_cell_share": 0.6061,
+    "n_cells": 66
+   },
+   "兴奋": {
+    "category": "joy",
+    "weighted_rho": -0.0099,
+    "neg_cell_share": 0.5614,
+    "n_cells": 57
+   },
+   "惊喜": {
+    "category": "joy",
+    "weighted_rho": 0.0138,
+    "neg_cell_share": 0.4306,
+    "n_cells": 72
+   },
+   "幸福": {
+    "category": "joy",
+    "weighted_rho": -0.0081,
+    "neg_cell_share": 0.5455,
+    "n_cells": 77
+   },
+   "满足": {
+    "category": "joy",
+    "weighted_rho": -0.027,
+    "neg_cell_share": 0.6329,
+    "n_cells": 79
+   },
+   "满意": {
+    "category": "joy",
+    "weighted_rho": -0.0456,
+    "neg_cell_share": 0.7536,
+    "n_cells": 69
+   },
+   "治愈": {
+    "category": "joy",
+    "weighted_rho": 0.0294,
+    "neg_cell_share": 0.3143,
+    "n_cells": 70
+   },
+   "美好": {
+    "category": "joy",
+    "weighted_rho": 0.0264,
+    "neg_cell_share": 0.3077,
+    "n_cells": 78
+   },
+   "可爱": {
+    "category": "joy",
+    "weighted_rho": 0.0004,
+    "neg_cell_share": 0.4714,
+    "n_cells": 70
+   },
+   "漂亮": {
+    "category": "joy",
+    "weighted_rho": -0.0321,
+    "neg_cell_share": 0.7308,
+    "n_cells": 78
+   },
+   "好看": {
+    "category": "joy",
+    "weighted_rho": -0.0656,
+    "neg_cell_share": 0.8312,
+    "n_cells": 77
+   },
+   "好吃": {
+    "category": "joy",
+    "weighted_rho": -0.0332,
+    "neg_cell_share": 0.6901,
+    "n_cells": 71
+   },
+   "好喝": {
+    "category": "joy",
+    "weighted_rho": -0.0043,
+    "neg_cell_share": 0.5435,
+    "n_cells": 46
+   },
+   "舒服": {
+    "category": "joy",
+    "weighted_rho": -0.0766,
+    "neg_cell_share": 0.7975,
+    "n_cells": 79
+   },
+   "轻松": {
+    "category": "joy",
+    "weighted_rho": 0.0959,
+    "neg_cell_share": 0.1266,
+    "n_cells": 79
+   },
+   "放心": {
+    "category": "joy",
+    "weighted_rho": -0.0205,
+    "neg_cell_share": 0.6,
+    "n_cells": 75
+   },
+   "省心": {
+    "category": "joy",
+    "weighted_rho": 0.0083,
+    "neg_cell_share": 0.5,
+    "n_cells": 50
+   },
+   "实用": {
+    "category": "joy",
+    "weighted_rho": 0.0347,
+    "neg_cell_share": 0.3913,
+    "n_cells": 69
+   },
+   "划算": {
+    "category": "joy",
+    "weighted_rho": -0.0212,
+    "neg_cell_share": 0.7255,
+    "n_cells": 51
+   },
+   "超值": {
+    "category": "joy",
+    "weighted_rho": 0.0137,
+    "neg_cell_share": 0.4333,
+    "n_cells": 30
+   },
+   "真香": {
+    "category": "joy",
+    "weighted_rho": 0.0197,
+    "neg_cell_share": 0.3636,
+    "n_cells": 33
+   },
+   "太棒": {
+    "category": "joy",
+    "weighted_rho": 0.0059,
+    "neg_cell_share": 0.3846,
+    "n_cells": 26
+   },
+   "绝了": {
+    "category": "joy",
+    "weighted_rho": 0.0103,
+    "neg_cell_share": 0.5312,
+    "n_cells": 64
+   },
+   "好评": {
+    "category": "joy",
+    "weighted_rho": -0.0306,
+    "neg_cell_share": 0.75,
+    "n_cells": 36
+   },
+   "值得": {
+    "category": "joy",
+    "weighted_rho": -0.0118,
+    "neg_cell_share": 0.557,
+    "n_cells": 79
+   },
+   "惊艳": {
+    "category": "joy",
+    "weighted_rho": 0.0009,
+    "neg_cell_share": 0.5333,
+    "n_cells": 60
+   },
+   "宝藏": {
+    "category": "joy",
+    "weighted_rho": 0.0706,
+    "neg_cell_share": 0.1167,
+    "n_cells": 60
+   },
+   "推荐": {
+    "category": "joy",
+    "weighted_rho": -0.0355,
+    "neg_cell_share": 0.7067,
+    "n_cells": 75
+   },
+   "种草": {
+    "category": "joy",
+    "weighted_rho": -0.0181,
+    "neg_cell_share": 0.6216,
+    "n_cells": 74
+   },
+   "回购": {
+    "category": "joy",
+    "weighted_rho": -0.0078,
+    "neg_cell_share": 0.5652,
+    "n_cells": 23
+   },
+   "空瓶": {
+    "category": "joy",
+    "weighted_rho": 0.0262,
+    "neg_cell_share": 0.2222,
+    "n_cells": 9
+   },
+   "好用": {
+    "category": "joy",
+    "weighted_rho": -0.0279,
+    "neg_cell_share": 0.6182,
+    "n_cells": 55
+   },
+   "神器": {
+    "category": "joy",
+    "weighted_rho": 0.0875,
+    "neg_cell_share": 0.0364,
+    "n_cells": 55
+   },
+   "必入": {
+    "category": "joy",
+    "weighted_rho": 0.0336,
+    "neg_cell_share": 0.1429,
+    "n_cells": 7
+   },
+   "不踩雷": {
+    "category": "joy",
+    "weighted_rho": 0.0421,
+    "neg_cell_share": 0.1176,
+    "n_cells": 34
+   },
+   "无雷": {
+    "category": "joy",
+    "weighted_rho": 0.0112,
+    "neg_cell_share": 0.4,
+    "n_cells": 5
+   },
+   "笑死": {
+    "category": "joy",
+    "weighted_rho": -0.0035,
+    "neg_cell_share": 0.4762,
+    "n_cells": 21
+   },
+   "哈哈": {
+    "category": "joy",
+    "weighted_rho": -0.0527,
+    "neg_cell_share": 0.8267,
+    "n_cells": 75
+   },
+   "嘻嘻": {
+    "category": "joy",
+    "weighted_rho": -0.0149,
+    "neg_cell_share": 0.5417,
+    "n_cells": 48
+   },
+   "嘿嘿": {
+    "category": "joy",
+    "weighted_rho": -0.0107,
+    "neg_cell_share": 0.6458,
+    "n_cells": 48
+   },
+   "美滋滋": {
+    "category": "joy",
+    "weighted_rho": 0.0226,
+    "neg_cell_share": 0.375,
+    "n_cells": 16
+   },
+   "优秀": {
+    "category": "joy",
+    "weighted_rho": -0.0238,
+    "neg_cell_share": 0.7097,
+    "n_cells": 62
+   },
+   "完美": {
+    "category": "joy",
+    "weighted_rho": 0.046,
+    "neg_cell_share": 0.3289,
+    "n_cells": 76
+   },
+   "赞": {
+    "category": "joy",
+    "weighted_rho": -0.0247,
+    "neg_cell_share": 0.6582,
+    "n_cells": 79
+   },
+   "棒": {
+    "category": "joy",
+    "weighted_rho": -0.0084,
+    "neg_cell_share": 0.5132,
+    "n_cells": 76
+   },
+   "开森": {
+    "category": "joy",
+    "weighted_rho": -0.0062,
+    "neg_cell_share": 0.6667,
+    "n_cells": 6
+   },
+   "yyds": {
+    "category": "joy",
+    "weighted_rho": 0.0495,
+    "neg_cell_share": 0.1538,
+    "n_cells": 39
+   },
+   "绝绝子": {
+    "category": "joy",
+    "weighted_rho": 0.0529,
+    "neg_cell_share": 0.1282,
+    "n_cells": 39
+   },
+   "爱了": {
+    "category": "joy",
+    "weighted_rho": -0.0125,
+    "neg_cell_share": 0.56,
+    "n_cells": 50
+   },
+   "爱": {
+    "category": "affection",
+    "weighted_rho": -0.0205,
+    "neg_cell_share": 0.6076,
+    "n_cells": 79
+   },
+   "喜爱": {
+    "category": "affection",
+    "weighted_rho": -0.017,
+    "neg_cell_share": 0.625,
+    "n_cells": 40
+   },
+   "喜欢": {
+    "category": "affection",
+    "weighted_rho": -0.13,
+    "neg_cell_share": 0.9241,
+    "n_cells": 79
+   },
+   "心动": {
+    "category": "affection",
+    "weighted_rho": 0.0282,
+    "neg_cell_share": 0.35,
+    "n_cells": 60
+   },
+   "心水": {
+    "category": "affection",
+    "weighted_rho": -0.0077,
+    "neg_cell_share": 0.5333,
+    "n_cells": 15
+   },
+   "宝贝": {
+    "category": "affection",
+    "weighted_rho": 0.0108,
+    "neg_cell_share": 0.4098,
+    "n_cells": 61
+   },
+   "亲爱的": {
+    "category": "affection",
+    "weighted_rho": 0.0193,
+    "neg_cell_share": 0.3455,
+    "n_cells": 55
+   },
+   "姐妹": {
+    "category": "affection",
+    "weighted_rho": 0.0741,
+    "neg_cell_share": 0.2308,
+    "n_cells": 78
+   },
+   "宝宝": {
+    "category": "affection",
+    "weighted_rho": -0.0452,
+    "neg_cell_share": 0.7792,
+    "n_cells": 77
+   },
+   "老公": {
+    "category": "affection",
+    "weighted_rho": -0.02,
+    "neg_cell_share": 0.569,
+    "n_cells": 58
+   },
+   "老婆": {
+    "category": "affection",
+    "weighted_rho": -0.0319,
+    "neg_cell_share": 0.6981,
+    "n_cells": 53
+   },
+   "男朋友": {
+    "category": "affection",
+    "weighted_rho": -0.0242,
+    "neg_cell_share": 0.7091,
+    "n_cells": 55
+   },
+   "女朋友": {
+    "category": "affection",
+    "weighted_rho": -0.0374,
+    "neg_cell_share": 0.7727,
+    "n_cells": 44
+   },
+   "闺蜜": {
+    "category": "affection",
+    "weighted_rho": 0.0395,
+    "neg_cell_share": 0.2131,
+    "n_cells": 61
+   },
+   "家人": {
+    "category": "affection",
+    "weighted_rho": 0.022,
+    "neg_cell_share": 0.4304,
+    "n_cells": 79
+   },
+   "妈妈": {
+    "category": "affection",
+    "weighted_rho": -0.0253,
+    "neg_cell_share": 0.6849,
+    "n_cells": 73
+   },
+   "爸爸": {
+    "category": "affection",
+    "weighted_rho": -0.0185,
+    "neg_cell_share": 0.6441,
+    "n_cells": 59
+   },
+   "陪伴": {
+    "category": "affection",
+    "weighted_rho": 0.0005,
+    "neg_cell_share": 0.5246,
+    "n_cells": 61
+   },
+   "温暖": {
+    "category": "affection",
+    "weighted_rho": 0.0266,
+    "neg_cell_share": 0.375,
+    "n_cells": 72
+   },
+   "温柔": {
+    "category": "affection",
+    "weighted_rho": 0.0394,
+    "neg_cell_share": 0.2368,
+    "n_cells": 76
+   },
+   "贴心": {
+    "category": "affection",
+    "weighted_rho": 0.0436,
+    "neg_cell_share": 0.193,
+    "n_cells": 57
+   },
+   "拥抱": {
+    "category": "affection",
+    "weighted_rho": 0.0369,
+    "neg_cell_share": 0.2029,
+    "n_cells": 69
+   },
+   "亲亲": {
+    "category": "affection",
+    "weighted_rho": -0.0058,
+    "neg_cell_share": 0.5263,
+    "n_cells": 19
+   },
+   "想你": {
+    "category": "affection",
+    "weighted_rho": -0.0199,
+    "neg_cell_share": 0.7436,
+    "n_cells": 39
+   },
+   "思念": {
+    "category": "affection",
+    "weighted_rho": 0.0235,
+    "neg_cell_share": 0.2857,
+    "n_cells": 21
+   },
+   "恋爱": {
+    "category": "affection",
+    "weighted_rho": -0.0078,
+    "neg_cell_share": 0.5932,
+    "n_cells": 59
+   },
+   "甜蜜": {
+    "category": "affection",
+    "weighted_rho": 0.0326,
+    "neg_cell_share": 0.1887,
+    "n_cells": 53
+   },
+   "甜": {
+    "category": "affection",
+    "weighted_rho": 0.0197,
+    "neg_cell_share": 0.4051,
+    "n_cells": 79
+   },
+   "感恩": {
+    "category": "affection",
+    "weighted_rho": 0.008,
+    "neg_cell_share": 0.4423,
+    "n_cells": 52
+   },
+   "感谢": {
+    "category": "affection",
+    "weighted_rho": -0.0097,
+    "neg_cell_share": 0.5195,
+    "n_cells": 77
+   },
+   "谢谢": {
+    "category": "affection",
+    "weighted_rho": -0.0226,
+    "neg_cell_share": 0.6714,
+    "n_cells": 70
+   },
+   "珍惜": {
+    "category": "affection",
+    "weighted_rho": -0.0103,
+    "neg_cell_share": 0.5161,
+    "n_cells": 62
+   },
+   "守护": {
+    "category": "affection",
+    "weighted_rho": 0.0252,
+    "neg_cell_share": 0.3077,
+    "n_cells": 52
+   },
+   "萌": {
+    "category": "affection",
+    "weighted_rho": -0.03,
+    "neg_cell_share": 0.6447,
+    "n_cells": 76
+   },
+   "心软": {
+    "category": "affection",
+    "weighted_rho": -0.0133,
+    "neg_cell_share": 0.625,
+    "n_cells": 24
+   },
+   "依赖": {
+    "category": "affection",
+    "weighted_rho": -0.0096,
+    "neg_cell_share": 0.55,
+    "n_cells": 60
+   },
+   "安全感": {
+    "category": "affection",
+    "weighted_rho": -0.0129,
+    "neg_cell_share": 0.6066,
+    "n_cells": 61
+   },
+   "归属感": {
+    "category": "affection",
+    "weighted_rho": -0.0099,
+    "neg_cell_share": 0.6333,
+    "n_cells": 30
+   },
+   "焦虑": {
+    "category": "anxiety",
+    "weighted_rho": -0.0264,
+    "neg_cell_share": 0.662,
+    "n_cells": 71
+   },
+   "担心": {
+    "category": "anxiety",
+    "weighted_rho": -0.0377,
+    "neg_cell_share": 0.6494,
+    "n_cells": 77
+   },
+   "害怕": {
+    "category": "anxiety",
+    "weighted_rho": -0.0461,
+    "neg_cell_share": 0.8382,
+    "n_cells": 68
+   },
+   "紧张": {
+    "category": "anxiety",
+    "weighted_rho": -0.0198,
+    "neg_cell_share": 0.7188,
+    "n_cells": 64
+   },
+   "压力": {
+    "category": "anxiety",
+    "weighted_rho": 0.0045,
+    "neg_cell_share": 0.4416,
+    "n_cells": 77
+   },
+   "纠结": {
+    "category": "anxiety",
+    "weighted_rho": -0.0176,
+    "neg_cell_share": 0.5342,
+    "n_cells": 73
+   },
+   "犹豫": {
+    "category": "anxiety",
+    "weighted_rho": -0.0124,
+    "neg_cell_share": 0.5224,
+    "n_cells": 67
+   },
+   "不安": {
+    "category": "anxiety",
+    "weighted_rho": -0.0176,
+    "neg_cell_share": 0.661,
+    "n_cells": 59
+   },
+   "恐慌": {
+    "category": "anxiety",
+    "weighted_rho": 0.003,
+    "neg_cell_share": 0.5172,
+    "n_cells": 29
+   },
+   "慌": {
+    "category": "anxiety",
+    "weighted_rho": 0.0129,
+    "neg_cell_share": 0.4844,
+    "n_cells": 64
+   },
+   "急": {
+    "category": "anxiety",
+    "weighted_rho": 0.0041,
+    "neg_cell_share": 0.5128,
+    "n_cells": 78
+   },
+   "愁": {
+    "category": "anxiety",
+    "weighted_rho": 0.0077,
+    "neg_cell_share": 0.3333,
+    "n_cells": 51
+   },
+   "烦": {
+    "category": "anxiety",
+    "weighted_rho": -0.0476,
+    "neg_cell_share": 0.7733,
+    "n_cells": 75
+   },
+   "烦恼": {
+    "category": "anxiety",
+    "weighted_rho": 0.0096,
+    "neg_cell_share": 0.4627,
+    "n_cells": 67
+   },
+   "郁闷": {
+    "category": "anxiety",
+    "weighted_rho": -0.007,
+    "neg_cell_share": 0.5,
+    "n_cells": 26
+   },
+   "失眠": {
+    "category": "anxiety",
+    "weighted_rho": 0.0022,
+    "neg_cell_share": 0.52,
+    "n_cells": 50
+   },
+   "熬夜": {
+    "category": "anxiety",
+    "weighted_rho": 0.0277,
+    "neg_cell_share": 0.2769,
+    "n_cells": 65
+   },
+   "疲惫": {
+    "category": "anxiety",
+    "weighted_rho": 0.0095,
+    "neg_cell_share": 0.3194,
+    "n_cells": 72
+   },
+   "心累": {
+    "category": "anxiety",
+    "weighted_rho": 0.0055,
+    "neg_cell_share": 0.5806,
+    "n_cells": 31
+   },
+   "无奈": {
+    "category": "anxiety",
+    "weighted_rho": -0.0019,
+    "neg_cell_share": 0.4902,
+    "n_cells": 51
+   },
+   "无助": {
+    "category": "anxiety",
+    "weighted_rho": -0.023,
+    "neg_cell_share": 0.65,
+    "n_cells": 40
+   },
+   "迷茫": {
+    "category": "anxiety",
+    "weighted_rho": -0.0106,
+    "neg_cell_share": 0.5385,
+    "n_cells": 52
+   },
+   "内耗": {
+    "category": "anxiety",
+    "weighted_rho": -0.0355,
+    "neg_cell_share": 0.7963,
+    "n_cells": 54
+   },
+   "emo": {
+    "category": "anxiety",
+    "weighted_rho": 0.0071,
+    "neg_cell_share": 0.5283,
+    "n_cells": 53
+   },
+   "抑郁": {
+    "category": "anxiety",
+    "weighted_rho": -0.0227,
+    "neg_cell_share": 0.6512,
+    "n_cells": 43
+   },
+   "可怕": {
+    "category": "anxiety",
+    "weighted_rho": -0.0111,
+    "neg_cell_share": 0.5333,
+    "n_cells": 60
+   },
+   "恐怖": {
+    "category": "anxiety",
+    "weighted_rho": -0.0146,
+    "neg_cell_share": 0.6923,
+    "n_cells": 39
+   },
+   "吓人": {
+    "category": "anxiety",
+    "weighted_rho": -0.016,
+    "neg_cell_share": 0.6333,
+    "n_cells": 30
+   },
+   "忐忑": {
+    "category": "anxiety",
+    "weighted_rho": -0.0168,
+    "neg_cell_share": 0.6552,
+    "n_cells": 29
+   },
+   "心慌": {
+    "category": "anxiety",
+    "weighted_rho": 0.0046,
+    "neg_cell_share": 0.4286,
+    "n_cells": 35
+   },
+   "焦躁": {
+    "category": "anxiety",
+    "weighted_rho": -0.0116,
+    "neg_cell_share": 0.7059,
+    "n_cells": 17
+   },
+   "烦躁": {
+    "category": "anxiety",
+    "weighted_rho": -0.0115,
+    "neg_cell_share": 0.6522,
+    "n_cells": 46
+   },
+   "压力山大": {
+    "category": "anxiety",
+    "weighted_rho": 0.0392,
+    "neg_cell_share": 0.0769,
+    "n_cells": 13
+   },
+   "精神内耗": {
+    "category": "anxiety",
+    "weighted_rho": 0.0109,
+    "neg_cell_share": 0.3684,
+    "n_cells": 19
+   },
+   "七上八下": {
+    "category": "anxiety",
+    "weighted_rho": 0.0129,
+    "neg_cell_share": 0.4286,
+    "n_cells": 7
+   },
+   "发愁": {
+    "category": "anxiety",
+    "weighted_rho": 0.0124,
+    "neg_cell_share": 0.4375,
+    "n_cells": 32
+   },
+   "犯愁": {
+    "category": "anxiety",
+    "weighted_rho": -0.019,
+    "neg_cell_share": 0.6667,
+    "n_cells": 3
+   },
+   "难过": {
+    "category": "sadness",
+    "weighted_rho": -0.0583,
+    "neg_cell_share": 0.8269,
+    "n_cells": 52
+   },
+   "伤心": {
+    "category": "sadness",
+    "weighted_rho": -0.0333,
+    "neg_cell_share": 0.7391,
+    "n_cells": 46
+   },
+   "悲伤": {
+    "category": "sadness",
+    "weighted_rho": -0.0102,
+    "neg_cell_share": 0.55,
+    "n_cells": 40
+   },
+   "哭": {
+    "category": "sadness",
+    "weighted_rho": -0.0858,
+    "neg_cell_share": 0.8861,
+    "n_cells": 79
+   },
+   "眼泪": {
+    "category": "sadness",
+    "weighted_rho": -0.0023,
+    "neg_cell_share": 0.5577,
+    "n_cells": 52
+   },
+   "泪目": {
+    "category": "sadness",
+    "weighted_rho": -0.0149,
+    "neg_cell_share": 0.6667,
+    "n_cells": 3
+   },
+   "失落": {
+    "category": "sadness",
+    "weighted_rho": -0.0216,
+    "neg_cell_share": 0.6486,
+    "n_cells": 37
+   },
+   "沮丧": {
+    "category": "sadness",
+    "weighted_rho": -0.0147,
+    "neg_cell_share": 0.5926,
+    "n_cells": 27
+   },
+   "低落": {
+    "category": "sadness",
+    "weighted_rho": -0.0173,
+    "neg_cell_share": 0.6471,
+    "n_cells": 34
+   },
+   "孤独": {
+    "category": "sadness",
+    "weighted_rho": -0.0085,
+    "neg_cell_share": 0.55,
+    "n_cells": 60
+   },
+   "寂寞": {
+    "category": "sadness",
+    "weighted_rho": -0.0044,
+    "neg_cell_share": 0.5429,
+    "n_cells": 35
+   },
+   "遗憾": {
+    "category": "sadness",
+    "weighted_rho": -0.0244,
+    "neg_cell_share": 0.6769,
+    "n_cells": 65
+   },
+   "可惜": {
+    "category": "sadness",
+    "weighted_rho": -0.0261,
+    "neg_cell_share": 0.6964,
+    "n_cells": 56
+   },
+   "心疼": {
+    "category": "sadness",
+    "weighted_rho": -0.015,
+    "neg_cell_share": 0.6481,
+    "n_cells": 54
+   },
+   "心碎": {
+    "category": "sadness",
+    "weighted_rho": -0.0066,
+    "neg_cell_share": 0.619,
+    "n_cells": 21
+   },
+   "委屈": {
+    "category": "sadness",
+    "weighted_rho": -0.0143,
+    "neg_cell_share": 0.6596,
+    "n_cells": 47
+   },
+   "绝望": {
+    "category": "sadness",
+    "weighted_rho": -0.023,
+    "neg_cell_share": 0.6047,
+    "n_cells": 43
+   },
+   "丧": {
+    "category": "sadness",
+    "weighted_rho": -0.0103,
+    "neg_cell_share": 0.5625,
+    "n_cells": 48
+   },
+   "消沉": {
+    "category": "sadness",
+    "weighted_rho": -0.0138,
+    "neg_cell_share": 0.5833,
+    "n_cells": 12
+   },
+   "怀念": {
+    "category": "sadness",
+    "weighted_rho": -0.0094,
+    "neg_cell_share": 0.5517,
+    "n_cells": 29
+   },
+   "舍不得": {
+    "category": "sadness",
+    "weighted_rho": -0.0208,
+    "neg_cell_share": 0.6,
+    "n_cells": 45
+   },
+   "离别": {
+    "category": "sadness",
+    "weighted_rho": 0.0136,
+    "neg_cell_share": 0.3889,
+    "n_cells": 18
+   },
+   "分手": {
+    "category": "sadness",
+    "weighted_rho": -0.025,
+    "neg_cell_share": 0.6279,
+    "n_cells": 43
+   },
+   "失去": {
+    "category": "sadness",
+    "weighted_rho": -0.0173,
+    "neg_cell_share": 0.6066,
+    "n_cells": 61
+   },
+   "离开": {
+    "category": "sadness",
+    "weighted_rho": -0.0219,
+    "neg_cell_share": 0.6769,
+    "n_cells": 65
+   },
+   "错过": {
+    "category": "sadness",
+    "weighted_rho": 0.0127,
+    "neg_cell_share": 0.3944,
+    "n_cells": 71
+   },
+   "后悔": {
+    "category": "sadness",
+    "weighted_rho": -0.0335,
+    "neg_cell_share": 0.7143,
+    "n_cells": 70
+   },
+   "惨": {
+    "category": "sadness",
+    "weighted_rho": 0.0001,
+    "neg_cell_share": 0.5246,
+    "n_cells": 61
+   },
+   "可怜": {
+    "category": "sadness",
+    "weighted_rho": -0.0252,
+    "neg_cell_share": 0.7414,
+    "n_cells": 58
+   },
+   "叹气": {
+    "category": "sadness",
+    "weighted_rho": -0.0382,
+    "neg_cell_share": 0.7377,
+    "n_cells": 61
+   },
+   "鼻酸": {
+    "category": "sadness",
+    "weighted_rho": 0.0612,
+    "neg_cell_share": 0.0,
+    "n_cells": 2
+   },
+   "破防": {
+    "category": "sadness",
+    "weighted_rho": 0.0172,
+    "neg_cell_share": 0.3714,
+    "n_cells": 35
+   },
+   "泪崩": {
+    "category": "sadness",
+    "weighted_rho": -0.018,
+    "neg_cell_share": 0.5714,
+    "n_cells": 14
+   },
+   "压抑": {
+    "category": "sadness",
+    "weighted_rho": -0.0271,
+    "neg_cell_share": 0.7551,
+    "n_cells": 49
+   },
+   "麻木": {
+    "category": "sadness",
+    "weighted_rho": -0.0038,
+    "neg_cell_share": 0.6286,
+    "n_cells": 35
+   },
+   "空落落": {
+    "category": "sadness",
+    "weighted_rho": 0.0142,
+    "neg_cell_share": 0.4615,
+    "n_cells": 13
+   },
+   "心酸": {
+    "category": "sadness",
+    "weighted_rho": -0.0194,
+    "neg_cell_share": 0.5909,
+    "n_cells": 22
+   },
+   "酸楚": {
+    "category": "sadness",
+    "weighted_rho": -0.0457,
+    "neg_cell_share": 1.0,
+    "n_cells": 2
+   },
+   "痛苦": {
+    "category": "sadness",
+    "weighted_rho": -0.0409,
+    "neg_cell_share": 0.7879,
+    "n_cells": 66
+   },
+   "难受": {
+    "category": "sadness",
+    "weighted_rho": -0.0494,
+    "neg_cell_share": 0.7857,
+    "n_cells": 70
+   },
+   "心寒": {
+    "category": "sadness",
+    "weighted_rho": -0.0014,
+    "neg_cell_share": 0.5833,
+    "n_cells": 12
+   },
+   "寒心": {
+    "category": "sadness",
+    "weighted_rho": -0.028,
+    "neg_cell_share": 0.8889,
+    "n_cells": 9
+   },
+   "生气": {
+    "category": "anger",
+    "weighted_rho": -0.0374,
+    "neg_cell_share": 0.726,
+    "n_cells": 73
+   },
+   "愤怒": {
+    "category": "anger",
+    "weighted_rho": 0.0059,
+    "neg_cell_share": 0.4412,
+    "n_cells": 34
+   },
+   "火大": {
+    "category": "anger",
+    "weighted_rho": -0.0296,
+    "neg_cell_share": 0.75,
+    "n_cells": 12
+   },
+   "暴躁": {
+    "category": "anger",
+    "weighted_rho": -0.0168,
+    "neg_cell_share": 0.6579,
+    "n_cells": 38
+   },
+   "气死": {
+    "category": "anger",
+    "weighted_rho": -0.0046,
+    "neg_cell_share": 0.5,
+    "n_cells": 14
+   },
+   "恼火": {
+    "category": "anger",
+    "weighted_rho": -0.0232,
+    "neg_cell_share": 0.7273,
+    "n_cells": 11
+   },
+   "发火": {
+    "category": "anger",
+    "weighted_rho": -0.0069,
+    "neg_cell_share": 0.55,
+    "n_cells": 20
+   },
+   "骂": {
+    "category": "anger",
+    "weighted_rho": -0.0136,
+    "neg_cell_share": 0.5873,
+    "n_cells": 63
+   },
+   "吐槽": {
+    "category": "anger",
+    "weighted_rho": 0.0008,
+    "neg_cell_share": 0.5902,
+    "n_cells": 61
+   },
+   "无语": {
+    "category": "anger",
+    "weighted_rho": 0.0035,
+    "neg_cell_share": 0.5208,
+    "n_cells": 48
+   },
+   "离谱": {
+    "category": "anger",
+    "weighted_rho": 0.0193,
+    "neg_cell_share": 0.3585,
+    "n_cells": 53
+   },
+   "恶心": {
+    "category": "anger",
+    "weighted_rho": -0.0165,
+    "neg_cell_share": 0.7083,
+    "n_cells": 48
+   },
+   "讨厌": {
+    "category": "anger",
+    "weighted_rho": -0.034,
+    "neg_cell_share": 0.75,
+    "n_cells": 64
+   },
+   "憎恨": {
+    "category": "anger",
+    "weighted_rho": 0.0181,
+    "neg_cell_share": 0.3333,
+    "n_cells": 6
+   },
+   "恨": {
+    "category": "anger",
+    "weighted_rho": -0.0075,
+    "neg_cell_share": 0.6349,
+    "n_cells": 63
+   },
+   "坑": {
+    "category": "anger",
+    "weighted_rho": -0.0056,
+    "neg_cell_share": 0.5735,
+    "n_cells": 68
+   },
+   "骗": {
+    "category": "anger",
+    "weighted_rho": -0.0043,
+    "neg_cell_share": 0.5303,
+    "n_cells": 66
+   },
+   "欺骗": {
+    "category": "anger",
+    "weighted_rho": -0.0132,
+    "neg_cell_share": 0.6522,
+    "n_cells": 46
+   },
+   "虚假": {
+    "category": "anger",
+    "weighted_rho": 0.015,
+    "neg_cell_share": 0.3548,
+    "n_cells": 31
+   },
+   "智商税": {
+    "category": "anger",
+    "weighted_rho": 0.0068,
+    "neg_cell_share": 0.4643,
+    "n_cells": 28
+   },
+   "割韭菜": {
+    "category": "anger",
+    "weighted_rho": 0.0062,
+    "neg_cell_share": 0.381,
+    "n_cells": 21
+   },
+   "黑心": {
+    "category": "anger",
+    "weighted_rho": 0.0368,
+    "neg_cell_share": 0.5,
+    "n_cells": 6
+   },
+   "差评": {
+    "category": "anger",
+    "weighted_rho": -0.0093,
+    "neg_cell_share": 0.6538,
+    "n_cells": 26
+   },
+   "避雷": {
+    "category": "anger",
+    "weighted_rho": 0.0024,
+    "neg_cell_share": 0.3922,
+    "n_cells": 51
+   },
+   "劝退": {
+    "category": "anger",
+    "weighted_rho": -0.003,
+    "neg_cell_share": 0.5862,
+    "n_cells": 29
+   },
+   "翻车": {
+    "category": "anger",
+    "weighted_rho": 0.0105,
+    "neg_cell_share": 0.4444,
+    "n_cells": 36
+   },
+   "踩雷": {
+    "category": "anger",
+    "weighted_rho": -0.0,
+    "neg_cell_share": 0.5417,
+    "n_cells": 48
+   },
+   "气人": {
+    "category": "anger",
+    "weighted_rho": 0.0154,
+    "neg_cell_share": 0.3,
+    "n_cells": 10
+   },
+   "抓狂": {
+    "category": "anger",
+    "weighted_rho": -0.0282,
+    "neg_cell_share": 0.7,
+    "n_cells": 60
+   },
+   "崩溃": {
+    "category": "anger",
+    "weighted_rho": 0.0054,
+    "neg_cell_share": 0.4754,
+    "n_cells": 61
+   },
+   "怒": {
+    "category": "anger",
+    "weighted_rho": 0.0033,
+    "neg_cell_share": 0.4754,
+    "n_cells": 61
+   },
+   "不满": {
+    "category": "anger",
+    "weighted_rho": -0.0383,
+    "neg_cell_share": 0.7797,
+    "n_cells": 59
+   },
+   "抗议": {
+    "category": "anger",
+    "weighted_rho": -0.0001,
+    "neg_cell_share": 0.6154,
+    "n_cells": 13
+   },
+   "投诉": {
+    "category": "anger",
+    "weighted_rho": 0.0084,
+    "neg_cell_share": 0.3846,
+    "n_cells": 26
+   },
+   "维权": {
+    "category": "anger",
+    "weighted_rho": 0.004,
+    "neg_cell_share": 0.52,
+    "n_cells": 25
+   },
+   "曝光": {
+    "category": "anger",
+    "weighted_rho": 0.0011,
+    "neg_cell_share": 0.4706,
+    "n_cells": 34
+   },
+   "举报": {
+    "category": "anger",
+    "weighted_rho": 0.0043,
+    "neg_cell_share": 0.44,
+    "n_cells": 25
+   },
+   "垃圾": {
+    "category": "anger",
+    "weighted_rho": 0.0016,
+    "neg_cell_share": 0.4848,
+    "n_cells": 66
+   },
+   "糟糕": {
+    "category": "anger",
+    "weighted_rho": -0.0212,
+    "neg_cell_share": 0.7255,
+    "n_cells": 51
+   },
+   "失望": {
+    "category": "anger",
+    "weighted_rho": -0.0563,
+    "neg_cell_share": 0.8831,
+    "n_cells": 77
+   },
+   "气炸": {
+    "category": "anger",
+    "weighted_rho": 0.006,
+    "neg_cell_share": 0.4348,
+    "n_cells": 23
+   },
+   "气哭": {
+    "category": "anger",
+    "weighted_rho": -0.0167,
+    "neg_cell_share": 0.8,
+    "n_cells": 5
+   },
+   "坑人": {
+    "category": "anger",
+    "weighted_rho": -0.0068,
+    "neg_cell_share": 0.625,
+    "n_cells": 8
+   },
+   "踩坑": {
+    "category": "anger",
+    "weighted_rho": 0.0121,
+    "neg_cell_share": 0.4186,
+    "n_cells": 43
+   },
+   "避坑": {
+    "category": "anger",
+    "weighted_rho": 0.0394,
+    "neg_cell_share": 0.2564,
+    "n_cells": 39
+   },
+   "不值得": {
+    "category": "anger",
+    "weighted_rho": -0.0195,
+    "neg_cell_share": 0.6154,
+    "n_cells": 52
+   },
+   "浪费": {
+    "category": "anger",
+    "weighted_rho": -0.0248,
+    "neg_cell_share": 0.7681,
+    "n_cells": 69
+   },
+   "难用": {
+    "category": "anger",
+    "weighted_rho": -0.022,
+    "neg_cell_share": 0.6364,
+    "n_cells": 11
+   },
+   "难吃": {
+    "category": "anger",
+    "weighted_rho": -0.0108,
+    "neg_cell_share": 0.6333,
+    "n_cells": 30
+   },
+   "难看": {
+    "category": "anger",
+    "weighted_rho": -0.0241,
+    "neg_cell_share": 0.6333,
+    "n_cells": 30
+   }
+  }
+ },
+ "separability": {
+  "n_human": 51672,
+  "n_aigc": 6953,
+  "univariate_auc": {
+   "joy": 0.5693,
+   "affection": 0.5665,
+   "anxiety": 0.518,
+   "sadness": 0.4891,
+   "anger": 0.4849,
+   "positive": 0.5941,
+   "negative": 0.5118,
+   "net": 0.5708
+  },
+  "combined_cv": {
+   "auc": 0.6069,
+   "f1": 0.2495,
+   "acc": 0.6408,
+   "n_features": 8
+  }
+ },
+ "engagement": {
+  "month_from": "202301",
+  "min_body_len": 50,
+  "n_boot": 300,
+  "boot_seed": 42,
+  "text_len_drift": 83782,
+  "fe": {
+   "likes": {
+    "features": [
+     "joy",
+     "affection",
+     "anxiety",
+     "sadness",
+     "anger",
+     "p_ai",
+     "content_len",
+     "n_hashtags"
+    ],
+    "coef": {
+     "joy": 0.0029,
+     "affection": 0.0323,
+     "anxiety": -0.0023,
+     "sadness": -0.0171,
+     "anger": -0.0196,
+     "p_ai": -0.0543,
+     "content_len": 0.0371,
+     "n_hashtags": 0.1543
+    },
+    "ci_low": {
+     "joy": -0.012,
+     "affection": 0.0203,
+     "anxiety": -0.0175,
+     "sadness": -0.0309,
+     "anger": -0.0389,
+     "p_ai": -0.0703,
+     "content_len": 0.0155,
+     "n_hashtags": 0.1294
+    },
+    "ci_high": {
+     "joy": 0.0198,
+     "affection": 0.0476,
+     "anxiety": 0.0108,
+     "sadness": -0.0043,
+     "anger": -0.0003,
+     "p_ai": -0.0366,
+     "content_len": 0.0575,
+     "n_hashtags": 0.1805
+    },
+    "n_obs": 48954,
+    "n_cells": 106
+   },
+   "collections": {
+    "features": [
+     "joy",
+     "affection",
+     "anxiety",
+     "sadness",
+     "anger",
+     "p_ai",
+     "content_len",
+     "n_hashtags"
+    ],
+    "coef": {
+     "joy": -0.0084,
+     "affection": 0.0196,
+     "anxiety": -0.0065,
+     "sadness": -0.0252,
+     "anger": -0.0238,
+     "p_ai": -0.0368,
+     "content_len": 0.1,
+     "n_hashtags": 0.1907
+    },
+    "ci_low": {
+     "joy": -0.0262,
+     "affection": 0.005,
+     "anxiety": -0.0242,
+     "sadness": -0.0375,
+     "anger": -0.0443,
+     "p_ai": -0.0536,
+     "content_len": 0.0745,
+     "n_hashtags": 0.1644
+    },
+    "ci_high": {
+     "joy": 0.0098,
+     "affection": 0.0375,
+     "anxiety": 0.0078,
+     "sadness": -0.0134,
+     "anger": -0.0048,
+     "p_ai": -0.0186,
+     "content_len": 0.1233,
+     "n_hashtags": 0.2192
+    },
+    "n_obs": 48954,
+    "n_cells": 106
+   },
+   "comments": {
+    "features": [
+     "joy",
+     "affection",
+     "anxiety",
+     "sadness",
+     "anger",
+     "p_ai",
+     "content_len",
+     "n_hashtags"
+    ],
+    "coef": {
+     "joy": -0.029,
+     "affection": 0.0424,
+     "anxiety": 0.0324,
+     "sadness": 0.0395,
+     "anger": 0.023,
+     "p_ai": -0.0846,
+     "content_len": -0.0543,
+     "n_hashtags": 0.0288
+    },
+    "ci_low": {
+     "joy": -0.0438,
+     "affection": 0.0224,
+     "anxiety": 0.0187,
+     "sadness": 0.0244,
+     "anger": 0.0031,
+     "p_ai": -0.097,
+     "content_len": -0.0718,
+     "n_hashtags": 0.0101
+    },
+    "ci_high": {
+     "joy": -0.0137,
+     "affection": 0.0628,
+     "anxiety": 0.046,
+     "sadness": 0.0599,
+     "anger": 0.0432,
+     "p_ai": -0.0713,
+     "content_len": -0.0331,
+     "n_hashtags": 0.0495
+    },
+    "n_obs": 48954,
+    "n_cells": 106
+   }
+  }
+ },
+ "family": {
+  "families": {
+   "gpt": {
+    "n": 1665,
+    "density100": {
+     "joy": 0.5557,
+     "affection": 0.5577,
+     "anxiety": 0.173,
+     "sadness": 0.1026,
+     "anger": 0.0519,
+     "positive": 1.1134,
+     "negative": 0.3276,
+     "net": 0.7859
+    }
+   },
+   "gemini": {
+    "n": 1139,
+    "density100": {
+     "joy": 0.7997,
+     "affection": 0.7525,
+     "anxiety": 0.1525,
+     "sadness": 0.1295,
+     "anger": 0.0903,
+     "positive": 1.5522,
+     "negative": 0.3723,
+     "net": 1.1799
+    }
+   },
+   "deepseek": {
+    "n": 1459,
+    "density100": {
+     "joy": 0.4814,
+     "affection": 0.5568,
+     "anxiety": 0.1611,
+     "sadness": 0.1319,
+     "anger": 0.1105,
+     "positive": 1.0381,
+     "negative": 0.4035,
+     "net": 0.6346
+    }
+   },
+   "anthropic": {
+    "n": 717,
+    "density100": {
+     "joy": 0.6083,
+     "affection": 0.6172,
+     "anxiety": 0.1522,
+     "sadness": 0.1055,
+     "anger": 0.0641,
+     "positive": 1.2254,
+     "negative": 0.3218,
+     "net": 0.9037
+    }
+   },
+   "glm": {
+    "n": 735,
+    "density100": {
+     "joy": 0.5923,
+     "affection": 0.5654,
+     "anxiety": 0.1699,
+     "sadness": 0.1121,
+     "anger": 0.062,
+     "positive": 1.1576,
+     "negative": 0.344,
+     "net": 0.8137
+    }
+   },
+   "qwen": {
+    "n": 1238,
+    "density100": {
+     "joy": 0.4789,
+     "affection": 0.5503,
+     "anxiety": 0.1419,
+     "sadness": 0.1003,
+     "anger": 0.0548,
+     "positive": 1.0292,
+     "negative": 0.2969,
+     "net": 0.7323
+    }
+   }
+  },
+  "models": {
+   "gpt-o3": {
+    "n": 443,
+    "density100": {
+     "joy": 0.4567,
+     "affection": 0.5369,
+     "anxiety": 0.1712,
+     "sadness": 0.0946,
+     "anger": 0.0461,
+     "positive": 0.9935,
+     "negative": 0.3118,
+     "net": 0.6817
+    }
+   },
+   "gemini-1.5": {
+    "n": 463,
+    "density100": {
+     "joy": 0.9123,
+     "affection": 0.7601,
+     "anxiety": 0.1865,
+     "sadness": 0.1308,
+     "anger": 0.1042,
+     "positive": 1.6724,
+     "negative": 0.4215,
+     "net": 1.2509
+    }
+   },
+   "deepseek-v3": {
+    "n": 377,
+    "density100": {
+     "joy": 0.6553,
+     "affection": 0.7341,
+     "anxiety": 0.1605,
+     "sadness": 0.1172,
+     "anger": 0.0951,
+     "positive": 1.3894,
+     "negative": 0.3728,
+     "net": 1.0166
+    }
+   },
+   "gpt-4o": {
+    "n": 399,
+    "density100": {
+     "joy": 0.6759,
+     "affection": 0.4747,
+     "anxiety": 0.1713,
+     "sadness": 0.1056,
+     "anger": 0.0525,
+     "positive": 1.1506,
+     "negative": 0.3293,
+     "net": 0.8213
+    }
+   },
+   "claude-3-7-sonnet": {
+    "n": 349,
+    "density100": {
+     "joy": 0.5686,
+     "affection": 0.635,
+     "anxiety": 0.1303,
+     "sadness": 0.117,
+     "anger": 0.0614,
+     "positive": 1.2037,
+     "negative": 0.3088,
+     "net": 0.8949
+    }
+   },
+   "glm-3": {
+    "n": 380,
+    "density100": {
+     "joy": 0.5861,
+     "affection": 0.5475,
+     "anxiety": 0.176,
+     "sadness": 0.1127,
+     "anger": 0.0705,
+     "positive": 1.1336,
+     "negative": 0.3592,
+     "net": 0.7744
+    }
+   },
+   "deepseek-r1-250120": {
+    "n": 553,
+    "density100": {
+     "joy": 0.3022,
+     "affection": 0.4056,
+     "anxiety": 0.1354,
+     "sadness": 0.1147,
+     "anger": 0.1201,
+     "positive": 0.7078,
+     "negative": 0.3703,
+     "net": 0.3376
+    }
+   },
+   "gemini-2.0": {
+    "n": 458,
+    "density100": {
+     "joy": 0.734,
+     "affection": 0.776,
+     "anxiety": 0.1437,
+     "sadness": 0.1426,
+     "anger": 0.1029,
+     "positive": 1.51,
+     "negative": 0.3891,
+     "net": 1.1209
+    }
+   },
+   "deepseek-r1-250528": {
+    "n": 529,
+    "density100": {
+     "joy": 0.5385,
+     "affection": 0.5842,
+     "anxiety": 0.1867,
+     "sadness": 0.1586,
+     "anger": 0.1116,
+     "positive": 1.1227,
+     "negative": 0.4569,
+     "net": 0.6658
+    }
+   },
+   "qwen3": {
+    "n": 397,
+    "density100": {
+     "joy": 0.4832,
+     "affection": 0.4945,
+     "anxiety": 0.1323,
+     "sadness": 0.1119,
+     "anger": 0.0786,
+     "positive": 0.9777,
+     "negative": 0.3229,
+     "net": 0.6548
+    }
+   },
+   "glm-4": {
+    "n": 355,
+    "density100": {
+     "joy": 0.6027,
+     "affection": 0.5953,
+     "anxiety": 0.1598,
+     "sadness": 0.111,
+     "anger": 0.0476,
+     "positive": 1.198,
+     "negative": 0.3184,
+     "net": 0.8796
+    }
+   },
+   "gpt-o4": {
+    "n": 399,
+    "density100": {
+     "joy": 0.4303,
+     "affection": 0.5765,
+     "anxiety": 0.1613,
+     "sadness": 0.0953,
+     "anger": 0.0635,
+     "positive": 1.0069,
+     "negative": 0.32,
+     "net": 0.6868
+    }
+   },
+   "gemini-2.5": {
+    "n": 218,
+    "density100": {
+     "joy": 0.7386,
+     "affection": 0.6988,
+     "anxiety": 0.1144,
+     "sadness": 0.1042,
+     "anger": 0.046,
+     "positive": 1.4374,
+     "negative": 0.2646,
+     "net": 1.1728
+    }
+   },
+   "claude-sonnet-4": {
+    "n": 368,
+    "density100": {
+     "joy": 0.6461,
+     "affection": 0.6001,
+     "anxiety": 0.173,
+     "sadness": 0.0945,
+     "anger": 0.0667,
+     "positive": 1.2462,
+     "negative": 0.3342,
+     "net": 0.9121
+    }
+   },
+   "qwen2": {
+    "n": 408,
+    "density100": {
+     "joy": 0.4903,
+     "affection": 0.6415,
+     "anxiety": 0.1178,
+     "sadness": 0.0877,
+     "anger": 0.0426,
+     "positive": 1.1318,
+     "negative": 0.2481,
+     "net": 0.8838
+    }
+   },
+   "qwen2.5": {
+    "n": 433,
+    "density100": {
+     "joy": 0.466,
+     "affection": 0.5267,
+     "anxiety": 0.1696,
+     "sadness": 0.1001,
+     "anger": 0.0434,
+     "positive": 0.9927,
+     "negative": 0.3131,
+     "net": 0.6796
+    }
+   },
+   "gpt-4.1": {
+    "n": 424,
+    "density100": {
+     "joy": 0.6419,
+     "affection": 0.6457,
+     "anxiety": 0.1858,
+     "sadness": 0.114,
+     "anger": 0.0487,
+     "positive": 1.2876,
+     "negative": 0.3485,
+     "net": 0.9391
+    }
+   }
+  }
+ },
+ "quarterly": {
+  "quarters": [
+   "2023Q2",
+   "2023Q3",
+   "2023Q4",
+   "2024Q1",
+   "2024Q2",
+   "2024Q3",
+   "2024Q4",
+   "2025Q1",
+   "2025Q2"
+  ],
+  "n": {
+   "2023Q2": 318,
+   "2023Q3": 550,
+   "2023Q4": 521,
+   "2024Q1": 2704,
+   "2024Q2": 3196,
+   "2024Q3": 4195,
+   "2024Q4": 4301,
+   "2025Q1": 6708,
+   "2025Q2": 13511
+  },
+  "raw": {
+   "joy": [
+    0.3721,
+    0.4067,
+    0.3809,
+    0.3389,
+    0.396,
+    0.4418,
+    0.4176,
+    0.447,
+    0.4362
+   ],
+   "affection": [
+    0.4944,
+    0.5312,
+    0.6238,
+    0.2966,
+    0.3736,
+    0.4267,
+    0.4277,
+    0.4881,
+    0.5281
+   ],
+   "anxiety": [
+    0.1456,
+    0.1537,
+    0.144,
+    0.1338,
+    0.1567,
+    0.132,
+    0.1606,
+    0.1882,
+    0.1937
+   ],
+   "sadness": [
+    0.1562,
+    0.1511,
+    0.1497,
+    0.1636,
+    0.1938,
+    0.178,
+    0.1931,
+    0.1585,
+    0.186
+   ],
+   "anger": [
+    0.0784,
+    0.0827,
+    0.0676,
+    0.1482,
+    0.1467,
+    0.1202,
+    0.1271,
+    0.1051,
+    0.1111
+   ],
+   "positive": [
+    0.8665,
+    0.9379,
+    1.0047,
+    0.6355,
+    0.7696,
+    0.8686,
+    0.8453,
+    0.9351,
+    0.9643
+   ],
+   "negative": [
+    0.3802,
+    0.3875,
+    0.3614,
+    0.4456,
+    0.4972,
+    0.4302,
+    0.4808,
+    0.4518,
+    0.4908
+   ],
+   "net": [
+    0.4863,
+    0.5504,
+    0.6434,
+    0.19,
+    0.2724,
+    0.4383,
+    0.3646,
+    0.4833,
+    0.4735
+   ]
+  },
+  "domain_std": {
+   "joy": [
+    0.3752,
+    0.4651,
+    0.3887,
+    0.5026,
+    0.4467,
+    0.4197,
+    0.4086,
+    0.4448,
+    0.4939
+   ],
+   "affection": [
+    0.5369,
+    0.5277,
+    0.5701,
+    0.5307,
+    0.4642,
+    0.4571,
+    0.4531,
+    0.4887,
+    0.4893
+   ],
+   "anxiety": [
+    0.1454,
+    0.1447,
+    0.1466,
+    0.1762,
+    0.168,
+    0.1548,
+    0.1695,
+    0.1798,
+    0.1757
+   ],
+   "sadness": [
+    0.1363,
+    0.161,
+    0.1449,
+    0.1445,
+    0.1801,
+    0.1879,
+    0.1943,
+    0.1548,
+    0.1595
+   ],
+   "anger": [
+    0.0967,
+    0.0775,
+    0.0756,
+    0.1166,
+    0.1212,
+    0.117,
+    0.125,
+    0.1059,
+    0.0965
+   ],
+   "positive": [
+    0.9121,
+    0.9928,
+    0.9588,
+    1.0334,
+    0.911,
+    0.8768,
+    0.8617,
+    0.9336,
+    0.9832
+   ],
+   "negative": [
+    0.3784,
+    0.3833,
+    0.3671,
+    0.4374,
+    0.4693,
+    0.4596,
+    0.4888,
+    0.4405,
+    0.4317
+   ],
+   "net": [
+    0.5336,
+    0.6095,
+    0.5916,
+    0.596,
+    0.4417,
+    0.4172,
+    0.3729,
+    0.4931,
+    0.5515
+   ]
+  },
+  "trend": {
+   "joy": {
+    "rho": 0.75,
+    "p": 0.019942126131992536,
+    "rho_domain_std": 0.3167,
+    "p_domain_std": 0.406397014486386
+   },
+   "affection": {
+    "rho": -0.2167,
+    "p": 0.5755148957119259,
+    "rho_domain_std": -0.65,
+    "p_domain_std": 0.058073058017148654
+   },
+   "anxiety": {
+    "rho": 0.6,
+    "p": 0.08762282904140249,
+    "rho_domain_std": 0.7667,
+    "p_domain_std": 0.01594401657897403
+   },
+   "sadness": {
+    "rho": 0.6167,
+    "p": 0.07692880993776312,
+    "rho_domain_std": 0.4667,
+    "p_domain_std": 0.2053863511058121
+   },
+   "anger": {
+    "rho": 0.4,
+    "p": 0.286105101908313,
+    "rho_domain_std": 0.3667,
+    "p_domain_std": 0.3317398014330152
+   },
+   "positive": {
+    "rho": 0.0833,
+    "p": 0.831214097710308,
+    "rho_domain_std": -0.2333,
+    "p_domain_std": 0.5456987782182728
+   },
+   "negative": {
+    "rho": 0.7333,
+    "p": 0.024554150071469705,
+    "rho_domain_std": 0.5833,
+    "p_domain_std": 0.09918581647988327
+   },
+   "net": {
+    "rho": -0.3833,
+    "p": 0.3084952723803716,
+    "rho_domain_std": -0.4833,
+    "p_domain_std": 0.18746985521554216
+   }
+  },
+  "share_any": {
+   "joy": [
+    0.5723,
+    0.6018,
+    0.5585,
+    0.4678,
+    0.5178,
+    0.5318,
+    0.5206,
+    0.5741,
+    0.5456
+   ],
+   "affection": [
+    0.544,
+    0.5564,
+    0.5547,
+    0.3691,
+    0.4349,
+    0.4617,
+    0.4618,
+    0.5411,
+    0.535
+   ],
+   "anxiety": [
+    0.3208,
+    0.3036,
+    0.2898,
+    0.2592,
+    0.2829,
+    0.2474,
+    0.2806,
+    0.3345,
+    0.3293
+   ],
+   "sadness": [
+    0.239,
+    0.2418,
+    0.238,
+    0.2223,
+    0.2375,
+    0.2205,
+    0.2362,
+    0.247,
+    0.2504
+   ],
+   "anger": [
+    0.195,
+    0.18,
+    0.1593,
+    0.2408,
+    0.2315,
+    0.2083,
+    0.2153,
+    0.2235,
+    0.2317
+   ],
+   "positive": [
+    0.7296,
+    0.7545,
+    0.7505,
+    0.5899,
+    0.6549,
+    0.6861,
+    0.6745,
+    0.7561,
+    0.741
+   ],
+   "negative": [
+    0.5063,
+    0.4855,
+    0.4683,
+    0.5115,
+    0.515,
+    0.4708,
+    0.4922,
+    0.5228,
+    0.525
+   ],
+   "net": [
+    0.5597,
+    0.5782,
+    0.5873,
+    0.4279,
+    0.48,
+    0.5278,
+    0.5006,
+    0.5541,
+    0.5398
+   ]
+  }
+ }
+}

@@ -16,8 +16,9 @@
 
 口径说明：
 - 正文清洗复用 analysis_utils.clean_body（与 paper_features.py 完全一致）；
-- 探索集 p_ai 按行序对齐 paper_exploring_scores.csv.gz，脚本内用 content_len
-  逐条校验对齐（不一致时在结果中记录 mismatch 数）；
+- 探索集 p_ai 按行序对齐 paper_exploring_scores.csv.gz；正文清洗版本差异
+  会使 content_len 漂移，脚本只把它记为 text_len_drift（信息性指标），
+  不再据此判定行序错位；
 - 人类/探索集按 note_id 去重（保留元数据最完整的一条，规则同 deep_dive_analysis），
   AIGC 无 note_id，逐记录处理；
 - 紧凑文本长度 < 8 的帖子不参与首/尾 4 字模板统计（数量单独报告）。
@@ -130,14 +131,14 @@ def scan_view(path: str, content_len_ref: np.ndarray | None = None) -> dict:
     heads, tails, ids, months = [], [], [], []
     meta, hours, ending_classes = [], [], []
     month_pool: dict = {}   # 共享同月字符串对象（月份只有几十种）
-    n_raw = n_short = mismatch = 0
+    n_raw = n_short = text_len_drift = 0
     # 重复正文（探索集约 45%）直接复用紧凑文本与收尾类别，只读不改。
     cached = body_cache(frame_features, max_entries=60_000)
     for rec in iter_cached(path):
         content = content_of(rec)
         body = clean_body(content)
         if content_len_ref is not None and len(body) != int(content_len_ref[n_raw]):
-            mismatch += 1
+            text_len_drift += 1
         s, cls = cached(body)
         if len(s) >= MIN_NORM:
             heads.append(s[:FRAME_LEN])
@@ -165,7 +166,8 @@ def scan_view(path: str, content_len_ref: np.ndarray | None = None) -> dict:
             months.append(month)
         n_raw += 1
     return {
-        "path": path, "n_raw": n_raw, "n_short": n_short, "mismatch": mismatch,
+        "path": path, "n_raw": n_raw, "n_short": n_short, "mismatch": 0,
+        "text_len_drift": text_len_drift,
         "heads": heads, "tails": tails,
         "ending_classes": ending_classes, "ids": ids, "months": months,
         "meta": np.asarray(meta, dtype=np.int64),
@@ -423,7 +425,7 @@ def main() -> None:
     for (key, _), s in zip(DATASETS.items(), scans_list):
         scans[key] = s
         print(f"[scan] {key}: {s['n_raw']} 条记录，短文本 {s['n_short']}，"
-              f"对齐 mismatch={s['mismatch']}")
+              f"对齐 mismatch={s['mismatch']}，文本长度 drift={s['text_len_drift']}")
     if scans["exploring"]["n_raw"] != len(scores):
         raise SystemExit("探索集记录数与 paper_exploring_scores 行数不一致，终止")
 
@@ -666,6 +668,7 @@ def main() -> None:
             "topk": TOPK, "bootstrap": BOOT, "bootstrap_n_sub": int(n_sub),
             "bootstrap_seed": BOOT_SEED,
             "exploring_content_len_mismatch": scans["exploring"]["mismatch"],
+            "exploring_text_len_drift": scans["exploring"]["text_len_drift"],
             "note": "探索集按 note_id 去重；p_ai 按行序对齐 "
                     "paper_exploring_scores.csv.gz",
         },
@@ -695,8 +698,9 @@ def write_markdown(out: dict) -> None:
         "",
         "> 由 `framing_analysis.py` 全量运行生成；正文清洗与 `paper_features.py` 一致，",
         "> 人类/探索集按 note_id 去重，AIGC 无 note_id 逐记录处理；探索集 p_ai 按行序",
-        "> 对齐 `paper_exploring_scores.csv.gz`（content_len 校验 mismatch="
-        f"{meta['exploring_content_len_mismatch']}）。",
+        "> 对齐 `paper_exploring_scores.csv.gz`（scores/features content_len "
+        f"mismatch={meta['exploring_content_len_mismatch']}，原始文本长度 "
+        f"drift={meta['exploring_text_len_drift']}）。",
         "",
         "## 1 跨子集框架集中度",
         "",

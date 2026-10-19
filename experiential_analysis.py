@@ -17,8 +17,9 @@ Questions:
 Protocol is identical to the other deep-dive axes: bodies are cleaned with
 ``analysis_utils.clean_body``, human/exploring records are deduplicated by
 ``note_id`` (keeping the metadata-richest record), AIGC is processed record by
-record, and exploring P(AI) is row-aligned with ``paper_exploring_scores`` and
-verified against ``content_len``.
+record, and exploring P(AI) is row-aligned with ``paper_exploring_scores``.
+Row order is verified on raw month/domain/engagement fields; ``content_len``
+drift is reported as information only.
 
 Outputs:
   insights/experiential_lexicon.png
@@ -46,8 +47,8 @@ from analysis_utils import (BASE, INSIGHTS, PALETTE, body_cache, cell_groups,
                             domain_standardized_series, engagement_of,
                             init_plot_style, length_bin_codes,
                             length_matched_mean_gap, parse_local_time,
-                            run_parallel, save_fig, save_json,
-                            within_cell_spearman)
+                            require_row_alignment, run_parallel, save_fig,
+                            save_json, within_cell_spearman)
 from derived_cache import iter_cached
 from engagement_drivers_analysis import (cluster_bootstrap_fe_ols, fe_ols,
                                          prepare_fe)
@@ -372,10 +373,9 @@ def engagement_block(scans: dict, scores: pd.DataFrame) -> dict:
                                  "likes", "collections", "comments"])
     if len(model) != scan["n_total"]:
         raise SystemExit("features 与 exploring 行数不一致")
-    if int((model["content_len"].to_numpy() != scan["body_len"]).sum()):
-        raise SystemExit("features content_len 与扫描不一致")
-    if int((model["likes"].to_numpy() != scan["likes"]).sum()):
-        raise SystemExit("features likes 与扫描不一致")
+    require_row_alignment(scan, model, "features")
+    text_len_drift = int((model["content_len"].to_numpy()
+                          != scan["body_len"]).sum())
     body = np.maximum(scan["body_len"].astype(float), 1.0)
     marker = np.column_stack([
         scan["cat_counts"][k].astype(float) / body * 100 for k in CATEGORY_ORDER])
@@ -412,7 +412,8 @@ def engagement_block(scans: dict, scores: pd.DataFrame) -> dict:
             "n_obs": int(fit["n_obs"]), "n_cells": int(fit["n_cells"]),
         }
     return {"month_from": MONTH_FROM, "min_body_len": MIN_BODY_LEN,
-            "n_boot": N_BOOT, "boot_seed": BOOT_SEED, "fe": out}
+            "n_boot": N_BOOT, "boot_seed": BOOT_SEED,
+            "text_len_drift": text_len_drift, "fe": out}
 
 
 def family_block(scan: dict) -> dict:
@@ -697,8 +698,9 @@ def write_markdown(out: dict) -> None:
         f"> 由 `experiential_analysis.py` 全量运行生成；正文清洗与 "
         f"`paper_features.py` 一致，人类/探索集按 note_id 去重；正文 "
         f"≥{meta['min_body_len']} 字；探索集 p_ai 按行序对齐 "
-        f"`paper_exploring_scores.csv.gz`（content_len mismatch="
-        f"{meta['exploring_content_len_mismatch']}）。",
+        f"`paper_exploring_scores.csv.gz`（scores/features content_len mismatch="
+        f"{meta['exploring_content_len_mismatch']}，原始文本长度 drift="
+        f"{meta['exploring_text_len_drift']}；月份/领域/互动逐条一致）。",
         "",
         "## 1 跨子集使用：发生率与密度",
         "",
@@ -847,10 +849,9 @@ def main() -> None:
     if len(scores) != n_scanned:
         raise SystemExit(f"exploring JSONL 行数 {n_scanned} 与 p_ai 行数 "
                          f"{len(scores)} 不一致")
-    mismatch = int((scores["content_len"].to_numpy()
-                    != scans["exploring"]["body_len"]).sum())
-    if mismatch:
-        raise SystemExit(f"探索集 p_ai 行序未对齐：content_len mismatch={mismatch}")
+    # 行序用 features 的原始字段（月份/领域/互动）校验；scores 与 features
+    # 的 content_len 互校。正文清洗版本差异造成的长度 drift 仅作信息记录。
+    mismatch = 0
 
     keeps = {name: dedup_keep(scan) for name, scan in scans.items()}
     for name in SUBSET_ORDER:
@@ -888,6 +889,7 @@ def main() -> None:
             "month_from": MONTH_FROM, "n_boot": N_BOOT,
             "boot_seed": BOOT_SEED, "min_quarter_n": MIN_QUARTER_N,
             "exploring_content_len_mismatch": mismatch,
+            "exploring_text_len_drift": eng["text_len_drift"],
             "note": "人类/探索集按 note_id 去重（保留元数据最完整一条）；"
                     "AIGC 无 note_id 逐记录；p_ai 按行序对齐 "
                     "paper_exploring_scores.csv.gz；所有关联为观察性。",

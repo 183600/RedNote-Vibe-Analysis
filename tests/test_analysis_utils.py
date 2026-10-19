@@ -29,7 +29,8 @@ from analysis_utils import (post_text, content_of, clean_body, body_cache,
                             LENGTH_BINS, decile_table, length_bin_codes,
                             standardize_weights, domain_standardized_series,
                             ngram_repeat_share, length_matched_mean_gap,
-                            length_residualize, run_parallel)
+                            length_residualize, run_parallel,
+                            alignment_mismatch, require_row_alignment)
 
 
 class TestJsonlHelpers(unittest.TestCase):
@@ -644,6 +645,46 @@ class TestDomainStandardizedSeries(unittest.TestCase):
         })
         s = domain_standardized_series(df, "v", "quarter")
         self.assertAlmostEqual(s["Q2"], 3.0)
+
+
+class TestRowAlignment(unittest.TestCase):
+    def setUp(self):
+        self.frame = pd.DataFrame({
+            "month": ["202401", "202401", "202402"],
+            "domain": ["健康", "美食", "健康"],
+            "likes": [1, 2, 3],
+            "content_len": [10, 20, 30],
+        })
+
+    def test_matching_rows_report_zero(self):
+        scan = {"month": ["202401", "202401", "202402"],
+                "domain": ["健康", "美食", "健康"],
+                "likes": np.asarray([1, 2, 3])}
+        self.assertEqual(alignment_mismatch(scan, self.frame),
+                         {"month": 0, "domain": 0, "likes": 0})
+
+    def test_content_len_drift_is_ignored(self):
+        # 正文清洗口径变化只影响 content_len，不应被误判为行序错位
+        scan = {"month": ["202401", "202401", "202402"],
+                "domain": ["健康", "美食", "健康"],
+                "likes": [1, 2, 3], "body_len": [7, 9, 11]}
+        self.assertEqual(sum(alignment_mismatch(scan, self.frame).values()), 0)
+
+    def test_detects_shifted_rows(self):
+        scan = {"month": ["202401", "202402", "202402"],
+                "domain": ["健康", "健康", "健康"],
+                "likes": [1, 3, 2]}
+        mism = alignment_mismatch(scan, self.frame)
+        self.assertGreater(mism["month"], 0)
+        self.assertGreater(mism["domain"], 0)
+        with self.assertRaises(SystemExit):
+            require_row_alignment(scan, self.frame, "test")
+
+    def test_length_mismatch_is_reported(self):
+        scan = {"month": ["202401"], "domain": ["健康"], "likes": [1]}
+        mism = alignment_mismatch(scan, self.frame)
+        self.assertEqual(mism["month"], 2)
+        self.assertEqual(mism["likes"], 2)
 
 
 def _double(x: int) -> int:

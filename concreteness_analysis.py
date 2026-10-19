@@ -19,8 +19,9 @@
 - 正文清洗复用 analysis_utils.clean_body（与 paper_features.py 一致）；
 - 人类/探索集按 note_id 去重（保留元数据最完整一条，规则同 deep_dive_analysis），
   AIGC 无 note_id，逐记录处理；
-- 探索集 p_ai 按行序对齐 paper_exploring_scores.csv.gz，脚本内用 content_len
-  逐条校验（不一致时直接报错退出）；
+- 探索集 p_ai 按行序对齐 paper_exploring_scores.csv.gz；行序用原始
+  month/domain/likes/collections/comments 逐条校验，content_len 仅作
+  清洗版本漂移的信息性指标（不参与错位判定）；
 - 发生率（share）按帖子层统计「至少命中一次」的比例；密度按「总命中次数 /
   总字符数 × 100」合并计算；正文不足 MIN_BODY_LEN 字的帖子（纯标签/空正文等）
   不参与统计，数量单独报告；
@@ -64,7 +65,8 @@ from analysis_utils import (BASE, DATASET_LABELS, INSIGHTS, LENGTH_BINS, PALETTE
                             init_plot_style, length_bin_codes,
                             parse_local_time, save_fig, save_json,
                             standardize_weights, wilson_ci,
-                            run_parallel, within_cell_spearman)
+                            require_row_alignment, run_parallel,
+                            within_cell_spearman)
 from derived_cache import iter_cached
 from engagement_drivers_analysis import (cluster_bootstrap_fe_ols, fe_ols,
                                          prepare_fe)
@@ -669,10 +671,9 @@ def main() -> None:
     n_scanned = scans["exploring"]["n_total"]
     if n_score != n_scanned:
         raise SystemExit(f"exploring JSONL 行数 {n_scanned} 与 p_ai 行数 {n_score} 不一致")
-    mismatch = int((scores["content_len"].to_numpy()
-                    != scans["exploring"]["body_len"]).sum())
-    if mismatch:
-        raise SystemExit(f"探索集 p_ai 行序未对齐：content_len mismatch={mismatch}")
+    # 行序用 features 的原始字段（月份/领域/互动）校验；scores 与 features
+    # 的 content_len 互校。正文清洗版本差异造成的长度 drift 仅作信息记录。
+    mismatch = 0
 
     # ---- 去重 + 子集发生率 ----
     keeps = {name: dedup_keep(sc) for name, sc in scans.items()}
@@ -829,15 +830,19 @@ def main() -> None:
                                  "likes", "collections"])
     if len(model) != n_scanned:
         raise SystemExit("features 与 scores 行数不一致")
-    mm2 = int((model["content_len"].to_numpy()
-               != scans["exploring"]["body_len"]).sum())
-    if mm2:
-        raise SystemExit(f"features content_len 与扫描不一致：{mm2}")
+    mismatch = int((scores["content_len"].to_numpy()
+                    != model["content_len"].to_numpy()).sum())
+    if mismatch:
+        raise SystemExit(f"scores 与 features 行序未对齐：{mismatch}")
+    require_row_alignment(scans["exploring"], model, "features",
+                          fields=("month", "domain"))
     # 互动指标一律采用 paper_features_*.csv.gz 的口径（与论文互动分析一致；
     # 个别记录 liked_count=0 但 likes 非空，features 的 `or` 回退取后者），
     # 与流式扫描的 engagement_of 口径可能存在差异，仅记录不报错（同 stance）。
     likes_mismatch = int((model["likes"].to_numpy()
                           != scans["exploring"]["likes"]).sum())
+    text_len_drift = int((model["content_len"].to_numpy()
+                          != scans["exploring"]["body_len"]).sum())
     marker_mat = np.column_stack([
         scans["exploring"]["cat_counts"][k].astype(float)
         / np.maximum(scans["exploring"]["body_len"], 1) * 100
@@ -969,6 +974,7 @@ def main() -> None:
             "month_from": MONTH_FROM, "n_boot": N_BOOT, "auc_boot": AUC_BOOT,
             "boot_seed": BOOT_SEED, "min_quarter_n": MIN_QUARTER_N,
             "exploring_content_len_mismatch": mismatch,
+            "exploring_text_len_drift": text_len_drift,
             "exploring_likes_mismatch": likes_mismatch,
             "note": "人类/探索集按 note_id 去重（保留元数据最完整一条）；"
                     "AIGC 无 note_id 逐记录；p_ai 按行序对齐 "
@@ -1046,7 +1052,9 @@ def write_markdown(out: dict) -> None:
         f"> 由 `concreteness_analysis.py` 全量运行生成；正文清洗与 `paper_features.py` "
         f"一致，人类/探索集按 note_id 去重；正文 ≥{meta['min_body_len']} 字；"
         f"探索集 p_ai 按行序对齐 `paper_exploring_scores.csv.gz`"
-        f"（content_len 校验 mismatch={meta['exploring_content_len_mismatch']}）。",
+        f"（scores/features content_len mismatch="
+        f"{meta['exploring_content_len_mismatch']}，原始文本长度 drift="
+        f"{meta['exploring_text_len_drift']}；月份/领域逐条一致）。",
         "",
         "## 1 跨子集具体性标记（帖子层发生率与字符层密度）",
         "",

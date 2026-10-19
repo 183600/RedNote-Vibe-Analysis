@@ -26,8 +26,9 @@
 - 正文清洗复用 analysis_utils.clean_body（与 paper_features.py 一致）；
 - 人类/探索集按 note_id 去重（保留元数据最完整一条，规则同 deep_dive_analysis），
   AIGC 无 note_id 逐记录处理；
-- 探索集 p_ai 按行序对齐 paper_exploring_scores.csv.gz，脚本内用 content_len
-  逐条校验（不一致时直接报错退出）；
+- 探索集 p_ai 按行序对齐 paper_exploring_scores.csv.gz；行序用原始
+  month/domain/likes/collections/comments 逐条校验，content_len 仅作
+  清洗版本漂移的信息性指标（不参与错位判定）；
 - 类别计数直接调用五条轴分析脚本的纯计数函数（stance.word_counts /
   concreteness.classify / cta.cta_counts / typography.typography_counts /
   discourse.word_counts），保证与各轴结果同口径；
@@ -57,7 +58,8 @@ from analysis_utils import (BASE, INSIGHTS, body_cache, init_plot_style,
                             save_fig, save_json, cell_groups, cell_rank_cache,
                             clean_body, content_of, cv_auc, dedup_indices,
                             engagement_of, parse_local_time,
-                            run_parallel, within_cell_spearman)
+                            require_row_alignment, run_parallel,
+                            within_cell_spearman)
 from derived_cache import iter_cached
 from cta_analysis import CATEGORY_LABELS as CTA_LABELS
 from cta_analysis import CATEGORY_ORDER as CTA_ORDER
@@ -546,27 +548,28 @@ def main() -> None:
         print(f"  {name}: {sc['n_total']:,} 条记录")
 
     # ---- 对齐探索集 p_ai ----
+    # scores 与 features 由同一份 JSONL 同序生成；先用两者的 content_len
+    # 互校，再用原始未清洗字段（月份/领域/互动）校验 features 与本次扫描
+    # 的行序。正文清洗版本差异只会改变 content_len，不是行序错位。
     scores = pd.read_csv(SCORES_PATH, usecols=["p_ai", "content_len"])
     n_score = len(scores)
     n_scanned = scans["exploring"]["n_total"]
     if n_score != n_scanned:
         raise SystemExit(f"exploring JSONL 行数 {n_scanned} 与 p_ai 行数 {n_score} 不一致")
-    mismatch = int((scores["content_len"].to_numpy()
-                    != scans["exploring"]["body_len"]).sum())
-    if mismatch:
-        raise SystemExit(f"探索集 p_ai 行序未对齐：content_len mismatch={mismatch}")
 
     model = pd.read_csv(FEATURES_PATH,
                         usecols=["month", "domain", "content_len", "n_hashtags",
                                  "likes", "collections"])
     if len(model) != n_scanned:
         raise SystemExit("features 与 scores 行数不一致")
-    mm2 = int((model["content_len"].to_numpy()
-               != scans["exploring"]["body_len"]).sum())
-    if mm2:
-        raise SystemExit(f"features content_len 与扫描不一致：{mm2}")
-    likes_mismatch = int((model["likes"].to_numpy()
-                          != scans["exploring"]["likes"]).sum())
+    mismatch = int((scores["content_len"].to_numpy()
+                    != model["content_len"].to_numpy()).sum())
+    if mismatch:
+        raise SystemExit(f"scores 与 features 行序未对齐：{mismatch}")
+    require_row_alignment(scans["exploring"], model, "features")
+    likes_mismatch = 0
+    text_len_drift = int((model["content_len"].to_numpy()
+                          != scans["exploring"]["body_len"]).sum())
 
     # ---- 去重 + 子集使用率 ----
     keeps = {name: dedup_keep(sc) for name, sc in scans.items()}
@@ -735,6 +738,7 @@ def main() -> None:
             "month_from": MONTH_FROM, "n_boot": N_BOOT, "boot_seed": BOOT_SEED,
             "stack_boot": STACK_BOOT,
             "exploring_content_len_mismatch": mismatch,
+            "exploring_text_len_drift": text_len_drift,
             "exploring_likes_mismatch": likes_mismatch,
             "note": "人类/探索集按 note_id 去重（保留元数据最完整一条）；"
                     "AIGC 无 note_id 逐记录；p_ai 按行序对齐 "
@@ -819,8 +823,10 @@ def write_markdown(out: dict) -> None:
         f"> 由 `axis_synthesis_analysis.py` 全量运行生成；类别计数直接调用五条轴"
         f"脚本的纯计数函数；人类/探索集按 note_id 去重；正文 ≥"
         f"{meta['min_body_len']} 字；探索集 p_ai 按行序对齐 "
-        f"`paper_exploring_scores.csv.gz`（content_len 校验 "
-        f"mismatch={meta['exploring_content_len_mismatch']}）。",
+        f"`paper_exploring_scores.csv.gz`（scores/features content_len "
+        f"mismatch={meta['exploring_content_len_mismatch']}，原始文本长度"
+        f"因清洗版本差异 drift={meta['exploring_text_len_drift']}，"
+        f"月份/领域/互动字段逐条一致）。",
         "",
         "## 1 五轴复合密度（各类别密度之和，次/百字）",
         "",

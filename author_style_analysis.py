@@ -502,28 +502,33 @@ def load_scores() -> pd.DataFrame:
 def scan_users(scores: pd.DataFrame) -> dict:
     """流式扫描 `exploring_set_fixed.jsonl`，收集 note_id / user_id / 元数据分。
 
-    同时用 content_len 逐条校验与 scores 的行序对齐（清洗口径同
-    paper_features）；返回逐行数组，供后续去重与作者子集筛选。
+    同时用 scores 的 month/domain 原始字段逐条校验行序（content_len 因
+    清洗版本差异可能漂移，不作为错位依据）；返回逐行数组，供后续去重与
+    作者子集筛选。
     """
     nid: list = []
     uid: list = []
     meta: list = []
     mismatch = 0
-    content_len = scores["content_len"].to_numpy()
-    n_scores = content_len.size
+    months_ref = scores["month"].astype(str).to_numpy()
+    domains_ref = scores["domain"].astype(str).to_numpy()
+    n_scores = months_ref.size
     for i, rec in enumerate(iter_cached(EXPLORING_PATH)):
         body = clean_body(content_of(rec))
-        if i >= n_scores or len(body) != int(content_len[i]):
-            mismatch += 1
         lk, cl, cm = engagement_of(rec)
         user = rec.get("user_id") or ""
         nid.append(rec.get("note_id"))
         uid.append(user)
+        dt = parse_local_time(rec.get("local_time"))
+        month = f"{dt.year:04d}{dt.month:02d}" if dt is not None else ""
+        domain = str(rec.get("domain") or "")
+        if (i >= n_scores or month != months_ref[i]
+                or domain != domains_ref[i]):
+            mismatch += 1
         has_meta = (bool(user)
                     and rec.get("domain") not in (None, "", "未知"))
         # 去重打分与 analysis_utils.dedup_indices 文档的共享规则完全一致
         # （含时间戳），保证与其他全量扫描脚本保留同一条重复记录。
-        dt = parse_local_time(rec.get("local_time"))
         meta.append(int(has_meta) + int(bool(lk)) + int(bool(cl))
                     + int(bool(cm)) + int(dt is not None)
                     + int(len(body) > 0))
@@ -916,8 +921,8 @@ def render_markdown(out: dict) -> str:
         "",
         "> 由 `author_style_analysis.py` 全量运行生成；数据源 "
         "`paper_exploring_scores.csv.gz` + `exploring_set_fixed.jsonl`"
-        "（content_len 逐条对齐，mismatch="
-        f"{out['meta']['content_len_mismatch']}）；月份窗口 ≥2023.01，"
+        "（month/domain 逐条对齐，mismatch="
+        f"{out['meta']['row_mismatch']}）；月份窗口 ≥2023.01，"
         "口径与 `paper_engagement.py` 一致。作者子集 = 去重后带 `user_id` "
         "的笔记（该子集内每篇笔记恰一条记录）。",
         "",
@@ -1029,7 +1034,7 @@ def main() -> None:
     full, auth = frames["full"], frames["author"]
     print(f"去重笔记 {frames['n_dedup']:,}（原始 {scan['n_raw']:,}），"
           f"带 user_id {frames['n_author']:,}，"
-          f"content_len mismatch={scan['mismatch']}")
+          f"行序 mismatch={scan['mismatch']}")
 
     sel = selection_table(full)
     conc = author_concentration(auth)
@@ -1067,7 +1072,7 @@ def main() -> None:
             "n_author_notes": frames["n_author"],
             "author_share": round(frames["n_author"]
                                   / max(len(frames["full"]), 1), 4),
-            "content_len_mismatch": scan["mismatch"],
+            "row_mismatch": scan["mismatch"],
             "n_boot": N_BOOT,
             "n_boot_two_way": N_BOOT_TWO,
             "seed": BOOT_SEED,

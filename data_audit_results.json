@@ -1,0 +1,648 @@
+{
+ "inventory": [
+  {
+   "label": "human JSONL",
+   "path": "training_set_human.jsonl",
+   "exists": true,
+   "bytes": 79906129
+  },
+  {
+   "label": "aigc JSONL",
+   "path": "training_set_aigc.jsonl",
+   "exists": true,
+   "bytes": 8064603
+  },
+  {
+   "label": "exploring JSONL",
+   "path": "exploring_set.jsonl",
+   "exists": true,
+   "bytes": 99085228
+  },
+  {
+   "label": "human features",
+   "path": "/home/runner/work/RedNote-Vibe-Analysis/RedNote-Vibe-Analysis/paper_features_human.csv.gz",
+   "exists": true,
+   "bytes": 2807145
+  },
+  {
+   "label": "aigc features",
+   "path": "/home/runner/work/RedNote-Vibe-Analysis/RedNote-Vibe-Analysis/paper_features_aigc.csv.gz",
+   "exists": true,
+   "bytes": 378434
+  },
+  {
+   "label": "exploring features",
+   "path": "/home/runner/work/RedNote-Vibe-Analysis/RedNote-Vibe-Analysis/paper_features_exploring.csv.gz",
+   "exists": true,
+   "bytes": 3965947
+  },
+  {
+   "label": "exploring scores",
+   "path": "/home/runner/work/RedNote-Vibe-Analysis/RedNote-Vibe-Analysis/paper_exploring_scores.csv.gz",
+   "exists": true,
+   "bytes": 2356546
+  },
+  {
+   "label": "detector model",
+   "path": "/home/runner/work/RedNote-Vibe-Analysis/RedNote-Vibe-Analysis/paper_detector_model.json",
+   "exists": true,
+   "bytes": 5170
+  }
+ ],
+ "datasets": {
+  "human": {
+   "path": "training_set_human.jsonl",
+   "n": 51878,
+   "schema": {
+    "note_id": {
+     "present": 51878,
+     "share": 1.0,
+     "types": {
+      "str": 51878
+     }
+    },
+    "note_title": {
+     "present": 51878,
+     "share": 1.0,
+     "types": {
+      "str": 51878
+     }
+    },
+    "local_time": {
+     "present": 51878,
+     "share": 1.0,
+     "types": {
+      "str": 51878
+     }
+    },
+    "desc": {
+     "present": 51878,
+     "share": 1.0,
+     "types": {
+      "str": 51878
+     }
+    },
+    "liked_count": {
+     "present": 51878,
+     "share": 1.0,
+     "types": {
+      "number": 51878
+     }
+    },
+    "collected_count": {
+     "present": 51878,
+     "share": 1.0,
+     "types": {
+      "number": 51878
+     }
+    },
+    "comments_count": {
+     "present": 51878,
+     "share": 1.0,
+     "types": {
+      "number": 51878
+     }
+    },
+    "domain": {
+     "present": 51878,
+     "share": 1.0,
+     "types": {
+      "str": 51878
+     }
+    }
+   },
+   "quality": {
+    "empty_body": 0,
+    "short_body": 0,
+    "missing_note_id": 0,
+    "duplicate_note_rows": 206,
+    "duplicate_note_groups": 206,
+    "max_note_multiplicity": 2,
+    "duplicate_content_rows": 283,
+    "missing_domain": 0,
+    "unknown_domain": 0,
+    "missing_or_invalid_time": 0,
+    "negative_engagement": 0,
+    "zero_engagement": 20144
+   }
+  },
+  "aigc": {
+   "path": "training_set_aigc.jsonl",
+   "n": 7254,
+   "schema": {
+    "note_title": {
+     "present": 7254,
+     "share": 1.0,
+     "types": {
+      "str": 7254
+     }
+    },
+    "note_content": {
+     "present": 7254,
+     "share": 1.0,
+     "types": {
+      "str": 7254
+     }
+    },
+    "domain": {
+     "present": 7254,
+     "share": 1.0,
+     "types": {
+      "str": 7254
+     }
+    },
+    "model_family": {
+     "present": 7254,
+     "share": 1.0,
+     "types": {
+      "str": 7254
+     }
+    },
+    "model": {
+     "present": 7254,
+     "share": 1.0,
+     "types": {
+      "str": 7254
+     }
+    }
+   },
+   "quality": {
+    "empty_body": 0,
+    "short_body": 301,
+    "missing_note_id": 7254,
+    "duplicate_note_rows": 0,
+    "duplicate_note_groups": 0,
+    "max_note_multiplicity": 1,
+    "duplicate_content_rows": 0,
+    "missing_domain": 0,
+    "unknown_domain": 0,
+    "missing_or_invalid_time": 7254,
+    "negative_engagement": 0,
+    "zero_engagement": 7254
+   }
+  },
+  "exploring": {
+   "path": "exploring_set.jsonl",
+   "n": 91517,
+   "schema": {
+    "note_id": {
+     "present": 91517,
+     "share": 1.0,
+     "types": {
+      "str": 91517
+     }
+    },
+    "note_title": {
+     "present": 91517,
+     "share": 1.0,
+     "types": {
+      "str": 91517
+     }
+    },
+    "local_time": {
+     "present": 91517,
+     "share": 1.0,
+     "types": {
+      "str": 91517
+     }
+    },
+    "domain": {
+     "present": 74539,
+     "share": 0.814483,
+     "types": {
+      "str": 74539
+     }
+    },
+    "time": {
+     "present": 50202,
+     "share": 0.548554,
+     "types": {
+      "number": 50202
+     }
+    },
+    "desc": {
+     "present": 50202,
+     "share": 0.548554,
+     "types": {
+      "str": 50202
+     }
+    },
+    "liked_count": {
+     "present": 50202,
+     "share": 0.548554,
+     "types": {
+      "number": 50202
+     }
+    },
+    "collected_count": {
+     "present": 50202,
+     "share": 0.548554,
+     "types": {
+      "number": 50202
+     }
+    },
+    "comments_count": {
+     "present": 50202,
+     "share": 0.548554,
+     "types": {
+      "number": 50202
+     }
+    },
+    "note_content": {
+     "present": 41315,
+     "share": 0.451446,
+     "types": {
+      "str": 41315
+     }
+    },
+    "likes": {
+     "present": 41315,
+     "share": 0.451446,
+     "types": {
+      "number": 41315
+     }
+    },
+    "collections": {
+     "present": 41315,
+     "share": 0.451446,
+     "types": {
+      "number": 41315
+     }
+    },
+    "comments": {
+     "present": 41315,
+     "share": 0.451446,
+     "types": {
+      "number": 41315
+     }
+    },
+    "user_id": {
+     "present": 33224,
+     "share": 0.363036,
+     "types": {
+      "str": 33224
+     }
+    }
+   },
+   "quality": {
+    "empty_body": 831,
+    "short_body": 36229,
+    "missing_note_id": 0,
+    "duplicate_note_rows": 31356,
+    "duplicate_note_groups": 31016,
+    "max_note_multiplicity": 23,
+    "duplicate_content_rows": 31578,
+    "missing_domain": 16978,
+    "unknown_domain": 0,
+    "missing_or_invalid_time": 0,
+    "negative_engagement": 0,
+    "zero_engagement": 2384
+   }
+  }
+ },
+ "features": {
+  "human": {
+   "path": "/home/runner/work/RedNote-Vibe-Analysis/RedNote-Vibe-Analysis/paper_features_human.csv.gz",
+   "rows": 51878,
+   "columns": 45,
+   "columns_list": [
+    "dataset",
+    "domain",
+    "month",
+    "model_family",
+    "model",
+    "likes",
+    "collections",
+    "comments",
+    "content_len",
+    "n_lines",
+    "avg_line_len",
+    "n_hashtags",
+    "colon_line_ratio",
+    "list_line_ratio",
+    "excl100",
+    "ques100",
+    "ellip100",
+    "tilde100",
+    "comma100",
+    "pause100",
+    "period100",
+    "emoji100",
+    "emoji_distinct",
+    "xhsemo100",
+    "p_的",
+    "p_了",
+    "p_是",
+    "p_我",
+    "p_你",
+    "p_就",
+    "p_都",
+    "p_很",
+    "p_有",
+    "p_不",
+    "ai_lex100",
+    "hum_lex100",
+    "uniq_char_ratio",
+    "uniq_bigram_ratio",
+    "title_len",
+    "title_excl",
+    "title_ques",
+    "title_emoji",
+    "title_pipe",
+    "title_num",
+    "title_bracket"
+   ],
+   "missing": {
+    "model_family": {
+     "missing": 51878,
+     "share": 1.0
+    },
+    "model": {
+     "missing": 51878,
+     "share": 1.0
+    }
+   },
+   "alignment_mismatch": {
+    "month": 0,
+    "domain": 0,
+    "likes": 0,
+    "collections": 0,
+    "comments": 0
+   },
+   "text_len_drift": {
+    "n_mismatch": 2805,
+    "mean_signed": 0.296,
+    "mean_abs": 0.3,
+    "max_abs": 113,
+    "p50_abs": 0.0,
+    "p99_abs": 8.0
+   },
+   "content_len": {
+    "min": 197,
+    "max": 5303,
+    "mean": 472.18
+   }
+  },
+  "aigc": {
+   "path": "/home/runner/work/RedNote-Vibe-Analysis/RedNote-Vibe-Analysis/paper_features_aigc.csv.gz",
+   "rows": 7254,
+   "columns": 45,
+   "columns_list": [
+    "dataset",
+    "domain",
+    "month",
+    "model_family",
+    "model",
+    "likes",
+    "collections",
+    "comments",
+    "content_len",
+    "n_lines",
+    "avg_line_len",
+    "n_hashtags",
+    "colon_line_ratio",
+    "list_line_ratio",
+    "excl100",
+    "ques100",
+    "ellip100",
+    "tilde100",
+    "comma100",
+    "pause100",
+    "period100",
+    "emoji100",
+    "emoji_distinct",
+    "xhsemo100",
+    "p_的",
+    "p_了",
+    "p_是",
+    "p_我",
+    "p_你",
+    "p_就",
+    "p_都",
+    "p_很",
+    "p_有",
+    "p_不",
+    "ai_lex100",
+    "hum_lex100",
+    "uniq_char_ratio",
+    "uniq_bigram_ratio",
+    "title_len",
+    "title_excl",
+    "title_ques",
+    "title_emoji",
+    "title_pipe",
+    "title_num",
+    "title_bracket"
+   ],
+   "missing": {
+    "month": {
+     "missing": 7254,
+     "share": 1.0
+    }
+   },
+   "alignment_mismatch": {
+    "month": 0,
+    "domain": 0,
+    "likes": 0,
+    "collections": 0,
+    "comments": 0
+   },
+   "text_len_drift": {
+    "n_mismatch": 1321,
+    "mean_signed": 2.834,
+    "mean_abs": 2.85,
+    "max_abs": 100,
+    "p50_abs": 0.0,
+    "p99_abs": 31.0
+   },
+   "content_len": {
+    "min": 0,
+    "max": 1226,
+    "mean": 320.38
+   }
+  },
+  "exploring": {
+   "path": "/home/runner/work/RedNote-Vibe-Analysis/RedNote-Vibe-Analysis/paper_features_exploring.csv.gz",
+   "rows": 91517,
+   "columns": 45,
+   "columns_list": [
+    "dataset",
+    "domain",
+    "month",
+    "model_family",
+    "model",
+    "likes",
+    "collections",
+    "comments",
+    "content_len",
+    "n_lines",
+    "avg_line_len",
+    "n_hashtags",
+    "colon_line_ratio",
+    "list_line_ratio",
+    "excl100",
+    "ques100",
+    "ellip100",
+    "tilde100",
+    "comma100",
+    "pause100",
+    "period100",
+    "emoji100",
+    "emoji_distinct",
+    "xhsemo100",
+    "p_的",
+    "p_了",
+    "p_是",
+    "p_我",
+    "p_你",
+    "p_就",
+    "p_都",
+    "p_很",
+    "p_有",
+    "p_不",
+    "ai_lex100",
+    "hum_lex100",
+    "uniq_char_ratio",
+    "uniq_bigram_ratio",
+    "title_len",
+    "title_excl",
+    "title_ques",
+    "title_emoji",
+    "title_pipe",
+    "title_num",
+    "title_bracket"
+   ],
+   "missing": {
+    "model_family": {
+     "missing": 91517,
+     "share": 1.0
+    },
+    "model": {
+     "missing": 91517,
+     "share": 1.0
+    }
+   },
+   "alignment_mismatch": {
+    "month": 0,
+    "domain": 0,
+    "likes": 0,
+    "collections": 0,
+    "comments": 0
+   },
+   "text_len_drift": {
+    "n_mismatch": 83782,
+    "mean_signed": 18.081,
+    "mean_abs": 18.082,
+    "max_abs": 406,
+    "p50_abs": 15.0,
+    "p99_abs": 69.0
+   },
+   "content_len": {
+    "min": 0,
+    "max": 1997,
+    "mean": 258.49
+   }
+  }
+ },
+ "scores": {
+  "path": "/home/runner/work/RedNote-Vibe-Analysis/RedNote-Vibe-Analysis/paper_exploring_scores.csv.gz",
+  "rows": 91517,
+  "columns": 8,
+  "columns_list": [
+   "month",
+   "domain",
+   "likes",
+   "collections",
+   "comments",
+   "p_ai",
+   "p_ai_full",
+   "content_len"
+  ],
+  "missing": {},
+  "p_ai": {
+   "min": 3.301071740516798e-13,
+   "max": 1.0,
+   "mean": 0.4578,
+   "p01": 0.0039842259226216,
+   "p50": 0.4261732771481746,
+   "p99": 0.999992572137928,
+   "out_of_range": 0,
+   "missing": 0
+  }
+ },
+ "alignment": {
+  "human": {
+   "jsonl_rows": 51878,
+   "features_rows": 51878,
+   "row_count_match": true,
+   "metadata_mismatch": {
+    "month": 0,
+    "domain": 0,
+    "likes": 0,
+    "collections": 0,
+    "comments": 0
+   },
+   "text_len_drift": {
+    "n_mismatch": 2805,
+    "mean_signed": 0.296,
+    "mean_abs": 0.3,
+    "max_abs": 113,
+    "p50_abs": 0.0,
+    "p99_abs": 8.0
+   }
+  },
+  "aigc": {
+   "jsonl_rows": 7254,
+   "features_rows": 7254,
+   "row_count_match": true,
+   "metadata_mismatch": {
+    "month": 0,
+    "domain": 0,
+    "likes": 0,
+    "collections": 0,
+    "comments": 0
+   },
+   "text_len_drift": {
+    "n_mismatch": 1321,
+    "mean_signed": 2.834,
+    "mean_abs": 2.85,
+    "max_abs": 100,
+    "p50_abs": 0.0,
+    "p99_abs": 31.0
+   }
+  },
+  "exploring": {
+   "jsonl_rows": 91517,
+   "features_rows": 91517,
+   "row_count_match": true,
+   "metadata_mismatch": {
+    "month": 0,
+    "domain": 0,
+    "likes": 0,
+    "collections": 0,
+    "comments": 0
+   },
+   "text_len_drift": {
+    "n_mismatch": 83782,
+    "mean_signed": 18.081,
+    "mean_abs": 18.082,
+    "max_abs": 406,
+    "p50_abs": 15.0,
+    "p99_abs": 69.0
+   },
+   "scores_rows": 91517,
+   "scores_features_rows_match": true,
+   "scores_features_content_len_mismatch": 0
+  }
+ },
+ "constants": {
+  "short_len": 50,
+  "align_fields": [
+   "month",
+   "domain",
+   "likes",
+   "collections",
+   "comments"
+  ]
+ }
+}

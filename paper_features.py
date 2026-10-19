@@ -99,10 +99,11 @@ def extract(title, content):
     def per100(cnt, _round=round, _n=n_safe):
         return _round(cnt / _n * 100, 4)
 
-    feats["excl100"] = per100(sum(map(body.count, "！!")))
-    feats["ques100"] = per100(sum(map(body.count, "？?")))
-    feats["ellip100"] = per100(sum(map(body.count, ("…", "。。。", "..."))))
-    feats["tilde100"] = per100(sum(map(body.count, "~～")))
+    feats["excl100"] = per100(body.count("！") + body.count("!"))
+    feats["ques100"] = per100(body.count("？") + body.count("?"))
+    feats["ellip100"] = per100(body.count("…") + body.count("。。。")
+                               + body.count("..."))
+    feats["tilde100"] = per100(body.count("~") + body.count("～"))
     feats["comma100"] = per100(body.count("，"))
     feats["pause100"] = per100(body.count("、"))
     feats["period100"] = per100(body.count("。"))
@@ -120,7 +121,10 @@ def extract(title, content):
 
     feats["uniq_char_ratio"] = round(len(set(body)) / n_safe, 4)
     n_bigrams = max(n - 1, 0)
-    uniq_bigrams = len({body[i:i + 2] for i in range(n_bigrams)})
+    # 相邻字符二元组的不同数量：`zip(body, body[1:])` 在 C 层生成 (c1, c2)
+    # 元组，与逐位置切片集合的基数完全相同（不同二元字符组 <=> 不同元组），
+    # 省掉每个窗口一次字符串切片分配。
+    uniq_bigrams = len(set(zip(body, body[1:])))
     feats["uniq_bigram_ratio"] = round(uniq_bigrams / max(n_bigrams, 1), 4)
 
     feats["title_len"] = len(title)

@@ -1143,7 +1143,14 @@ def load_records_with_total(path: str, sample: int | None = None,
 
 
 def to_int(v, default: int = 0) -> int:
-    """把 '123' / 123 / None 等混用的计数字段安全地转为整数。"""
+    """把 '123' / 123 / None 等混用的计数字段安全地转为整数。
+
+    语料里的互动计数字段绝大多数本来就是 int，先走 `int` → `int` 的直通
+    快路径（无需异常处理与类型转换），其余类型（字符串/浮点/None 等）仍
+    与 `int(v)` 完全一致。
+    """
+    if type(v) is int:
+        return v
     try:
         return int(v)
     except (TypeError, ValueError):

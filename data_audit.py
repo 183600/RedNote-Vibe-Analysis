@@ -58,6 +58,10 @@ IMPORTANT_FIELDS = [
 ]
 
 
+_TYPE_NAMES = {type(None): "null", bool: "bool", int: "number",
+               float: "number", str: "str", list: "list", dict: "dict"}
+
+
 def _type_name(value) -> str:
     if value is None:
         return "null"
@@ -96,16 +100,22 @@ def scan_dataset(name: str, path: str) -> dict:
         n += 1
         for key, value in rec.items():
             key_counts[key] += 1
-            key_types[key][_type_name(value)] += 1
+            # 投影字段都是内建类型：先查映射（省掉 isinstance 链），仅对
+            # 未见过/子类类型回退到完整判定函数，结果与 `_type_name` 一致。
+            tname = _TYPE_NAMES.get(type(value))
+            if tname is None:
+                tname = _type_name(value)
+            key_types[key][tname] += 1
         content = content_of(rec)
         body = clean_body(content)
         length = len(body)
         body_len.append(length)
-        if not content.strip():
+        stripped = content.strip()
+        if not stripped:
             n_empty += 1
         if length < SHORT_LEN:
             n_short += 1
-        if content.strip():
+        if stripped:
             h = _content_hash(content)
             if h in body_hashes:
                 n_dup_content += 1
@@ -175,8 +185,21 @@ def scan_dataset(name: str, path: str) -> dict:
     }
 
 
+# 只读投影表按 (path, usecols) 缓存：对齐校验与绘图会对同一 features/scores
+# 表做多次 content_len/p_ai 投影读取，缓存后每次运行只解压一遍（全表读取
+# 不缓存，避免常驻内存增加）。
+_READ_CACHE: dict = {}
+
+
 def read_table(path: str, usecols=None) -> pd.DataFrame:
-    return pd.read_csv(path, usecols=usecols)
+    if usecols is None:
+        return pd.read_csv(path)
+    key = (path, tuple(usecols))
+    df = _READ_CACHE.get(key)
+    if df is None:
+        df = pd.read_csv(path, usecols=list(usecols))
+        _READ_CACHE[key] = df
+    return df
 
 
 def table_missing(df: pd.DataFrame) -> dict:

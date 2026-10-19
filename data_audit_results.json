@@ -54,13 +54,6 @@
    "path": "training_set_human.jsonl",
    "n": 51878,
    "schema": {
-    "note_id": {
-     "present": 51878,
-     "share": 1.0,
-     "types": {
-      "str": 51878
-     }
-    },
     "note_title": {
      "present": 51878,
      "share": 1.0,
@@ -68,14 +61,21 @@
       "str": 51878
      }
     },
-    "local_time": {
+    "desc": {
      "present": 51878,
      "share": 1.0,
      "types": {
       "str": 51878
      }
     },
-    "desc": {
+    "domain": {
+     "present": 51878,
+     "share": 1.0,
+     "types": {
+      "str": 51878
+     }
+    },
+    "local_time": {
      "present": 51878,
      "share": 1.0,
      "types": {
@@ -103,7 +103,7 @@
       "number": 51878
      }
     },
-    "domain": {
+    "note_id": {
      "present": 51878,
      "share": 1.0,
      "types": {
@@ -185,13 +185,6 @@
    "path": "exploring_set.jsonl",
    "n": 91517,
    "schema": {
-    "note_id": {
-     "present": 91517,
-     "share": 1.0,
-     "types": {
-      "str": 91517
-     }
-    },
     "note_title": {
      "present": 91517,
      "share": 1.0,
@@ -206,6 +199,13 @@
       "str": 91517
      }
     },
+    "note_id": {
+     "present": 91517,
+     "share": 1.0,
+     "types": {
+      "str": 91517
+     }
+    },
     "domain": {
      "present": 74539,
      "share": 0.814483,
@@ -213,18 +213,18 @@
       "str": 74539
      }
     },
-    "time": {
-     "present": 50202,
-     "share": 0.548554,
-     "types": {
-      "number": 50202
-     }
-    },
     "desc": {
      "present": 50202,
      "share": 0.548554,
      "types": {
       "str": 50202
+     }
+    },
+    "time": {
+     "present": 50202,
+     "share": 0.548554,
+     "types": {
+      "number": 50202
      }
     },
     "liked_count": {

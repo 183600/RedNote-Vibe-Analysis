@@ -52,9 +52,9 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import pandas as pd
-from scipy.stats import rankdata
 
-from analysis_utils import (BASE, INSIGHTS, body_cache, init_plot_style,
+from analysis_utils import (BASE, INSIGHTS, average_ranks, body_cache,
+                            init_plot_style,
                             save_fig, save_json, cell_groups, cell_rank_cache,
                             clean_body, content_of, cv_auc, dedup_indices,
                             engagement_of, parse_local_time,
@@ -162,7 +162,7 @@ def within_cell_rank_z(values, groups) -> np.ndarray:
         if vc.size == 0 or bool(np.isnan(vc).any()) \
                 or float(np.ptp(vc)) == 0.0:
             continue
-        r = rankdata(vc)
+        r = average_ranks(vc)
         out[idx] = (r - r.mean()) / r.std()
     return out
 

@@ -1,27 +1,27 @@
 {
  "burstiness": {
   "human": {
-   "n": 42923,
-   "median": 0.6682,
+   "n": 42922,
+   "median": 0.669,
    "ci": [
-    0.6657,
-    0.6709
+    0.6663,
+    0.6715
    ]
   },
   "aigc": {
-   "n": 6580,
-   "median": 0.5401,
+   "n": 6532,
+   "median": 0.5376,
    "ci": [
-    0.5333,
-    0.5469
+    0.531,
+    0.5432
    ]
   },
   "exploring": {
-   "n": 37469,
-   "median": 0.5794,
+   "n": 34464,
+   "median": 0.5539,
    "ci": [
-    0.5769,
-    0.5823
+    0.5509,
+    0.5571
    ]
   }
  },
@@ -29,20 +29,20 @@
   "human": {
    "n_reps": 51672,
    "sent_len_median": 25.0,
-   "mean_sent_len_median": 46.714285714285715,
+   "mean_sent_len_median": 46.666666666666664,
    "sentences_per_note_median": 8.0
   },
   "aigc": {
    "n_reps": 7254,
    "sent_len_median": 20.0,
-   "mean_sent_len_median": 25.636363636363637,
+   "mean_sent_len_median": 25.5,
    "sentences_per_note_median": 10.0
   },
   "exploring": {
    "n_reps": 60161,
    "sent_len_median": 18.0,
-   "mean_sent_len_median": 22.125,
-   "sentences_per_note_median": 5.0
+   "mean_sent_len_median": 21.525,
+   "sentences_per_note_median": 6.0
   }
  },
  "mtld": {
@@ -55,11 +55,11 @@
    ]
   },
   "aigc": {
-   "n_docs": 6404,
-   "median": 189.88,
+   "n_docs": 6406,
+   "median": 189.84,
    "ci": [
-    187.24,
-    192.19
+    187.1,
+    192.2
    ]
   },
   "exploring": {
@@ -79,8 +79,8 @@
    "beta": 0.6454
   },
   "aigc": {
-   "n_docs": 6404,
-   "n_docs_in_curve": 6065,
+   "n_docs": 6406,
+   "n_docs_in_curve": 6067,
    "n_tokens": 1000000,
    "beta": 0.5834
   },
@@ -93,7 +93,7 @@
  },
  "comparisons": {
   "burst_human_vs_aigc": {
-   "cliffs_delta": 0.339,
+   "cliffs_delta": 0.349,
    "p": 0.0
   },
   "mtld_human_vs_aigc": {
@@ -101,12 +101,12 @@
    "p": 0.0
   },
   "burst_human_vs_exploring": {
-   "cliffs_delta": 0.239,
+   "cliffs_delta": 0.309,
    "p": 0.0
   },
   "mtld_human_vs_exploring": {
    "cliffs_delta": -0.061,
-   "p": 4.6630028235954124e-11
+   "p": 4.48685164112101e-11
   }
  },
  "sample": {

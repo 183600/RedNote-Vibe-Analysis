@@ -750,59 +750,37 @@ def md_summary(out: dict) -> str:
 # --------------------------------------------------------------------------
 # 召回自检与主流程
 # --------------------------------------------------------------------------
-def recall_check(sets: list[np.ndarray], pairs, n_sample: int = RECALL_SAMPLE,
-                 seed: int = RECALL_SEED, min_j: float = MIN_J) -> dict:
-    """采样暴力基准，估计候选生成对真实 J ≥ min_j 对的召回率。
+_RECALL_CTX: dict = {}
+_RECALL_PARALLEL_MIN = 2000
 
-    随机抽 n_sample 篇文档，对全库逐篇计算与其共享的 5-gram 数（对样本
-    shingle 建反向索引，单篇文档的共享数由一次 bincount 得到），得到所有
-    涉及样本文档的真实 J ≥ min_j 对；再与主流程验证出的对求交集。
 
-    全库扫描按 `_RECALL_CHUNK` 分块向量化：块内所有文档的 shingle 一次
-    searchsorted + 一次 bincount，等价于逐篇循环（命中区间与逐篇一致）。
+def _recall_scan(ctx: dict, doc_ids) -> set:
+    """在给定文档子集上做暴力召回基准扫描，返回真实 J ≥ min_j 的对。
+
+    纯函数（上下文显式传入），父进程串行与 fork 子进程分片共用同一实现，
+    保证分片结果与整体串行逐位一致。
     """
-    n_docs = len(sets)
-    if n_docs == 0:
-        return {"n_sample": 0, "true_pairs": 0, "found_pairs": 0,
-                "recall_pct": 0.0}
-    rng = np.random.default_rng(seed)
-    sample = np.sort(rng.choice(n_docs, size=min(n_sample, n_docs),
-                                replace=False))
-    sizes = np.asarray([sets[i].size for i in sample], dtype=np.int64)
-    nonempty = sample[sizes >= MIN_SHINGLES]
-    sizes = sizes[sizes >= MIN_SHINGLES]
-    if nonempty.size == 0:
-        return {"n_sample": 0, "true_pairs": 0, "found_pairs": 0,
-                "recall_pct": 0.0}
-
-    all_h = np.concatenate([sets[i] for i in nonempty])
-    # 反向索引（CSR 风格）：排序后的每个 shingle -> 含它的样本文档 id 列表。
-    # 与旧的 (唯一 shingle 数 × 样本数) one-hot 位掩码逐位等价，但内存从
-    # O(K×样本) 降到 O(全部样本 shingle 数)（~430K vs ~430MB）。直接按
-    # shingle 值做一次稳定排序即可得到分组边界，省掉 np.unique 的
-    # 「排序 + inverse 搜索」和随后的第二次 argsort（结果逐位一致）。
-    doc_pos = np.repeat(np.arange(nonempty.size, dtype=np.int64), sizes)
-    order = np.argsort(all_h, kind="stable")
-    sorted_h = all_h[order]
-    sample_ids = doc_pos[order]
-    starts = np.flatnonzero(np.r_[True, sorted_h[1:] != sorted_h[:-1]])
-    counts = np.diff(np.r_[starts, all_h.size]).astype(np.int64)
-
+    sets = ctx["sets"]
+    sorted_h = ctx["sorted_h"]
+    sample_ids = ctx["sample_ids"]
+    starts = ctx["starts"]
+    counts = ctx["counts"]
+    lengths = ctx["lengths"]
+    n_sample_docs = ctx["n_sample_docs"]
+    last_h = ctx["last_h"]
+    min_j = ctx["min_j"]
     true_pairs: set[tuple[int, int]] = set()
-    lengths = np.fromiter((s.size for s in sets), dtype=np.int64, count=n_docs)
-    eligible = np.flatnonzero(lengths >= MIN_SHINGLES)
-    n_sample_docs = nonempty.size
-    last_h = sorted_h.size - 1
     start_i = 0
-    while start_i < eligible.size:
+    n_docs = len(doc_ids)
+    while start_i < n_docs:
         span = 0
         stop_i = start_i
-        while stop_i < eligible.size and (
+        while stop_i < n_docs and (
                 span == 0
-                or span + int(lengths[eligible[stop_i]]) <= _RECALL_CHUNK):
-            span += int(lengths[eligible[stop_i]])
+                or span + int(lengths[doc_ids[stop_i]]) <= _RECALL_CHUNK):
+            span += int(lengths[doc_ids[stop_i]])
             stop_i += 1
-        chunk = eligible[start_i:stop_i]
+        chunk = doc_ids[start_i:stop_i]
         start_i = stop_i
         parts = [sets[int(d)] for d in chunk]
         chunk_lens = np.fromiter((p.size for p in parts), dtype=np.int64,
@@ -835,11 +813,89 @@ def recall_check(sets: list[np.ndarray], pairs, n_sample: int = RECALL_SAMPLE,
         d_loc = nz // n_sample_docs
         s_pos = nz - d_loc * n_sample_docs
         d_glob = chunk[d_loc]
-        s_glob = nonempty[s_pos]
-        j = inter / (lengths[d_glob] + sizes[s_pos] - inter)
+        s_glob = ctx["nonempty"][s_pos]
+        j = inter / (lengths[d_glob] + ctx["sizes"][s_pos] - inter)
         keep = (j >= min_j) & (d_glob != s_glob)
         for a, b in zip(d_glob[keep].tolist(), s_glob[keep].tolist()):
             true_pairs.add((a, b) if a < b else (b, a))
+    return true_pairs
+
+
+def _recall_segment(lo: int, hi: int) -> set:
+    """fork 子进程入口：扫描 _RECALL_CTX 中 [lo, hi) 区间的文档。"""
+    ctx = _RECALL_CTX
+    return _recall_scan(ctx, ctx["doc_ids"][lo:hi])
+
+
+def recall_check(sets: list[np.ndarray], pairs, n_sample: int = RECALL_SAMPLE,
+                 seed: int = RECALL_SEED, min_j: float = MIN_J) -> dict:
+    """采样暴力基准，估计候选生成对真实 J ≥ min_j 对的召回率。
+
+    随机抽 n_sample 篇文档，对全库逐篇计算与其共享的 5-gram 数（对样本
+    shingle 建反向索引，单篇文档的共享数由一次 bincount 得到），得到所有
+    涉及样本文档的真实 J ≥ min_j 对；再与主流程验证出的对求交集。
+
+    全库扫描按 `_RECALL_CHUNK` 分块向量化：块内所有文档的 shingle 一次
+    searchsorted + 一次 bincount，等价于逐篇循环（命中区间与逐篇一致）。
+    候选文档足够多时按 shingle 总量均衡切成 4 段并行扫描（fork 子进程
+    只读共享 mmap，分片按序号拼接，结果与串行逐位一致）。
+    """
+    n_docs = len(sets)
+    if n_docs == 0:
+        return {"n_sample": 0, "true_pairs": 0, "found_pairs": 0,
+                "recall_pct": 0.0}
+    rng = np.random.default_rng(seed)
+    sample = np.sort(rng.choice(n_docs, size=min(n_sample, n_docs),
+                                replace=False))
+    sizes = np.asarray([sets[i].size for i in sample], dtype=np.int64)
+    nonempty = sample[sizes >= MIN_SHINGLES]
+    sizes = sizes[sizes >= MIN_SHINGLES]
+    if nonempty.size == 0:
+        return {"n_sample": 0, "true_pairs": 0, "found_pairs": 0,
+                "recall_pct": 0.0}
+
+    all_h = np.concatenate([sets[i] for i in nonempty])
+    # 反向索引（CSR 风格）：排序后的每个 shingle -> 含它的样本文档 id 列表。
+    # 与旧的 (唯一 shingle 数 × 样本数) one-hot 位掩码逐位等价，但内存从
+    # O(K×样本) 降到 O(全部样本 shingle 数)（~430K vs ~430MB）。直接按
+    # shingle 值做一次稳定排序即可得到分组边界，省掉 np.unique 的
+    # 「排序 + inverse 搜索」和随后的第二次 argsort（结果逐位一致）。
+    doc_pos = np.repeat(np.arange(nonempty.size, dtype=np.int64), sizes)
+    order = np.argsort(all_h, kind="stable")
+    sorted_h = all_h[order]
+    sample_ids = doc_pos[order]
+    starts = np.flatnonzero(np.r_[True, sorted_h[1:] != sorted_h[:-1]])
+    counts = np.diff(np.r_[starts, all_h.size]).astype(np.int64)
+
+    lengths = np.fromiter((s.size for s in sets), dtype=np.int64, count=n_docs)
+    eligible = np.flatnonzero(lengths >= MIN_SHINGLES)
+    ctx = {
+        "sets": sets, "sorted_h": sorted_h, "sample_ids": sample_ids,
+        "starts": starts, "counts": counts, "lengths": lengths,
+        "nonempty": nonempty, "sizes": sizes,
+        "n_sample_docs": nonempty.size,
+        "last_h": sorted_h.size - 1, "min_j": min_j,
+        "doc_ids": eligible,
+    }
+    true_pairs: set[tuple[int, int]] = set()
+    n_workers = min(4, max(1, os.cpu_count() or 1))
+    if eligible.size >= _RECALL_PARALLEL_MIN and n_workers > 1:
+        cum = np.cumsum(lengths[eligible])
+        total = int(cum[-1])
+        targets = np.linspace(0, total, n_workers + 1)[1:-1]
+        edges = [0, *(int(x) for x in np.searchsorted(cum, targets)), int(cum.size)]
+        bounds = [(lo, hi) for lo, hi in zip(edges, edges[1:]) if hi > lo]
+        _RECALL_CTX.update(ctx)
+        try:
+            parts = run_parallel([partial(_recall_segment, lo, hi)
+                                  for lo, hi in bounds],
+                                 max_workers=n_workers)
+        finally:
+            _RECALL_CTX.clear()
+        for part in parts:
+            true_pairs |= part
+    else:
+        true_pairs = _recall_scan(ctx, eligible)
 
     in_sample = set(int(x) for x in sample)
     found = {(min(a, b), max(a, b)) for _, a, b in pairs

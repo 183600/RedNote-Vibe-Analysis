@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import json
 import random
+import re
 import numpy as np
 import matplotlib
 
@@ -99,12 +100,20 @@ NEGATIVE_WORDS = set(
 )
 
 
+SENTIMENT_PATTERN = re.compile("|".join(
+    sorted((re.escape(w) for w in POSITIVE_WORDS | NEGATIVE_WORDS),
+           key=len, reverse=True)))
+
+
 def sentiment_analysis(text):
     if not text:
         return 0, 0, 0
-    text = str(text).lower()
-    pos_count = sum(1 for word in POSITIVE_WORDS if word in text)
-    neg_count = sum(1 for word in NEGATIVE_WORDS if word in text)
+    # 最长优先的非重叠匹配：保持「每个词是否存在」的口径，但避免
+    # "好喜欢" 同时命中 "好"+"喜欢"+"好喜欢" 这类嵌套短词的重复计数
+    # （与 sentiment_analysis.py / extended_analysis.py 同口径）。
+    hits = set(SENTIMENT_PATTERN.findall(str(text).lower()))
+    pos_count = len(hits & POSITIVE_WORDS)
+    neg_count = len(hits & NEGATIVE_WORDS)
     return pos_count, neg_count, pos_count - neg_count
 
 

@@ -376,8 +376,10 @@ def bootstrap_wls_slope(x, y, weights=None, n_boot: int = N_BOOT,
     slopes = []
     for _ in range(n_boot):
         idx = rng.integers(0, n, n)
-        mult = np.bincount(idx, minlength=n).astype(float)
-        s = ols_slope(x[idx], y[idx], w[idx] * mult)
+        # 先合并重复抽中的作者，再用「重抽次数 × 原权重」作为该作者的新权重；
+        # 若直接在展开后的行上再乘一次 mult 会把权重平方（m_i²·w_i）。
+        uniq, mult = np.unique(idx, return_counts=True)
+        s = ols_slope(x[uniq], y[uniq], w[uniq] * mult)
         if not np.isnan(s):
             slopes.append(s)
     arr = np.asarray(slopes)

@@ -189,6 +189,10 @@ EMOJI_PATTERN = re.compile(
     flags=re.UNICODE,
 )
 
+SENTIMENT_PATTERN = re.compile("|".join(
+    sorted((re.escape(w) for w in POSITIVE_WORDS | NEGATIVE_WORDS),
+           key=len, reverse=True)))
+
 RE_TOPIC_TAG = re.compile(r"#\w+\[话题\]")
 RE_HASHTAG = re.compile(r"#(\w+)")
 RE_XHS_EMO = re.compile(r"\[[^\[\]]{1,8}R\]")
@@ -208,6 +212,11 @@ def setup_fonts():
 _ITEM_KEYS = ("note_title", "note_content", "desc", "domain",
               "liked_count", "collected_count", "comments_count",
               "likes", "collections", "comments")
+
+# 记录中出现任一字段即视为该数据集有互动数据（与 engagement_of 的取值来源一致）；
+# AIGC 语料没有互动字段，缺失不等于互动量为 0。
+_ENGAGEMENT_KEYS = ("liked_count", "likes", "collected_count", "collections",
+                    "comments_count", "comments")
 
 
 def iter_jsonl_items(filepath):
@@ -265,8 +274,11 @@ def count_emojis(text):
 def compute_sentiment(text):
     if not text:
         return 0, 0
-    pos = sum(1 for w in POSITIVE_WORDS if w in text)
-    neg = sum(1 for w in NEGATIVE_WORDS if w in text)
+    # 最长优先的非重叠匹配：保持「每个词是否存在」的口径，但避免
+    # "喜欢" 同时命中 "喜欢" 与被其包含的短词这类重复计数。
+    hits = set(SENTIMENT_PATTERN.findall(str(text)))
+    pos = len(hits & POSITIVE_WORDS)
+    neg = len(hits & NEGATIVE_WORDS)
     return pos, neg
 
 
@@ -288,6 +300,11 @@ def analyze_domain_stats(items):
     title_lengths = [len(item.get("note_title", "") or "") for item in items]
     emoji_counts = [count_emojis(t) for t in texts]
     engagements = [compute_engagement(item) for item in items]
+    # AIGC 语料没有互动字段：缺失不等于「互动量为 0」，记为 N/A（NaN），
+    # 避免把 0 当成真实互动参与均值与显著性检验。
+    has_engagement = any(
+        any(k in item for k in _ENGAGEMENT_KEYS) for item in items
+    )
 
     pos_total, neg_total = 0, 0
     for t in texts:
@@ -323,15 +340,16 @@ def analyze_domain_stats(items):
         # 原始数组随统计结果一并返回，供统计检验复用，避免重复扫描文本
         "lengths": lengths,
         "emojis": emoji_counts,
-        "engagements": engagements,
+        "engagements": engagements if has_engagement else [],
+        "has_engagement": has_engagement,
         "avg_length": np.mean(lengths),
         "median_length": np.median(lengths),
         "std_length": np.std(lengths),
         "avg_title_length": np.mean(title_lengths),
         "avg_emoji": np.mean(emoji_counts),
         "median_emoji": np.median(emoji_counts),
-        "avg_engagement": np.mean(engagements),
-        "median_engagement": np.median(engagements),
+        "avg_engagement": np.mean(engagements) if has_engagement else float("nan"),
+        "median_engagement": np.median(engagements) if has_engagement else float("nan"),
         "pos_count": pos_total,
         "neg_count": neg_total,
         "sentiment_ratio": sentiment_ratio,
@@ -682,6 +700,10 @@ def print_detailed_comparison(all_stats):
             vals = []
             for ds in datasets:
                 v = all_stats[ds][domain][metric]
+                if metric == "avg_engagement" and not all_stats[ds][domain].get(
+                        "has_engagement", True):
+                    vals.append("N/A")
+                    continue
                 if "%" in fmt:
                     vals.append(f"{v:.1f}%")
                 else:
@@ -793,6 +815,11 @@ def print_cross_topic_analysis(all_stats):
     for metric, label in metrics_interesting:
         print(f"\n  {label}:")
         for ds in datasets:
+            if metric == "avg_engagement" and not any(
+                    all_stats[ds][d].get("has_engagement", True)
+                    for d in common_domains):
+                print(f"    {ds:<12}: N/A")
+                continue
             best_domain = max(common_domains, key=lambda d: all_stats[ds][d][metric])
             best_val = all_stats[ds][best_domain][metric]
             print(f"    {ds:<12}: {best_domain} ({best_val:.2f})")
@@ -854,8 +881,12 @@ def print_statistical_tests(all_stats):
             _, p_len = stats.mannwhitneyu(lens1, lens2, alternative="two-sided")
             _, p_emoji = stats.mannwhitneyu(s1["emojis"], s2["emojis"],
                                             alternative="two-sided")
-            _, p_eng = stats.mannwhitneyu(s1["engagements"], s2["engagements"],
-                                          alternative="two-sided")
+            if s1.get("has_engagement") and s2.get("has_engagement"):
+                _, p_eng = stats.mannwhitneyu(s1["engagements"], s2["engagements"],
+                                              alternative="two-sided")
+            else:
+                # 一方没有互动字段（如 AIGC）：检验无意义，记 N/A
+                p_eng = None
 
             sig_len = (
                 "***"
@@ -875,18 +906,22 @@ def print_statistical_tests(all_stats):
                 if p_emoji < 0.05
                 else "ns"
             )
-            sig_eng = (
-                "***"
-                if p_eng < 0.001
-                else "**"
-                if p_eng < 0.01
-                else "*"
-                if p_eng < 0.05
-                else "ns"
-            )
+            if p_eng is None:
+                eng_part = f"{'N/A':>18}"
+            else:
+                sig_eng = (
+                    "***"
+                    if p_eng < 0.001
+                    else "**"
+                    if p_eng < 0.01
+                    else "*"
+                    if p_eng < 0.05
+                    else "ns"
+                )
+                eng_part = f" {p_eng:>13.4f}{sig_eng:>4}"
 
             print(
-                f"{ds1} vs {ds2:<17} {p_len:>10.4f}{sig_len:>4} {p_emoji:>10.4f}{sig_emoji:>4} {p_eng:>13.4f}{sig_eng:>4}"
+                f"{ds1} vs {ds2:<17} {p_len:>10.4f}{sig_len:>4} {p_emoji:>10.4f}{sig_emoji:>4}{eng_part}"
             )
 
 

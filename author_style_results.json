@@ -93,14 +93,14 @@
   "between_ci": {
    "all_authors": {
     "slope": -0.3549,
-    "ci_low": -0.4192,
-    "ci_high": -0.2899,
+    "ci_low": -0.3964,
+    "ci_high": -0.3085,
     "n_boot": 500
    },
    "multi_note_authors": {
     "slope": -0.1411,
-    "ci_low": -0.2978,
-    "ci_high": -0.0108,
+    "ci_low": -0.2417,
+    "ci_high": -0.0362,
     "n_boot": 500
    }
   },

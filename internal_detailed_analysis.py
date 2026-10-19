@@ -160,6 +160,7 @@ def scan(path):
     pos_c = neg_c = pos_t = neg_t = 0
     # 互动
     likes_sum = collects_sum = comments_sum = 0
+    has_engagement = False
     # 结构（正文 / 标题）
     para_c = list_c = bullet_c = emoji_c = hashtag_c = 0
     para_t = list_t = bullet_t = emoji_t = hashtag_t = 0
@@ -203,7 +204,11 @@ def scan(path):
         pos_t += pos_ti
         neg_t += neg_ti
 
-        # 3. 互动
+        # 3. 互动（AIGC 语料没有互动字段：缺失不等于 0，单独标记，避免
+        #    把 0 当成真实互动参与率打印/对比）
+        if any(k in item for k in ("liked_count", "likes", "collected_count",
+                                   "collections", "comments_count", "comments")):
+            has_engagement = True
         like_i, coll_i, comm_i = engagement_of(item)
         likes_sum += like_i
         collects_sum += coll_i
@@ -327,6 +332,7 @@ def scan(path):
         "domains": domains,
         "sent": (pos_c, neg_c, pos_t, neg_t),
         "engagement": (likes_sum, collects_sum, comments_sum),
+        "has_engagement": has_engagement,
         "structure_content": (para_c, list_c, bullet_c, emoji_c, hashtag_c),
         "structure_title": (para_t, list_t, bullet_t, emoji_t, hashtag_t),
         "complexity_content": (chars_sum_c, chars_cnt_c, ratio_sum_c,
@@ -367,6 +373,9 @@ def sentiment(result, name, use_title=False):
 
 
 def engagement(result, name):
+    if not result.get("has_engagement", True):
+        print(f"\n{name}: N/A (no engagement fields)")
+        return
     likes_sum, collects_sum, comments_sum = result["engagement"]
     n = result["n"]
     print(

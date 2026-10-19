@@ -299,9 +299,13 @@ def _collect_range(path: str, start: int, end: int) -> dict:
             line = f.readline()
             if not line:
                 break
-            if line.isspace():
+            # 与 iter_jsonl 同口径：先解码再用 str.isspace() 判空行（bytes
+            # 的 isspace 只认 ASCII 空白，会把 NBSP 等 Unicode 空白行送进
+            # json.loads 而抛错）。
+            text = line.decode("utf-8")
+            if not text or text.isspace():
                 continue
-            _process_record(state, json.loads(line.decode("utf-8")))
+            _process_record(state, json.loads(text))
     del state["month_pool"]
     return state
 

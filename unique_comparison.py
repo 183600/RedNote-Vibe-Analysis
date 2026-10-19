@@ -38,6 +38,10 @@ DOMAINS = [
     "心理",
 ]
 
+# 记录中出现任一字段即视为该数据集有互动数据（与 engagement_of 的取值来源一致）
+ENGAGEMENT_KEYS = ("liked_count", "likes", "collected_count", "collections",
+                   "comments_count", "comments")
+
 # 热循环内使用的正则统一预编译（等价于原来的 re.search/re.findall 字面量）。
 RE_URL = re.compile(r"http[s]?://|www\.")
 RE_MENTION = re.compile(r"@[\w]+")
@@ -58,6 +62,7 @@ def load_aggregates():
     for ds_name, filepath in files:
         user_counts = Counter()
         has_user_id = False
+        has_engagement = False
         domain_counts = Counter()
         domain_totals = Counter()
         eng = defaultdict(list)
@@ -72,7 +77,12 @@ def load_aggregates():
                 total += 1
                 if "user_id" in item:
                     has_user_id = True
-                    user_counts[item["user_id"]] += 1
+                    # user_id 为空串/None 不是「一个用户」：不能把缺失
+                    # 作者的记录聚成一个虚拟大号，否则用户数、人均发帖、
+                    # Gini、头部占比都会被算歪。
+                    uid = item.get("user_id")
+                    if uid:
+                        user_counts[uid] += 1
                 domain = item.get("domain", "unknown")
                 domain_counts[domain] += 1
                 if domain in DOMAINS:
@@ -80,8 +90,12 @@ def load_aggregates():
                     text = get_text(item)
                     length = len(text)
                     if length > 0:
-                        engagement = sum(engagement_of(item))
-                        eng[domain].append(engagement / length)
+                        # AIGC 语料没有互动字段：缺失不等于「互动量为 0」，
+                        # 标成 N/A，避免把 0 当成真实的互动效率。
+                        if any(k in item for k in ENGAGEMENT_KEYS):
+                            has_engagement = True
+                            engagement = sum(engagement_of(item))
+                            eng[domain].append(engagement / length)
                     rec = inter[domain]
                     rec[3] += 1
                     if RE_URL.search(text):
@@ -93,6 +107,7 @@ def load_aggregates():
         aggs[ds_name] = {
             "total": total,
             "has_user_id": has_user_id,
+            "has_engagement": has_engagement,
             "user_counts": user_counts,
             "domain_counts": domain_counts,
             "domain_totals": domain_totals,
@@ -183,6 +198,15 @@ def analyze_engagement_efficiency(aggs):
         for domain in DOMAINS:
             domain_total = agg["domain_totals"].get(domain, 0)
             if domain_total < 5:
+                continue
+
+            if not agg.get("has_engagement", True):
+                # 数据集整体没有互动字段：效率记为 N/A（NaN），不是 0
+                results[ds_name][domain] = {
+                    "avg_efficiency": float("nan"),
+                    "median_efficiency": float("nan"),
+                    "max_efficiency": float("nan"),
+                }
                 continue
 
             efficiencies = agg["eng"].get(domain, [])
@@ -528,15 +552,14 @@ def generate_summary_dashboard(aggs, output_dir):
     # 与 engagement_efficiency 图同口径：只在三个数据集都有结果的领域集合上
     # 求平均。原先各数据集按自己的领域子集（领域缺样本或不足 5 篇会被跳过，
     # 缺项又按 0 再被 e>0 过滤掉）分别求平均，三根柱子平均的领域并不相同，
-    # 柱高之间不可比。
+    # 柱高之间不可比。无互动字段的数据集（AIGC）为 N/A。
     common_domains = [d for d in DOMAINS
                       if all(d in eng_results.get(ds, {}) for ds in datasets)]
-    avg_eng = [
-        float(np.mean([eng_results[ds][d]["avg_efficiency"]
-                       for d in common_domains]))
-        if common_domains else 0.0
-        for ds in datasets
-    ]
+    avg_eng = []
+    for ds in datasets:
+        vals = [eng_results[ds][d]["avg_efficiency"] for d in common_domains]
+        vals = [v for v in vals if np.isfinite(v)]
+        avg_eng.append(float(np.mean(vals)) if vals else float("nan"))
     axes[1, 2].bar(x, avg_eng, color=colors)
     axes[1, 2].set_xticks(x)
     axes[1, 2].set_xticklabels(datasets)

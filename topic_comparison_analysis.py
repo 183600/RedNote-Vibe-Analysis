@@ -245,8 +245,12 @@ def load_aggregates(filepath):
         }
     domain_counter = Counter()
     total = 0
+    has_engagement = False
     for item in iter_cached(filepath):
         total += 1
+        if any(k in item for k in ("liked_count", "likes", "collected_count",
+                                   "collections", "comments_count", "comments")):
+            has_engagement = True
         domain = item.get("domain")
         domain_counter[domain] += 1
         if domain in domains:
@@ -265,7 +269,8 @@ def load_aggregates(filepath):
                 pos_n, neg_n = count_sentiment_words(w)
                 d["pos"] += pos_n
                 d["neg"] += neg_n
-    return {"total": total, "domain_counter": domain_counter, "domains": domains}
+    return {"total": total, "domain_counter": domain_counter, "domains": domains,
+            "has_engagement": has_engagement}
 
 
 def analyze_domain_differences(human_agg, output_dir):
@@ -354,6 +359,9 @@ def compare_aigc_vs_human_by_domain(human_agg, aigc_agg, output_dir):
 
         h_eng = [x + y + z for x, y, z in zip(h["liked"], h["collected"], h["comments"])]
         a_eng = [x + y + z for x, y, z in zip(a["liked"], a["collected"], a["comments"])]
+        # AIGC 语料没有互动字段：缺失不等于互动量为 0，记为 N/A（NaN）
+        h_has = human_agg.get("has_engagement", True)
+        a_has = aigc_agg.get("has_engagement", True)
 
         comparison[domain] = {
             "human_count": h["count"],
@@ -362,8 +370,10 @@ def compare_aigc_vs_human_by_domain(human_agg, aigc_agg, output_dir):
             "aigc_avg_length": np.mean(a["lengths"]),
             "human_avg_emoji": np.mean(h["emoji"]),
             "aigc_avg_emoji": np.mean(a["emoji"]),
-            "human_avg_engagement": np.mean(h_eng),
-            "aigc_avg_engagement": np.mean(a_eng),
+            "human_avg_engagement": np.mean(h_eng) if h_has else float("nan"),
+            "aigc_avg_engagement": np.mean(a_eng) if a_has else float("nan"),
+            "human_has_engagement": h_has,
+            "aigc_has_engagement": a_has,
             "human_top_words": h["words"].most_common(20),
             "aigc_top_words": a["words"].most_common(20),
         }
@@ -371,11 +381,15 @@ def compare_aigc_vs_human_by_domain(human_agg, aigc_agg, output_dir):
     print("\n=== AIGC vs Human by Domain ===")
     for domain, data in comparison.items():
         print(f"\n{domain}:")
+        h_eng_str = (f"{data['human_avg_engagement']:.1f}"
+                     if data["human_has_engagement"] else "N/A")
+        a_eng_str = (f"{data['aigc_avg_engagement']:.1f}"
+                     if data["aigc_has_engagement"] else "N/A")
         print(
-            f"  Human: {data['human_count']} samples, avg_length={data['human_avg_length']:.1f}, emoji={data['human_avg_emoji']:.2f}, eng={data['human_avg_engagement']:.1f}"
+            f"  Human: {data['human_count']} samples, avg_length={data['human_avg_length']:.1f}, emoji={data['human_avg_emoji']:.2f}, eng={h_eng_str}"
         )
         print(
-            f"  AIGC:  {data['aigc_count']} samples, avg_length={data['aigc_avg_length']:.1f}, emoji={data['aigc_avg_emoji']:.2f}, eng={data['aigc_avg_engagement']:.1f}"
+            f"  AIGC:  {data['aigc_count']} samples, avg_length={data['aigc_avg_length']:.1f}, emoji={data['aigc_avg_emoji']:.2f}, eng={a_eng_str}"
         )
 
     plot_aigc_human_comparison(comparison, output_dir)

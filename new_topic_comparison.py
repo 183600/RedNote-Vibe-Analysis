@@ -205,6 +205,11 @@ _ITEM_KEYS = ("note_title", "note_content", "desc", "domain", "local_time",
               "time", "liked_count", "collected_count", "comments_count",
               "likes", "collections", "comments")
 
+# 记录中出现任一字段即视为该数据集有互动数据（与 engagement_of 的取值来源一致）；
+# AIGC 语料没有互动字段，缺失不等于互动量为 0。
+_ENGAGEMENT_KEYS = ("liked_count", "likes", "collected_count", "collections",
+                    "comments_count", "comments")
+
 
 def iter_jsonl_items(filepath):
     """流式读取并按下游用到的字段白名单投影；容错口径与旧 load_jsonl 一致。"""
@@ -276,7 +281,10 @@ def analyze_engagement_patterns(grouped):
                 continue
 
             likes, collects, comments = [], [], []
+            has_engagement = False
             for item in domain_items:
+                if any(k in item for k in _ENGAGEMENT_KEYS):
+                    has_engagement = True
                 like_i, collect_i, comment_i = engagement_of(item)
                 likes.append(like_i)
                 collects.append(collect_i)
@@ -287,21 +295,39 @@ def analyze_engagement_patterns(grouped):
             total_comments = sum(comments)
             total_eng = total_likes + total_collects + total_comments
 
-            results[ds_name][domain] = {
-                "total_engagement": total_eng,
-                "like_ratio": total_likes / total_eng if total_eng > 0 else 0,
-                "collect_ratio": total_collects / total_eng if total_eng > 0 else 0,
-                "comment_ratio": total_comments / total_eng if total_eng > 0 else 0,
-                "collect_to_like": total_collects / total_likes
-                if total_likes > 0
-                else 0,
-                "comment_to_like": total_comments / total_likes
-                if total_likes > 0
-                else 0,
-                "avg_likes": np.mean(likes),
-                "avg_collects": np.mean(collects),
-                "avg_comments": np.mean(comments),
-            }
+            # 没有互动字段的数据集（AIGC）：比率与均值记为 N/A（NaN），
+            # 避免把缺失当成真实的 0 互动参与画图/打印。
+            if has_engagement:
+                engagement_stats = {
+                    "total_engagement": total_eng,
+                    "like_ratio": total_likes / total_eng if total_eng > 0 else 0,
+                    "collect_ratio": total_collects / total_eng if total_eng > 0 else 0,
+                    "comment_ratio": total_comments / total_eng if total_eng > 0 else 0,
+                    "collect_to_like": total_collects / total_likes
+                    if total_likes > 0
+                    else 0,
+                    "comment_to_like": total_comments / total_likes
+                    if total_likes > 0
+                    else 0,
+                    "avg_likes": np.mean(likes),
+                    "avg_collects": np.mean(collects),
+                    "avg_comments": np.mean(comments),
+                }
+            else:
+                nan = float("nan")
+                engagement_stats = {
+                    "total_engagement": nan,
+                    "like_ratio": nan,
+                    "collect_ratio": nan,
+                    "comment_ratio": nan,
+                    "collect_to_like": nan,
+                    "comment_to_like": nan,
+                    "avg_likes": nan,
+                    "avg_collects": nan,
+                    "avg_comments": nan,
+                }
+            engagement_stats["has_engagement"] = has_engagement
+            results[ds_name][domain] = engagement_stats
 
     for domain in DOMAINS:
         print("")
@@ -309,6 +335,9 @@ def analyze_engagement_patterns(grouped):
         for ds in ["Human", "AIGC", "Exploring"]:
             if ds in results and domain in results[ds]:
                 r = results[ds][domain]
+                if not r.get("has_engagement", True):
+                    print("  " + ds + ": N/A (no engagement fields)")
+                    continue
                 print(
                     "  "
                     + ds

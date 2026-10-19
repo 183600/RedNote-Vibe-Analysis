@@ -243,9 +243,9 @@ def group_by_domain(filepath):
 
 
 def get_text(item):
-    if "note_content" in item:
-        return item.get("note_content", "") or ""
-    return item.get("desc", "") or ""
+    # 与 analysis_utils.content_of 同口径：兼容 note_content / desc 两种字段，
+    # 键存在但为空时仍回退到另一个字段（不能按"键是否存在"决定）。
+    return item.get("note_content") or item.get("desc") or ""
 
 
 def clean_tokenize(text):

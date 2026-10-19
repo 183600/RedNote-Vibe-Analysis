@@ -58,10 +58,8 @@ def extract_chinese(text):
 
 
 def get_text(item):
-    """Get text field from different data formats"""
-    if "note_content" in item:
-        return item.get("note_content", "")
-    return item.get("desc", "")
+    """Get text field from different data formats (note_content / desc)."""
+    return item.get("note_content") or item.get("desc") or ""
 
 
 positive_words = [

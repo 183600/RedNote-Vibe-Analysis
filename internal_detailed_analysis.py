@@ -11,6 +11,7 @@ from collections import Counter, defaultdict
 from functools import partial
 
 from analysis_utils import engagement_of, run_parallel
+from derived_cache import iter_cached
 
 RE_CJK = re.compile(r"[\u4e00-\u9fff]+")
 RE_SENT_SPLIT = re.compile(r"[。！？\n]")
@@ -44,26 +45,10 @@ _DATA_KEYS = (
 def iter_records(path):
     """流式读取并只保留下游用到的字段，避免把整份数据集常驻内存。
 
-    口径与原 load_jsonl 完全一致：跳过空行与解析失败的行；正文统一放在
-    note_content（若源记录有）或 desc 字段。
+    走派生缓存（投影字段 pickle）读取；缓存缺失时 `iter_cached` 自动回退
+    到与旧实现同口径的 `iter_jsonl`。
     """
-    with open(path, "r", encoding="utf-8") as f:
-        for line in f:
-            if not line.strip():
-                continue
-            try:
-                item = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            rec = {}
-            if "note_content" in item:
-                rec["note_content"] = item["note_content"]
-            else:
-                rec["desc"] = item.get("desc", "")
-            for key in _DATA_KEYS:
-                if key in item:
-                    rec[key] = item[key]
-            yield rec
+    yield from iter_cached(path)
 
 
 def extract_chinese(text):
@@ -216,16 +201,24 @@ def scan(path):
 
         # 4. 结构（正文）
         para_c += sum(1 for p in content.split("\n") if p.strip())
-        list_c += len(RE_LIST_ITEM.findall(content))
-        bullet_c += len(RE_BULLET.findall(content))
+        # 快路径：清单/项目符号/标签正则都有「必要的包含字符」，不满足时
+        # 直接跳过整段扫描（结果与 findall 返回空列表相同）。
+        if "." in content or "、" in content:
+            list_c += len(RE_LIST_ITEM.findall(content))
+        if "、" in content or "•" in content or "·" in content:
+            bullet_c += len(RE_BULLET.findall(content))
         emoji_c += len(RE_EMOJI.findall(content))
-        hashtag_c += len(RE_HASHTAG.findall(content))
+        if "#" in content:
+            hashtag_c += len(RE_HASHTAG.findall(content))
         # 4b. 结构（标题）
         para_t += sum(1 for p in title.split("\n") if p.strip())
-        list_t += len(RE_LIST_ITEM.findall(title))
-        bullet_t += len(RE_BULLET.findall(title))
+        if "." in title or "、" in title:
+            list_t += len(RE_LIST_ITEM.findall(title))
+        if "、" in title or "•" in title or "·" in title:
+            bullet_t += len(RE_BULLET.findall(title))
         emoji_t += len(RE_EMOJI.findall(title))
-        hashtag_t += len(RE_HASHTAG.findall(title))
+        if "#" in title:
+            hashtag_t += len(RE_HASHTAG.findall(title))
 
         # 5. 复杂度（正文）
         words = extract_chinese(content)

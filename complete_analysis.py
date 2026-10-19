@@ -6,6 +6,7 @@ from functools import partial
 
 import numpy as np
 from analysis_utils import init_plot_style, run_parallel
+from derived_cache import iter_cached
 import matplotlib
 
 matplotlib.use("Agg")
@@ -115,9 +116,12 @@ def clean_tokenize(text):
     if not text:
         return []
     text = str(text)
-    text = RE_TOPIC_TAG.sub(" ", text)
-    text = RE_HASHTAG.sub(r"\1", text)
-    text = RE_XHS_EMO.sub(" ", text)
+    if "[话题]" in text:
+        text = RE_TOPIC_TAG.sub(" ", text)
+    if "#" in text:
+        text = RE_HASHTAG.sub(r"\1", text)
+    if "[" in text:
+        text = RE_XHS_EMO.sub(" ", text)
     text = text.lower()
     text = RE_DIGITS.sub("", text)
     return [w for w in RE_NONWORD.split(text) if len(w) > 1 and w not in STOPWORDS]
@@ -129,21 +133,17 @@ def stream_stats(filepath):
     lengths_desc = []
     lengths_title = []
     total = 0
-    with open(filepath, "r", encoding="utf-8") as f:
-        for line in f:
-            try:
-                item = json.loads(line)
-            except Exception:
-                continue
-            total += 1
-            text = item.get("desc", "") or item.get("note_content", "")
-            freq_desc.update(clean_tokenize(text))
-            if text:
-                lengths_desc.append(len(text))
-            title = item.get("note_title", "")
-            freq_title.update(clean_tokenize(title))
-            if title:
-                lengths_title.append(len(title))
+    # 派生缓存读取投影字段；缓存缺失时自动回退 iter_jsonl。
+    for item in iter_cached(filepath):
+        total += 1
+        text = item.get("desc", "") or item.get("note_content", "")
+        freq_desc.update(clean_tokenize(text))
+        if text:
+            lengths_desc.append(len(text))
+        title = item.get("note_title", "")
+        freq_title.update(clean_tokenize(title))
+        if title:
+            lengths_title.append(len(title))
     return {
         "total": total,
         "freq_desc": freq_desc,

@@ -476,7 +476,9 @@ class _SpilledSets:
         fd, self._path = tempfile.mkstemp(prefix="near_dup_shingles_",
                                           suffix=".u64")
         os.close(fd)
-        self._fh = open(self._path, "wb")
+        # 1MB 写缓冲：每篇 5-gram 数组约 3KB，默认 8KB 缓冲会导致
+        # 约 4 万次小 write 系统调用；加大缓冲显著减少 syscall。
+        self._fh = open(self._path, "wb", buffering=1 << 20)
         self._sizes: list[int] = []
         self._offsets: np.ndarray | None = None
         self._mm: np.ndarray | None = None
@@ -773,23 +775,23 @@ def recall_check(sets: list[np.ndarray], pairs, n_sample: int = RECALL_SAMPLE,
                 "recall_pct": 0.0}
 
     all_h = np.concatenate([sets[i] for i in nonempty])
-    uniq_h, inverse = np.unique(all_h, return_inverse=True)
-    # 反向索引（CSR 风格）：uniq_h 的每个唯一 shingle -> 含它的样本文档 id 列表。
-    # 与旧的 (uniq_h 数 × 样本数) one-hot 位掩码逐位等价，但内存从 O(K×样本)
-    # 降到 O(全部样本 shingle 数)（~430K vs ~430MB），且单篇文档的共享数
-    # 由一次 bincount 直接得到。
+    # 反向索引（CSR 风格）：排序后的每个 shingle -> 含它的样本文档 id 列表。
+    # 与旧的 (唯一 shingle 数 × 样本数) one-hot 位掩码逐位等价，但内存从
+    # O(K×样本) 降到 O(全部样本 shingle 数)（~430K vs ~430MB）。直接按
+    # shingle 值做一次稳定排序即可得到分组边界，省掉 np.unique 的
+    # 「排序 + inverse 搜索」和随后的第二次 argsort（结果逐位一致）。
     doc_pos = np.repeat(np.arange(nonempty.size, dtype=np.int64), sizes)
-    order = np.argsort(inverse, kind="stable")
-    inv_sorted = inverse[order]
+    order = np.argsort(all_h, kind="stable")
+    sorted_h = all_h[order]
     sample_ids = doc_pos[order]
-    starts = np.flatnonzero(np.r_[True, inv_sorted[1:] != inv_sorted[:-1]])
+    starts = np.flatnonzero(np.r_[True, sorted_h[1:] != sorted_h[:-1]])
     counts = np.diff(np.r_[starts, all_h.size]).astype(np.int64)
 
     true_pairs: set[tuple[int, int]] = set()
     lengths = np.fromiter((s.size for s in sets), dtype=np.int64, count=n_docs)
     eligible = np.flatnonzero(lengths >= MIN_SHINGLES)
     n_sample_docs = nonempty.size
-    last_h = uniq_h.size - 1
+    last_h = sorted_h.size - 1
     start_i = 0
     while start_i < eligible.size:
         span = 0
@@ -807,12 +809,14 @@ def recall_check(sets: list[np.ndarray], pairs, n_sample: int = RECALL_SAMPLE,
         conc = np.concatenate(parts)
         del parts
         doc_local = np.repeat(np.arange(len(chunk), dtype=np.int64), chunk_lens)
-        pos = np.searchsorted(uniq_h, conc)
+        pos = np.searchsorted(sorted_h, conc)
         np.minimum(pos, last_h, out=pos)
-        match = uniq_h[pos] == conc
+        match = sorted_h[pos] == conc
         if not match.any():
             continue
-        fpos = pos[match]
+        # 匹配位置是某一段相同 shingle 的起点，再映射回「段编号」以取
+        # starts/counts（sorted_h 含重复值，位置与段编号不是一回事）。
+        fpos = np.searchsorted(starts, pos[match])
         fdoc = doc_local[match]
         rs, rl = starts[fpos], counts[fpos]
         total = int(rl.sum())

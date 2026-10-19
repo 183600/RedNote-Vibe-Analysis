@@ -132,7 +132,7 @@ def scan_view(path: str, content_len_ref: np.ndarray | None = None) -> dict:
     month_pool: dict = {}   # 共享同月字符串对象（月份只有几十种）
     n_raw = n_short = mismatch = 0
     # 重复正文（探索集约 45%）直接复用紧凑文本与收尾类别，只读不改。
-    cached = body_cache(frame_features)
+    cached = body_cache(frame_features, max_entries=60_000)
     for rec in iter_cached(path):
         content = content_of(rec)
         body = clean_body(content)

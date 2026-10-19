@@ -264,7 +264,8 @@ def scan_corpus(path: str) -> dict:
     n_markers = len(MARKER_DISPLAY)
     n_total = 0
     # 重复正文（探索集约 45%）直接复用上一次的标点/排版结果，只读不改。
-    cached = body_cache(lambda b: (typography_counts(b), layout_metrics(b)))
+    cached = body_cache(lambda b: (typography_counts(b), layout_metrics(b)),
+                        max_entries=60_000)
     for rec in iter_cached(path):
         n_total += 1
         content = content_of(rec)

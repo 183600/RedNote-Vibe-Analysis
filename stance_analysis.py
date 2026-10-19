@@ -171,7 +171,7 @@ def scan_corpus(path: str) -> dict:
     likes = []
     n_total = 0
     # 重复正文（探索集约 45%）直接复用上一次的逐词计数，只读不改。
-    cached = body_cache(word_counts)
+    cached = body_cache(word_counts, max_entries=60_000)
     for rec in iter_cached(path):
         n_total += 1
         content = content_of(rec)

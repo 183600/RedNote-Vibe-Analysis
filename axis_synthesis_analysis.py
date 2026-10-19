@@ -255,7 +255,7 @@ def scan_corpus(path: str) -> dict:
     n_total = 0
     # 重复正文（探索集约 45%）直接复用上一次的 30 类向量；缓存值是只读的
     # int32 数组（下游只做 vstack 拷贝），复用同一对象不影响结果。
-    cached = body_cache(category_vector)
+    cached = body_cache(category_vector, max_entries=60_000)
     for rec in iter_cached(path):
         n_total += 1
         content = content_of(rec)

@@ -84,9 +84,10 @@ def tokenize(text: str) -> list[str]:
     """jieba 分词并过滤纯标点/空白 token；拉丁词统一小写。"""
     out = []
     for tok in jieba.lcut(text or ""):
-        tok = tok.strip().lower()
+        # 先按未 strip 的 token 判保留（TOKEN_KEEP 命中即可保证 strip 后非空），
+        # 只对保留的 token 做 strip/lower，省去对丢弃 token 的字符串变换。
         if tok and TOKEN_KEEP.search(tok):
-            out.append(tok)
+            out.append(tok.strip().lower())
     return out
 
 

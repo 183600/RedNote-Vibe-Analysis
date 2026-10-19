@@ -464,13 +464,25 @@ def iter_jsonl_codecs(path: str) -> Iterator[dict]:
                     continue
 
 
-def count_jsonl_lines(path: str) -> int:
-    """按 `iter_jsonl` 完全相同的行规则数记录数（不解析 JSON）。
+# 二进制快路径的「空白行」探测：匹配整行由 Unicode 空白字符（UTF-8 编码
+# 后的字节）或 ASCII 空白组成的情况（含空行）。只用于判断是否需要回退；
+# 命中即回退到文本模式，漏检才算错，命中不会影响结果。
+# 说明：字节类是按单字节匹配的，理论上会把「全部由这些字节拼成」的
+# 合法 UTF-8 行（只有各种空白字符与极少数 CJK 标点如 、。 这类
+# e3 80 8x 序列）误判为空白行——只多触发回退，结果不受影响。
+_WS_ONLY_LINE_RE = re.compile(
+    rb"(?m)^[\x09\x0b\x0c\x1c-\x20\x80-\x8a\x9a\x9f\xa0\xa8\xa9\xaf"
+    rb"\xc2\xe1\xe2\xe3]*$")
+# 各类空白行「首字节」的查找表：ASCII 空白/换行 + 多字节空白的 UTF-8 前导
+# 字节（C2/E1/E2/E3）。行首若是其它字节，该行必然含非空白字符，无需检查。
+_WS_LINE_START_BYTE = np.zeros(256, dtype=bool)
+_WS_LINE_START_BYTE[[9, 10, 11, 12, 28, 29, 30, 31, 32,
+                     0xC2, 0xE1, 0xE2, 0xE3]] = True
+_COUNT_CHUNK = 1 << 20
 
-    `iter_jsonl` 对每个非空白文本行产出一条记录（解析失败会直接抛错），
-    因此对能正常读取的文件，行数就是记录数；分行语义与文本模式逐行迭代
-    一致（含 \\r 等通用换行），不会改变抽样索引。
-    """
+
+def _count_jsonl_lines_text(path: str) -> int:
+    """`count_jsonl_lines` 的精确回退：与 `iter_jsonl` 逐行语义完全一致。"""
     n = 0
     with open(path, encoding="utf-8") as f:
         for line in f:
@@ -478,6 +490,62 @@ def count_jsonl_lines(path: str) -> int:
                 continue
             n += 1
     return n
+
+
+def count_jsonl_lines(path: str) -> int:
+    """按 `iter_jsonl` 完全相同的行规则数记录数（不解析 JSON）。
+
+    `iter_jsonl` 对每个非空白文本行产出一条记录（解析失败会直接抛错），
+    因此对能正常读取的文件，行数就是记录数；分行语义与文本模式逐行迭代
+    一致（含 \\r 等通用换行），不会改变抽样索引。
+
+    快路径：分块按字节数 `\\n`（C 层计数），并只用一次 numpy 向量比较
+    找出「行首为潜在空白字节」的候选行再去核对，避免逐行 Python 循环；
+    仅当文件不含 `\\r` 且没有空行/纯空白行时采用，否则回退到逐行文本
+    模式。两种路径的结果逐条一致（候选核对使用与回退相同的判定标准）。
+    """
+    n = 0
+    with open(path, "rb") as f:
+        carry = b""
+        while True:
+            chunk = f.read(_COUNT_CHUNK)
+            if not chunk:
+                break
+            if carry:
+                chunk = carry + chunk
+                carry = b""
+            if b"\r" in chunk:
+                return _count_jsonl_lines_text(path)
+            end = chunk.rfind(b"\n")
+            if end < 0:
+                carry = chunk
+                continue
+            complete = chunk[:end + 1]
+            carry = chunk[end + 1:]
+            n += complete.count(b"\n")
+            arr = np.frombuffer(complete, dtype=np.uint8)
+            # 每个分块的「首行」都可能是上一分块尾部被截断的整行（跨块
+            # 边界），也要检查；末尾换行后的候选行由 next chunk 的
+            # carry 逻辑继续处理，不会漏。
+            line0 = complete[:complete.find(b"\n")]
+            if _WS_ONLY_LINE_RE.fullmatch(line0):
+                return _count_jsonl_lines_text(path)
+            nl = np.flatnonzero(arr == 10)
+            nl = nl[nl < arr.size - 1]
+            if nl.size:
+                # 只看「换行后首字节可能是空白」的行（其余行必有非空白字
+                # 符，直接跳过）；候选极少，逐个用整行正则核对。
+                for q in nl[_WS_LINE_START_BYTE[arr[nl + 1]]].tolist():
+                    le = complete.find(b"\n", q + 1)
+                    line = complete[q + 1:le] if le >= 0 else complete[q + 1:]
+                    if _WS_ONLY_LINE_RE.fullmatch(line):
+                        return _count_jsonl_lines_text(path)
+        if carry:
+            if b"\r" in carry:
+                return _count_jsonl_lines_text(path)
+            if not _WS_ONLY_LINE_RE.match(carry):
+                n += 1
+        return n
 
 
 def iter_jsonl_sparse(path: str, wanted) -> Iterator[tuple[int, dict]]:

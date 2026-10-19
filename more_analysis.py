@@ -109,7 +109,9 @@ def tokenize(text):
     if not text:
         return []
     text = str(text)
-    text = RE_XHS_EMO.sub(" ", text)
+    # 快路径：绝大多数正文没有小红书表情占位符，跳过整段 re.sub 扫描。
+    if "[" in text:
+        text = RE_XHS_EMO.sub(" ", text)
     text = RE_DIGITS.sub("", text)
     words = RE_NONWORD.split(text.lower())
     return [w for w in words if len(w) > 1 and w not in STOPWORDS]
@@ -163,8 +165,10 @@ def stream_all(filepath, sample_size=5000, seed=42):
         text = item.get("desc", "") or item.get("note_content", "")
         title = item.get("note_title", "")
 
-        emoji_desc.update(extract_emojis(text))
-        emoji_title.update(extract_emojis(title))
+        # Counter.update 对字符串按字符计数，与 extract_emojis 展开成字符
+        # 列表后再 update 完全等价，但省掉逐匹配的 Python 循环。
+        emoji_desc.update("".join(EMOJI_PATTERN.findall(str(text))))
+        emoji_title.update("".join(EMOJI_PATTERN.findall(str(title))))
         tags_desc.update(extract_hashtags(text))
         tags_title.update(extract_hashtags(title))
 
@@ -234,7 +238,10 @@ def extract_emojis(text):
 def extract_hashtags(text):
     if not text:
         return []
-    return RE_HASHTAG.findall(str(text))
+    text = str(text)
+    if "#" not in text:
+        return []
+    return RE_HASHTAG.findall(text)
 
 
 def analyze_unique_words(freqs, files, word_sets=None):

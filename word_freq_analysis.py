@@ -6,6 +6,7 @@ from functools import partial
 
 import numpy as np
 from analysis_utils import init_plot_style, clean_body, run_parallel
+from derived_cache import iter_cached
 import matplotlib
 
 matplotlib.use("Agg")
@@ -20,7 +21,7 @@ init_plot_style()
 
 RE_XHS_EMO = re.compile(r"\[[^\[\]]{1,8}R\]")
 # 热循环内使用的正则统一预编译（等价于原来的 re.sub 字面量）。
-RE_NONWORD = re.compile(r"[^\w\s]")
+RE_NONWORD = re.compile(r"[^\w]+")
 RE_DIGITS = re.compile(r"\d+")
 
 STOPWORDS = set(
@@ -115,10 +116,13 @@ STOPWORDS = set(
 def tokenize(text):
     if not text:
         return []
-    text = RE_XHS_EMO.sub(" ", clean_body(str(text)))
-    text = RE_NONWORD.sub(" ", text)
+    text = clean_body(str(text))
+    if "[" in text:
+        text = RE_XHS_EMO.sub(" ", text)
     text = RE_DIGITS.sub("", text)
-    words = text.lower().split()
+    # 直接把非 \w 串当作分隔符：与「先 re.sub 成空格再 split」得到相同的
+    # 词序列（相邻分隔符合并、空片段被 len>1 过滤）。
+    words = RE_NONWORD.split(text.lower())
     return [w for w in words if len(w) > 1 and w not in STOPWORDS]
 
 
@@ -126,15 +130,12 @@ def stream_word_freq(filepath):
     freq_desc = Counter()
     freq_title = Counter()
     total = 0
-    with open(filepath, "r", encoding="utf-8") as f:
-        for line in f:
-            try:
-                item = json.loads(line)
-            except Exception:
-                continue
-            total += 1
-            freq_desc.update(tokenize(item.get("desc", "") or item.get("note_content", "")))
-            freq_title.update(tokenize(item.get("note_title", "")))
+    # 走派生缓存（JSONL 投影字段 pickle）：只用到正文/标题，与直接解析
+    # JSONL 逐字段一致；缓存缺失时 iter_cached 自动回退 iter_jsonl。
+    for item in iter_cached(filepath):
+        total += 1
+        freq_desc.update(tokenize(item.get("desc", "") or item.get("note_content", "")))
+        freq_title.update(tokenize(item.get("note_title", "")))
     return freq_desc, freq_title, total
 
 

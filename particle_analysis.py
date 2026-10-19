@@ -6,6 +6,7 @@ from functools import partial
 
 import numpy as np
 from analysis_utils import init_plot_style, engagement_of, run_parallel
+from derived_cache import iter_cached
 import matplotlib
 
 matplotlib.use("Agg")
@@ -237,45 +238,41 @@ def _load_particle_file(f, stored_particles, particle_index):
     liked_vals = []
     text_cache = {}
     total = 0
-    with open(f, "r", encoding="utf-8") as fh:
-        for line in fh:
-            try:
-                item = json.loads(line)
-            except Exception:
-                continue
-            total += 1
-            title = item.get("note_title", "")
-            desc = item.get("desc", "") or item.get("note_content", "")
-            text = title + " " + (desc if desc else "")
-            text_len = len(text)
+    # 派生缓存（投影字段 pickle）比逐行 json.loads 快；缺失时自动回退。
+    for item in iter_cached(f):
+        total += 1
+        title = item.get("note_title", "")
+        desc = item.get("desc", "") or item.get("note_content", "")
+        text = title + " " + (desc if desc else "")
+        text_len = len(text)
 
-            if not text or text_len == 0:
-                ratios_flat.extend([0.0] * k)
-            else:
-                # 缓存存「首次出现的行号」而不是整段 ratio 数组：重复文本
-                # 命中时从 ratios_flat 拷贝该行，省掉每个唯一文本一份
-                # float64 副本（探索集约 6 万个唯一文本 → 省约 30MB）。
-                cached_row = text_cache.get(text)
-                if cached_row is None:
-                    text_cache[text] = len(text_lens)
-                    ratios_flat.extend(
-                        array.array(
-                            "d",
-                            [text.count(p) / text_len
-                             for p in stored_particles],
-                        )
+        if not text or text_len == 0:
+            ratios_flat.extend([0.0] * k)
+        else:
+            # 缓存存「首次出现的行号」而不是整段 ratio 数组：重复文本
+            # 命中时从 ratios_flat 拷贝该行，省掉每个唯一文本一份
+            # float64 副本（探索集约 6 万个唯一文本 → 省约 30MB）。
+            cached_row = text_cache.get(text)
+            if cached_row is None:
+                text_cache[text] = len(text_lens)
+                ratios_flat.extend(
+                    array.array(
+                        "d",
+                        [text.count(p) / text_len
+                         for p in stored_particles],
                     )
-                else:
-                    start = cached_row * k
-                    ratios_flat.extend(ratios_flat[start:start + k])
+                )
+            else:
+                start = cached_row * k
+                ratios_flat.extend(ratios_flat[start:start + k])
 
-            text_lens.append(text_len)
-            dom = item.get("domain", "")
-            domains.append(domain_cache.setdefault(dom, dom))
-            local_time = item.get("local_time", "")
-            month = local_time[:6] if len(local_time) >= 6 else "unknown"
-            months.append(month_cache.setdefault(month, month))
-            liked_vals.append(engagement_of(item)[0])
+        text_lens.append(text_len)
+        dom = item.get("domain", "")
+        domains.append(domain_cache.setdefault(dom, dom))
+        local_time = item.get("local_time", "")
+        month = local_time[:6] if len(local_time) >= 6 else "unknown"
+        months.append(month_cache.setdefault(month, month))
+        liked_vals.append(engagement_of(item)[0])
     ratios = np.frombuffer(ratios_flat, dtype=np.float64).reshape(total, k)
     return {
         "n": total,

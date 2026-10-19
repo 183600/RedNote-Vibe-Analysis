@@ -15,6 +15,7 @@ from functools import partial
 from scipy import stats
 
 from analysis_utils import init_plot_style, engagement_of, run_parallel
+from derived_cache import iter_cached
 import matplotlib
 
 matplotlib.use("Agg")
@@ -213,15 +214,8 @@ _ENGAGEMENT_KEYS = ("liked_count", "likes", "collected_count", "collections",
 
 def iter_jsonl_items(filepath):
     """流式读取并按下游用到的字段白名单投影；容错口径与旧 load_jsonl 一致。"""
-    with open(filepath, "r", encoding="utf-8") as f:
-        for line in f:
-            if not line or line.isspace():
-                continue
-            try:
-                item = json.loads(line)
-            except Exception:
-                continue
-            yield {k: item[k] for k in _ITEM_KEYS if k in item}
+    for item in iter_cached(filepath):
+        yield {k: item[k] for k in _ITEM_KEYS if k in item}
 
 
 def load_jsonl(filepath):
@@ -260,9 +254,12 @@ def clean_tokenize(text):
     if not text:
         return []
     text = str(text)
-    text = RE_TOPIC_TAG.sub(" ", text)
-    text = RE_HASHTAG.sub(r"\1", text)
-    text = RE_XHS_EMO.sub(" ", text)
+    if "[话题]" in text:
+        text = RE_TOPIC_TAG.sub(" ", text)
+    if "#" in text:
+        text = RE_HASHTAG.sub(r"\1", text)
+    if "[" in text:
+        text = RE_XHS_EMO.sub(" ", text)
     text = RE_DIGITS.sub("", text)
     return [w for w in RE_WORD2.findall(text) if w not in STOPWORDS]
 

@@ -348,7 +348,7 @@ def scan_corpus(path: str) -> dict:
     # 重复正文（探索集约 45%）直接复用上一次的分类结果；缓存值只读：
     # 下面 unit_tokens.update(units) / place_tokens.update(places) 均不改动
     # 被缓存的 Counter 本体。
-    cached = body_cache(classify)
+    cached = body_cache(classify, max_entries=60_000)
     for rec in iter_cached(path):
         n_total += 1
         content = content_of(rec)

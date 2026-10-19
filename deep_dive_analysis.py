@@ -24,9 +24,11 @@
 """
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 import re
-from collections import Counter, defaultdict
+from collections import Counter
 from functools import partial
 
 import numpy as np
@@ -63,136 +65,199 @@ def body_stats(body: str) -> tuple[int, int, int, float | None, int]:
     return len(body), ai, hum, None, 0
 
 
-def collect(path: str) -> dict:
-    """单次流式扫描，收集四个分析维度所需的全部统计量。
+# 正文去重键用 16 字节摘要代替正文本身：重复计数口径不变（碰撞概率在
+# ~13 万键、64 位下已可忽略，128 位则完全可忽略），但不再常驻数十 MB 正文。
+_RAW_DIGEST = 16
+_CHUNK_BYTES = 8 << 20
 
-    重复内容按「原始逐记录」口径统计；发布节奏/词表/句子在扫描结束后按
-    note_id 去重（无 note_id 的数据集如 AIGC 则每个记录视为一篇独立笔记）。
-    """
-    hours = Counter()
-    weekdays = Counter()
-    likes_by_hour = defaultdict(list)
-    monthly = defaultdict(lambda: [0, 0, 0])  # [正文字符数, AI词次数, 人类连接词次数]
-    sent_mean, sent_counts, sent_body_len = [], [], []
-    content_seen, title_seen, id_seen = Counter(), Counter(), Counter()
-    totals = [0, 0, 0]  # 逐记录 [正文字符数, AI词次数, 人类连接词次数]
-    notes: dict = {}
-    month_pool: dict = {}
-    n = 0
-    has_user_field = False
-    missing_meta = 0
 
-    def add_to_aggregates(rep: dict) -> None:
-        if rep["hour"] is not None:
-            hours[rep["hour"]] += 1
-            weekdays[rep["weekday"]] += 1
-            likes_by_hour[rep["hour"]].append(rep["likes"])
-            slot = monthly[rep["month"]]
-            slot[0] += rep["body_len"]
-            slot[1] += rep["ai"]
-            slot[2] += rep["hum"]
-        if rep["sent_m"] is not None:
-            sent_mean.append(rep["sent_m"])
-            sent_counts.append(rep["sent_n"])
-            sent_body_len.append(rep["body_len"])
+def _raw_key(text: str) -> bytes:
+    return hashlib.blake2b(text.encode("utf-8", "surrogatepass"),
+                           digest_size=_RAW_DIGEST).digest()
 
-    for rec in iter_jsonl(path):
-        n += 1
-        content = content_of(rec)
-        body = clean_body(content)
-        body_len, ai, hum, sent_m, sent_n = body_stats(body)
-        totals[0] += body_len
-        totals[1] += ai
-        totals[2] += hum
-        raw = "".join(content.split())
-        if raw:
-            content_seen[raw] += 1
-        nt = "".join((rec.get("note_title") or "").split())
-        if nt:
-            title_seen[nt] += 1
 
-        likes, colls, comms = engagement_of(rec)
-        dt = parse_local_time(rec.get("local_time"))
-        if "user_id" in rec:
-            has_user_field = True
-            if not rec.get("user_id") or rec.get("domain") in (None, "", "未知"):
-                missing_meta += 1
-        has_meta = (bool(rec.get("user_id"))
-                    and rec.get("domain") not in (None, "", "未知"))
-        score = (int(has_meta) + int(bool(likes)) + int(bool(colls))
-                 + int(bool(comms)) + int(dt is not None) + int(bool(raw)))
-        if dt is not None:
-            ym = (dt.year, dt.month)
-            month = month_pool.get(ym)
-            if month is None:
-                month = month_pool[ym] = f"{dt.year:04d}{dt.month:02d}"
-        else:
-            month = None
-        rep = {
-            "raw": raw, "body_len": body_len, "ai": ai, "hum": hum,
-            "sent_m": sent_m, "sent_n": sent_n, "likes": likes, "score": score,
-            "hour": dt.hour if dt else None,
-            "weekday": dt.weekday() if dt else None,
-            "month": month,
-        }
-        nid = rec.get("note_id")
-        if nid is None:
-            add_to_aggregates(rep)
-            continue
-        id_seen[nid] += 1
-        entry = notes.get(nid)
+def _new_state() -> dict:
+    """扫描状态：与逐记录顺序无关的聚合 + 待合并的 note_id 代表记录。"""
+    return {
+        "n": 0,
+        "hours": Counter(),
+        "weekdays": Counter(),
+        "likes_by_hour": {},
+        "monthly": {},
+        "sent_mean": [], "sent_counts": [], "sent_body_len": [],
+        "content_seen": Counter(), "title_seen": Counter(), "id_seen": Counter(),
+        "totals": [0, 0, 0],  # 逐记录 [正文字符数, AI词次数, 人类连接词次数]
+        "notes": {},
+        "month_pool": {},
+        "has_user_field": False,
+        "missing_meta": 0,
+    }
+
+
+def _add_to_aggregates(state: dict, rep: dict) -> None:
+    if rep["hour"] is not None:
+        state["hours"][rep["hour"]] += 1
+        state["weekdays"][rep["weekday"]] += 1
+        state["likes_by_hour"].setdefault(rep["hour"], []).append(rep["likes"])
+        slot = state["monthly"].setdefault(rep["month"], [0, 0, 0])
+        slot[0] += rep["body_len"]
+        slot[1] += rep["ai"]
+        slot[2] += rep["hum"]
+    if rep["sent_m"] is not None:
+        state["sent_mean"].append(rep["sent_m"])
+        state["sent_counts"].append(rep["sent_n"])
+        state["sent_body_len"].append(rep["body_len"])
+
+
+def _process_record(state: dict, rec: dict) -> None:
+    """单条记录的处理逻辑（与旧版逐行实现逐语句一致，正文换成摘要键）。"""
+    state["n"] += 1
+    content = content_of(rec)
+    body = clean_body(content)
+    body_len, ai, hum, sent_m, sent_n = body_stats(body)
+    totals = state["totals"]
+    totals[0] += body_len
+    totals[1] += ai
+    totals[2] += hum
+    raw = "".join(content.split())
+    raw_key = _raw_key(raw) if raw else None
+    if raw_key is not None:
+        state["content_seen"][raw_key] += 1
+    nt = "".join((rec.get("note_title") or "").split())
+    if nt:
+        state["title_seen"][nt] += 1
+
+    likes, colls, comms = engagement_of(rec)
+    dt = parse_local_time(rec.get("local_time"))
+    if "user_id" in rec:
+        state["has_user_field"] = True
+        if not rec.get("user_id") or rec.get("domain") in (None, "", "未知"):
+            state["missing_meta"] += 1
+    has_meta = (bool(rec.get("user_id"))
+                and rec.get("domain") not in (None, "", "未知"))
+    score = (int(has_meta) + int(bool(likes)) + int(bool(colls))
+             + int(bool(comms)) + int(dt is not None) + int(raw_key is not None))
+    if dt is not None:
+        ym = (dt.year, dt.month)
+        month = state["month_pool"].get(ym)
+        if month is None:
+            month = state["month_pool"][ym] = f"{dt.year:04d}{dt.month:02d}"
+    else:
+        month = None
+    rep = {
+        "raw_key": raw_key, "body_len": body_len, "ai": ai, "hum": hum,
+        "sent_m": sent_m, "sent_n": sent_n, "likes": likes, "score": score,
+        "hour": dt.hour if dt else None,
+        "weekday": dt.weekday() if dt else None,
+        "month": month,
+    }
+    nid = rec.get("note_id")
+    if nid is None:
+        _add_to_aggregates(state, rep)
+        return
+    state["id_seen"][nid] += 1
+    notes = state["notes"]
+    entry = notes.get(nid)
+    if entry is None:
+        rep.update({"copies": 1, "seen_meta": has_meta,
+                    "seen_nometa": not has_meta, "raw_same": True})
+        notes[nid] = rep
+    else:
+        entry["copies"] += 1
+        entry["seen_meta"] = entry["seen_meta"] or has_meta
+        entry["seen_nometa"] = entry["seen_nometa"] or (not has_meta)
+        if raw_key != entry["raw_key"]:
+            entry["raw_same"] = False
+        if score > entry["score"]:
+            keep = dict(rep)
+            keep.update({"copies": entry["copies"],
+                         "seen_meta": entry["seen_meta"],
+                         "seen_nometa": entry["seen_nometa"],
+                         "raw_same": entry["raw_same"]})
+            notes[nid] = keep
+
+
+def _merge_state(dst: dict, src: dict) -> None:
+    """把按文件顺序更靠后的分块状态并入 dst；平票保留先出现的代表记录。"""
+    dst["n"] += src["n"]
+    for k in ("hours", "weekdays", "content_seen", "title_seen", "id_seen"):
+        dst[k].update(src[k])
+    for h, vals in src["likes_by_hour"].items():
+        dst["likes_by_hour"].setdefault(h, []).extend(vals)
+    for m, vals in src["monthly"].items():
+        slot = dst["monthly"].setdefault(m, [0, 0, 0])
+        slot[0] += vals[0]
+        slot[1] += vals[1]
+        slot[2] += vals[2]
+    dst["sent_mean"].extend(src["sent_mean"])
+    dst["sent_counts"].extend(src["sent_counts"])
+    dst["sent_body_len"].extend(src["sent_body_len"])
+    t, s = dst["totals"], src["totals"]
+    t[0] += s[0]
+    t[1] += s[1]
+    t[2] += s[2]
+    dst["has_user_field"] = dst["has_user_field"] or src["has_user_field"]
+    dst["missing_meta"] += src["missing_meta"]
+    notes_dst, notes_src = dst["notes"], src["notes"]
+    for nid, rep_src in notes_src.items():
+        entry = notes_dst.get(nid)
         if entry is None:
-            rep.update({"copies": 1, "seen_meta": has_meta,
-                        "seen_nometa": not has_meta, "raw_same": True})
-            notes[nid] = rep
-        else:
-            entry["copies"] += 1
-            entry["seen_meta"] = entry["seen_meta"] or has_meta
-            entry["seen_nometa"] = entry["seen_nometa"] or (not has_meta)
-            if raw != entry["raw"]:
-                entry["raw_same"] = False
-            if score > entry["score"]:
-                keep = dict(rep)
-                keep.update({"copies": entry["copies"],
-                             "seen_meta": entry["seen_meta"],
-                             "seen_nometa": entry["seen_nometa"],
-                             "raw_same": entry["raw_same"]})
-                notes[nid] = keep
+            notes_dst[nid] = rep_src
+            continue
+        equals = entry["raw_key"] == rep_src["raw_key"]
+        keep = entry if rep_src["score"] <= entry["score"] else dict(rep_src)
+        keep.update({
+            "copies": entry["copies"] + rep_src["copies"],
+            "seen_meta": entry["seen_meta"] or rep_src["seen_meta"],
+            "seen_nometa": entry["seen_nometa"] or rep_src["seen_nometa"],
+            "raw_same": entry["raw_same"] and rep_src["raw_same"] and equals,
+        })
+        notes_dst[nid] = keep
 
+
+def _dup_share(counter: Counter) -> tuple[int, int]:
+    groups = sum(1 for c in counter.values() if c > 1)
+    records = sum(c for c in counter.values() if c > 1)
+    return records, groups
+
+
+def _finalize(state: dict) -> dict:
+    """扫描结束后的去重汇总：口径与旧版 collect() 完全一致。"""
+    notes = state["notes"]
     meta_variant_records = 0
-    for nid, rep in notes.items():
+    for rep in notes.values():
         if (rep["copies"] > 1 and rep["raw_same"]
                 and rep["seen_meta"] and rep["seen_nometa"]):
             meta_variant_records += rep["copies"]
-        add_to_aggregates(rep)
+        _add_to_aggregates(state, rep)
 
-    def dup_share(counter: Counter) -> tuple[int, int]:
-        groups = sum(1 for c in counter.values() if c > 1)
-        records = sum(c for c in counter.values() if c > 1)
-        return records, groups
-
-    content_dup, content_dup_groups = dup_share(content_seen)
+    content_seen = state["content_seen"]
+    content_dup, content_dup_groups = _dup_share(content_seen)
     content_unique = len(content_seen)
     # 逐记录正文 Counter 只用于上面的重复统计；笔记级重复统计另建 Counter，
-    # 提前释放可避免两份全量正文键同时在内存中。
-    del content_seen
-    title_dup, title_dup_groups = dup_share(title_seen)
-    note_content_seen = Counter(rep["raw"] for rep in notes.values() if rep["raw"])
-    note_dup, note_dup_groups = dup_share(note_content_seen)
+    # 提前释放可避免两份全量键同时在内存中。
+    del state["content_seen"]
+    title_seen = state["title_seen"]
+    title_dup, title_dup_groups = _dup_share(title_seen)
+    note_content_seen = Counter(rep["raw_key"] for rep in notes.values()
+                                if rep["raw_key"] is not None)
+    note_dup, note_dup_groups = _dup_share(note_content_seen)
+    id_seen = state["id_seen"]
     return {
-        "n": n,
+        "n": state["n"],
         "unique_ids": len(id_seen),
         "dup_id_records": sum(c for c in id_seen.values() if c > 1),
         "meta_variant_records": meta_variant_records,
-        "has_user_field": has_user_field,
-        "missing_meta_records": missing_meta if has_user_field else None,
-        "hours": dict(hours),
-        "weekdays": dict(weekdays),
-        "likes_by_hour": {int(h): v for h, v in likes_by_hour.items()},
-        "monthly": {m: v for m, v in monthly.items()},
-        "sent_mean": sent_mean,
-        "sent_counts": sent_counts,
-        "sent_body_len": sent_body_len,
+        "has_user_field": state["has_user_field"],
+        "missing_meta_records": (state["missing_meta"]
+                                 if state["has_user_field"] else None),
+        "hours": dict(state["hours"]),
+        "weekdays": dict(state["weekdays"]),
+        "likes_by_hour": {int(h): v for h, v in state["likes_by_hour"].items()},
+        "monthly": {m: v for m, v in state["monthly"].items()},
+        "sent_mean": state["sent_mean"],
+        "sent_counts": state["sent_counts"],
+        "sent_body_len": state["sent_body_len"],
         "content_dup_records": content_dup,
         "content_dup_groups": content_dup_groups,
         "content_unique": content_unique,
@@ -202,9 +267,62 @@ def collect(path: str) -> dict:
         "title_top": title_seen.most_common(5),
         "note_content_dup_records": note_dup,
         "note_content_dup_groups": note_dup_groups,
-        "n_notes": len(notes) if notes else n,
-        "totals": totals,
+        "n_notes": len(notes) if notes else state["n"],
+        "totals": state["totals"],
     }
+
+
+def collect(path: str) -> dict:
+    """单次流式扫描，收集四个分析维度所需的全部统计量。
+
+    重复内容按「原始逐记录」口径统计；发布节奏/词表/句子在扫描结束后按
+    note_id 去重（无 note_id 的数据集如 AIGC 则每个记录视为一篇独立笔记）。
+    """
+    state = _new_state()
+    for rec in iter_jsonl(path):
+        _process_record(state, rec)
+    return _finalize(state)
+
+
+def _collect_range(path: str, start: int, end: int) -> dict:
+    """扫描文件的字节区间 [start, end)，起点自动对齐到下一行行首。
+
+    只返回分块状态，合并与收尾由调用方负责；区间按行边界切分，不重不漏。
+    """
+    state = _new_state()
+    with open(path, "rb") as f:
+        if start > 0:
+            f.seek(start - 1)
+            if f.read(1) != b"\n":
+                f.readline()
+        while f.tell() < end:
+            line = f.readline()
+            if not line:
+                break
+            if line.isspace():
+                continue
+            _process_record(state, json.loads(line.decode("utf-8")))
+    del state["month_pool"]
+    return state
+
+
+def collect_chunked(path: str, n_chunks: int) -> dict:
+    """把单个语料按行边界切成 n_chunks 块并行扫描，再按顺序合并。
+
+    合并结果与 `collect(path)` 逐位一致（分块只改变计算顺序，不改变任何
+    计数口径）；正文去重键为摘要，跨块状态也不携带正文。
+    """
+    size = os.path.getsize(path)
+    n_chunks = max(1, min(n_chunks, max(1, size // _CHUNK_BYTES)))
+    if n_chunks == 1:
+        return collect(path)
+    bounds = [size * i // n_chunks for i in range(n_chunks + 1)]
+    states = run_parallel([partial(_collect_range, path, bounds[i], bounds[i + 1])
+                           for i in range(n_chunks)])
+    state = _new_state()
+    for s in states:
+        _merge_state(state, s)
+    return _finalize(state)
 
 
 def share_series(counter: Counter, total: int) -> np.ndarray:
@@ -608,11 +726,27 @@ def write_markdown(out: dict) -> None:
 
 def main() -> None:
     init_plot_style()
-    print("[扫描] 三个语料（全量，进程池并行）")
+    print("[扫描] 三个语料（全量，按行边界分块后进程池并行）")
+    # 每个语料按 ~8MB 一块切分（行边界对齐），全部块放进同一个进程池；
+    # 结果按块顺序合并，合并口径与旧版整文件扫描逐位一致。
+    tasks, groups = [], []
+    for name, path in DATASETS.items():
+        size = os.path.getsize(path)
+        n = max(1, min(8, max(1, size // _CHUNK_BYTES)))
+        bounds = [size * i // n for i in range(n + 1)]
+        a = len(tasks)
+        tasks.extend(partial(_collect_range, path, bounds[i], bounds[i + 1])
+                     for i in range(n))
+        groups.append((name, path, a, len(tasks)))
+    results = run_parallel(tasks)
     stats = {}
-    results = run_parallel([partial(collect, path) for path in DATASETS.values()])
-    for (name, path), s in zip(DATASETS.items(), results):
-        stats[name] = s
+    for name, path, a, b in groups:
+        state = _new_state()
+        for i in range(a, b):
+            _merge_state(state, results[i])
+            results[i] = None
+        stats[name] = _finalize(state)
+        s = stats[name]
         print(f"[扫描] {name}: {path}")
         print(f"        记录 {s['n']} 条 / 唯一 note_id {s['unique_ids'] or '—'}")
 

@@ -11,11 +11,12 @@
 import json
 import re
 import csv
-import io
 import os
+import tempfile
 from functools import partial
 
-from analysis_utils import close_pool, make_pool, write_gz_if_changed
+from analysis_utils import (close_pool, make_pool,
+                            write_gz_from_path_if_changed)
 
 BASE = os.path.dirname(os.path.abspath(__file__)) + "/"
 
@@ -191,18 +192,22 @@ def main():
     try:
         for fname, ds in jobs:
             out = BASE + f"paper_features_{ds}.csv.gz"
-            # 先在内存序列化再比较写出：内容未变化时不动数据文件，同时
-            # 省掉一次无意义的 gzip 压缩（三语料合计约 2–3 秒）。
-            # 直接用「utf-8 文本包装 BytesIO」逐行编码，避免整份 str 与
-            # bytes 各存一份；newline="" 与原 gzip 文本流写出逐字节一致。
-            buf = io.BytesIO()
-            tw = io.TextIOWrapper(buf, encoding="utf-8", newline="")
-            w = csv.writer(tw)
-            w.writerow(FIELDS)
-            n = process(BASE + fname, ds, w, pool=pool)
-            tw.flush()
-            changed = write_gz_if_changed(buf.getvalue(), out)
-            tw.detach()
+            # 边抽取边写入临时 CSV，再流式比较写出：内容未变化时不动数据
+            # 文件；整个过程不在内存里持有整份未压缩 CSV。
+            # newline="" 与原 gzip 文本流写出逐字节一致。
+            fd, tmp = tempfile.mkstemp(prefix=f".{ds}_features_", suffix=".csv")
+            os.close(fd)
+            try:
+                with open(tmp, "w", encoding="utf-8", newline="") as tf:
+                    w = csv.writer(tf)
+                    w.writerow(FIELDS)
+                    n = process(BASE + fname, ds, w, pool=pool)
+                changed = write_gz_from_path_if_changed(tmp, out)
+            finally:
+                try:
+                    os.unlink(tmp)
+                except OSError:
+                    pass
             print(f"{ds}: {n} rows -> {out}"
                   + ("" if changed else "（内容未变化，保持原文件）"))
     finally:

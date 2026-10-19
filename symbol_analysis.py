@@ -51,10 +51,11 @@ from scipy.stats import spearmanr
 
 from analysis_utils import (BASE, INSIGHTS, PALETTE, init_plot_style, save_fig,
                             cliffs_delta, clean_body, content_of,
-                            engagement_of, extract_hashtags, iter_jsonl,
+                            engagement_of, extract_hashtags,
                             parse_local_time, quarter_of, rate_diff_ranking,
                             rate_top, save_json, shannon_entropy, topk_coverage,
                             wilson_ci, within_cell_spearman)
+from derived_cache import iter_cached
 from paper_features import EMOJI, XHS_EMO
 
 DATASETS = {
@@ -104,7 +105,7 @@ def scan(path: str, content_len_ref: np.ndarray | None = None) -> dict:
     rows: list = []
     n_raw = mismatch = 0
     month_pool: dict = {}
-    for rec in iter_jsonl(path):
+    for rec in iter_cached(path):
         content = content_of(rec)
         body = clean_body(content)
         if content_len_ref is not None and len(body) != int(content_len_ref[n_raw]):

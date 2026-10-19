@@ -53,9 +53,10 @@ from scipy.stats import spearmanr, wilcoxon
 
 from analysis_utils import (BASE, INSIGHTS, PALETTE, clean_body, close_pool,
                             content_of, dedup_indices, engagement_of,
-                            gini_coefficient, init_plot_style, iter_jsonl,
+                            gini_coefficient, init_plot_style,
                             make_pool, parse_local_time, save_fig, save_json,
                             wilson_ci, within_cell_spearman)
+from derived_cache import iter_cached
 
 SCORES_PATH = BASE + "paper_exploring_scores.csv.gz"
 EXPLORING_PATH = BASE + "exploring_set_fixed.jsonl"
@@ -508,7 +509,7 @@ def scan_users(scores: pd.DataFrame) -> dict:
     mismatch = 0
     content_len = scores["content_len"].to_numpy()
     n_scores = content_len.size
-    for i, rec in enumerate(iter_jsonl(EXPLORING_PATH)):
+    for i, rec in enumerate(iter_cached(EXPLORING_PATH)):
         body = clean_body(content_of(rec))
         if i >= n_scores or len(body) != int(content_len[i]):
             mismatch += 1

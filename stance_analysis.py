@@ -57,8 +57,9 @@ from analysis_utils import (BASE, INSIGHTS, PALETTE, body_cache, init_plot_style
                             save_fig, save_json, cliffs_delta, cell_rank_cache,
                             cell_groups, clean_body, content_of, decile_table,
                             dedup_indices, domain_standardized_series,
-                            engagement_of, iter_jsonl, length_bin_codes,
+                            engagement_of, length_bin_codes,
                             parse_local_time, run_parallel, within_cell_spearman)
+from derived_cache import iter_cached
 from engagement_drivers_analysis import (cluster_bootstrap_fe_ols, fe_ols,
                                          prepare_fe)
 
@@ -171,7 +172,7 @@ def scan_corpus(path: str) -> dict:
     n_total = 0
     # 重复正文（探索集约 45%）直接复用上一次的逐词计数，只读不改。
     cached = body_cache(word_counts)
-    for rec in iter_jsonl(path):
+    for rec in iter_cached(path):
         n_total += 1
         content = content_of(rec)
         body = clean_body(content)

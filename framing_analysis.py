@@ -44,10 +44,11 @@ from scipy.stats import spearmanr
 
 from analysis_utils import (BASE, INSIGHTS, PALETTE, body_cache, init_plot_style,
                             save_fig, cliffs_delta, clean_body, content_of,
-                            dedup_indices, engagement_of, iter_jsonl,
+                            dedup_indices, engagement_of,
                             parse_local_time, rate_diff_ranking, rate_top,
                             shannon_entropy, topk_coverage, run_parallel,
                             wilson_ci)
+from derived_cache import iter_cached
 from paper_features import EMOJI
 
 DATASETS = {
@@ -132,7 +133,7 @@ def scan_view(path: str, content_len_ref: np.ndarray | None = None) -> dict:
     n_raw = n_short = mismatch = 0
     # 重复正文（探索集约 45%）直接复用紧凑文本与收尾类别，只读不改。
     cached = body_cache(frame_features)
-    for rec in iter_jsonl(path):
+    for rec in iter_cached(path):
         content = content_of(rec)
         body = clean_body(content)
         if content_len_ref is not None and len(body) != int(content_len_ref[n_raw]):

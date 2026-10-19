@@ -61,10 +61,11 @@ from analysis_utils import (BASE, DATASET_LABELS, INSIGHTS, LENGTH_BINS, PALETTE
                             cell_rank_cache, clean_body, cliffs_delta, content_of,
                             cv_auc, decile_table, dedup_indices,
                             domain_standardized_series, engagement_of,
-                            init_plot_style, iter_jsonl, length_bin_codes,
+                            init_plot_style, length_bin_codes,
                             parse_local_time, save_fig, save_json,
                             standardize_weights, wilson_ci,
                             run_parallel, within_cell_spearman)
+from derived_cache import iter_cached
 from engagement_drivers_analysis import (cluster_bootstrap_fe_ols, fe_ols,
                                          prepare_fe)
 
@@ -348,7 +349,7 @@ def scan_corpus(path: str) -> dict:
     # 下面 unit_tokens.update(units) / place_tokens.update(places) 均不改动
     # 被缓存的 Counter 本体。
     cached = body_cache(classify)
-    for rec in iter_jsonl(path):
+    for rec in iter_cached(path):
         n_total += 1
         content = content_of(rec)
         body = clean_body(content)

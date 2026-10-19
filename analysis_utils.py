@@ -5,11 +5,14 @@
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import random
 import re
-from collections import Counter
+import shutil
+import tempfile
+from collections import Counter, OrderedDict
 from collections.abc import Iterator
 from datetime import datetime
 from functools import lru_cache
@@ -384,18 +387,24 @@ def iter_jsonl(path: str) -> Iterator[dict]:
             yield json.loads(line)
 
 
-def body_cache(fn, probe: int = 2000, min_hit: float = 0.05):
-    """给「正文 -> 结果」的纯函数加逐次扫描内的字符串缓存。
+def body_cache(fn, probe: int = 2000, min_hit: float = 0.05,
+               max_entries: int = 20000):
+    """给「正文 -> 结果」的纯函数加逐次扫描内的正文摘要缓存。
 
     探索集语料里同一段正文被反复导出（逐字节重复约占 45%），重复帖的
     计数/正则结果完全相同；按正文缓存可直接省掉重复计算，结果与逐帖
     重新计算逐位一致（返回的是同一结果对象，调用方必须只读）。
 
+    缓存键是正文的 blake2b 摘要而不是正文本身：命中率不变，但缓存不再
+    长期持有几十 MB 的正文副本。LRU 上限 `max_entries` 进一步把结果对象
+    的数量限制在常数条，避免唯一正文较多时缓存无限增长；被淘汰的条目
+    只会导致重算，不影响任何统计结果。
+
     缓存按需自动关闭：前 `probe` 次调用后命中率低于 `min_hit` 时说明该
-    语料几乎无重复（人类/AIGC 子集），立即停用并释放已缓存的正文副本，
-    避免白白占内存。`fn` 的返回值不能为 None（None 仅用于表示未命中）。
+    语料几乎无重复（人类/AIGC 子集），立即停用并释放已缓存的结果。
+    `fn` 的返回值不能为 None（None 仅用于表示未命中）。
     """
-    cache: dict = {}
+    cache: OrderedDict = OrderedDict()
     hits = 0
     calls = 0
     enabled = True
@@ -405,12 +414,17 @@ def body_cache(fn, probe: int = 2000, min_hit: float = 0.05):
         if not enabled:
             return fn(text)
         calls += 1
-        val = cache.get(text)
+        key = hashlib.blake2b(text.encode("utf-8", "surrogatepass"),
+                              digest_size=8).digest()
+        val = cache.get(key)
         if val is not None:
             hits += 1
+            cache.move_to_end(key)
             return val
         val = fn(text)
-        cache[text] = val
+        cache[key] = val
+        if len(cache) > max_entries:
+            cache.popitem(last=False)
         if calls >= probe and hits < min_hit * calls:
             enabled = False
             cache.clear()
@@ -999,31 +1013,128 @@ def detector_score(df: pd.DataFrame, model: dict, robust: bool = True) -> np.nda
                         model["scaler_scale"], model["coef"], model["intercept"])
 
 
-def detector_oof_scores(human: pd.DataFrame, aigc: pd.DataFrame, model: dict,
-                        robust: bool = True, seed: int = 42) -> np.ndarray:
-    """人类子集检测器得分的 5 折折外（out-of-fold）估计。
+# 折外得分缓存（human+AIGC 特征矩阵的 5 折 OOF 在管线中被多个脚本复用）
+_OOF_CACHE_NAME = "paper_detector_oof.npz"
 
-    直接用全量模型给作为训练负类的人类集打分是 in-sample 自评，会系统性
-    低估人类集的假阳性率。这里用与 `paper_detector.py`/`cv_auc` 完全相同的
-    协议（StandardScaler + 平衡类权重 LogisticRegression(max_iter=2000)、
-    StratifiedKFold(5, shuffle=True, random_state=seed)）在 human+AIGC 特征上
-    重做交叉验证，返回人类行的折外 P(AI)，供时序分析的人类基线使用，口径与
-    探索集的 out-of-sample 打分一致。
+
+def _oof_fingerprint(X: np.ndarray, y: np.ndarray, feats, seed: int,
+                     folds: int) -> str:
+    """OOF 结果的输入指纹：特征矩阵 + 特征名 + 标签 + CV 参数。"""
+    h = hashlib.blake2b(digest_size=16)
+    h.update(b"oof-v1|")
+    h.update("\x00".join(map(str, feats)).encode("utf-8"))
+    h.update(f"|seed={seed}|folds={folds}|".encode("utf-8"))
+    h.update(np.ascontiguousarray(X, dtype=np.float64).tobytes())
+    h.update(y.astype(np.int8).tobytes())
+    return h.hexdigest()
+
+
+def _load_oof_cache(path: str, key: str, fp: str, n: int):
+    if not path or not os.path.exists(path):
+        return None
+    try:
+        with np.load(path, allow_pickle=False) as z:
+            if str(z[f"{key}_fp"].item()) != fp:
+                return None
+            arr = z[key]
+            if arr.shape != (n,) or arr.dtype != np.float64:
+                return None
+            return arr.copy()
+    except Exception:
+        return None
+
+
+def _store_oof_cache(path: str, key: str, fp: str, proba: np.ndarray) -> None:
+    """把某个特征集的 OOF 概率写入 npz 缓存（保留另一个特征集的条目）。"""
+    if not path:
+        return
+    data: dict = {}
+    if os.path.exists(path):
+        try:
+            with np.load(path, allow_pickle=False) as z:
+                for k in z.files:
+                    data[k] = z[k]
+        except Exception:
+            data = {}
+    data[key] = proba.astype(np.float64, copy=False)
+    data[f"{key}_fp"] = np.asarray(fp)
+    tmp = path + ".tmp"
+    try:
+        with open(tmp, "wb") as f:
+            np.savez(f, **data)
+        os.replace(tmp, path)
+    finally:
+        if os.path.exists(tmp):
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+
+
+def oof_proba_cached(X: np.ndarray, y: np.ndarray, feats,
+                     seed: int = 42, folds: int = 5,
+                     cache_key: str = "oof",
+                     cache_path: str | None = None,
+                     use_cache: bool = True) -> np.ndarray:
+    """特征矩阵 + 标签的 5 折折外 P(正类)，带输入指纹校验的 npz 缓存。
+
+    缓存键由特征矩阵、特征名、标签与 CV 参数共同决定：任何输入变化都会
+    导致指纹不符并重新训练，因此缓存结果与 `cross_val_predict` 重算逐位
+    一致；缓存文件缺失/损坏时静默回退重算。
     """
     from sklearn.linear_model import LogisticRegression
     from sklearn.model_selection import StratifiedKFold, cross_val_predict
     from sklearn.preprocessing import StandardScaler
     from sklearn.pipeline import make_pipeline
 
-    feats = list(model["robust_features"] if robust else model["features"])
-    X = pd.concat([human[feats], aigc[feats]], ignore_index=True).fillna(0).values
-    y = np.r_[np.zeros(len(human), dtype=int), np.ones(len(aigc), dtype=int)]
+    path = fp = None
+    if use_cache:
+        path = cache_path if cache_path is not None else BASE + _OOF_CACHE_NAME
+        fp = _oof_fingerprint(X, y, feats, seed, folds)
+        cached = _load_oof_cache(path, cache_key, fp, len(y))
+        if cached is not None:
+            return cached
     pipe = make_pipeline(StandardScaler(),
                          LogisticRegression(max_iter=2000,
                                             class_weight="balanced"))
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=seed)
+    cv = StratifiedKFold(n_splits=folds, shuffle=True, random_state=seed)
     proba = cross_val_predict(pipe, X, y, cv=cv, method="predict_proba")[:, 1]
-    return proba[:len(human)]
+    if use_cache:
+        _store_oof_cache(path, cache_key, fp, proba)
+    return proba
+
+
+def detector_oof_all(human: pd.DataFrame, aigc: pd.DataFrame, model: dict,
+                     robust: bool = True, seed: int = 42,
+                     cache_path: str | None = None,
+                     use_cache: bool = True) -> np.ndarray:
+    """human+AIGC 全部行的 5 折折外（out-of-fold）概率（human 在前）。
+
+    直接用全量模型给作为训练负类的人类集打分是 in-sample 自评，会系统性
+    低估人类集的假阳性率。这里用与 `paper_detector.py`/`cv_auc` 完全相同的
+    协议（StandardScaler + 平衡类权重 LogisticRegression(max_iter=2000)、
+    StratifiedKFold(5, shuffle=True, random_state=seed)）在 human+AIGC 特征上
+    做交叉验证，返回全部行的折外 P(AI)。
+
+    同一特征矩阵的 OOF 在论文管线与 fork 管线中被多个脚本重复使用，这里
+    默认把结果持久化到 `oof_proba_cached` 的派生缓存；缓存命中时省去整次
+    交叉验证（每个调用点约 3–5 秒），数值与重算逐位一致。
+    """
+    feats = list(model["robust_features"] if robust else model["features"])
+    X = pd.concat([human[feats], aigc[feats]], ignore_index=True).fillna(0).values
+    y = np.r_[np.zeros(len(human), dtype=int), np.ones(len(aigc), dtype=int)]
+    return oof_proba_cached(X, y, feats, seed=seed, folds=5,
+                            cache_key="robust" if robust else "full",
+                            cache_path=cache_path, use_cache=use_cache)
+
+
+def detector_oof_scores(human: pd.DataFrame, aigc: pd.DataFrame, model: dict,
+                        robust: bool = True, seed: int = 42) -> np.ndarray:
+    """人类子集的折外 P(AI)（`detector_oof_all` 的前 len(human) 行）。
+
+    供时序分析的人类基线使用，口径与探索集的 out-of-sample 打分一致。
+    """
+    return detector_oof_all(human, aigc, model, robust=robust, seed=seed)[:len(human)]
 
 
 def cliffs_delta_from_u(u: float, n1: int, n2: int) -> float:
@@ -1573,10 +1684,56 @@ def write_gz_if_changed(data: bytes, path: str) -> bool:
     return True
 
 
+def _streams_equal(a, b, chunk: int = 1 << 16) -> bool:
+    """分块比较两个二进制流的内容（不整体读入内存）。"""
+    while True:
+        ba = a.read(chunk)
+        bb = b.read(chunk)
+        if ba != bb:
+            return False
+        if not ba:
+            return True
+
+
+def write_gz_from_path_if_changed(src_path: str, path: str) -> bool:
+    """把源文件 gzip 写出为 `path`；内容与现有文件一致时一个字节都不动。
+
+    与 `write_gz_if_changed` 相同的比较/原子替换语义，但源内容在磁盘上，
+    分块解压旧文件逐字节流式比较，全程不需要在内存里持有整份数据；
+    只有内容真正变化时才经临时文件原子替换，gzip mtime 固定为 0。
+    返回是否实际写入了文件。
+    """
+    import gzip
+
+    if os.path.exists(path):
+        try:
+            with gzip.open(path, "rb") as old, open(src_path, "rb") as new:
+                if _streams_equal(old, new):
+                    return False
+        except OSError:
+            pass
+    tmp = f"{path}.tmp"
+    with open(src_path, "rb") as src, open(tmp, "wb") as f:
+        with gzip.GzipFile(fileobj=f, mode="wb", mtime=0) as gz:
+            shutil.copyfileobj(src, gz, length=1 << 20)
+    os.replace(tmp, path)
+    return True
+
+
 def write_csv_gz_if_changed(df: pd.DataFrame, path: str) -> bool:
     """把 DataFrame 写为 gzip CSV；内容与现有文件一致时一个字节都不动。
 
-    序列化到内存后交给 `write_gz_if_changed` 做比较与原子替换，返回是否
-    实际写入了文件。
+    CSV 先分块写入临时文件，再交给 `write_gz_from_path_if_changed` 做流式
+    比较与原子替换，避免把整份 CSV 字符串与 UTF-8 bytes 同时驻留内存。
+    返回是否实际写入了文件。
     """
-    return write_gz_if_changed(df.to_csv(index=False).encode("utf-8"), path)
+    fd, tmp = tempfile.mkstemp(prefix=".csv_gz_src_", suffix=".csv")
+    os.close(fd)
+    try:
+        df.to_csv(tmp, index=False)
+        return write_gz_from_path_if_changed(tmp, path)
+    finally:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass

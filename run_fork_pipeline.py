@@ -6,7 +6,7 @@
 或全量扫描原始 JSONL，互不写坏对方输出，可以任意单独重跑。
 
 用法：
-  python3 run_fork_pipeline.py                     # 运行全部 21 步
+  python3 run_fork_pipeline.py                     # 运行全部 22 步
   python3 run_fork_pipeline.py --list              # 只打印步骤
   python3 run_fork_pipeline.py --from 3            # 从第 3 步开始
   python3 run_fork_pipeline.py --only detector_diagnostics.py family_lexicon_analysis.py
@@ -19,6 +19,8 @@ import sys
 from pipeline_common import run_pipeline
 
 STEPS = [
+    ("derived_cache.py",
+     "为五个 JSONL 构建共享派生记录缓存（后续步骤免重复解析；缺失时自动回退）"),
     ("deep_dive_analysis.py",
      "发布节奏 / 词表扩散 / 句子节奏 / 重复内容 -> deep_dive_results.{json,md} + 4 图"),
     ("framing_analysis.py",

@@ -28,7 +28,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.metrics import roc_auc_score, f1_score, accuracy_score
 
 from analysis_utils import (BASE, setup_chinese_fonts, cliffs_delta_from_u,
-                            make_pool, close_pool)
+                            make_pool, close_pool, oof_proba_cached)
 
 FIGS = BASE + "paper_figs/"
 os.makedirs(FIGS, exist_ok=True)
@@ -91,10 +91,12 @@ def main():
     y = (df["dataset"] == "aigc").astype(int).values
 
     # ---- 1. 交叉验证 ----
+    # 口径与旧实现完全相同（同管道/折数/种子），但结果带指纹写入共享缓存，
+    # 供 paper_robustness / paper_drift / paper_extra_figs 等直接复用。
     pipe = make_pipeline(StandardScaler(),
                          LogisticRegression(max_iter=2000, class_weight="balanced"))
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-    proba = cross_val_predict(pipe, X, y, cv=cv, method="predict_proba")[:, 1]
+    proba = oof_proba_cached(X, y, feats, cache_key="full")
     pred = (proba >= 0.5).astype(int)
     auc = roc_auc_score(y, proba)
     f1 = f1_score(y, pred)
@@ -104,7 +106,7 @@ def main():
     # 消融：去掉与爬取格式可能相关的特征（标签数/标题类），检验稳健性
     robust_feats = [f for f in feats if f != "n_hashtags" and not f.startswith("title_")]
     Xr = df[robust_feats].fillna(0).values
-    proba_r = cross_val_predict(pipe, Xr, y, cv=cv, method="predict_proba")[:, 1]
+    proba_r = oof_proba_cached(Xr, y, robust_feats, cache_key="robust")
     auc_r = roc_auc_score(y, proba_r)
     f1_r = f1_score(y, (proba_r >= 0.5).astype(int))
     print(f"稳健特征 LR 5折CV: AUC={auc_r:.4f} F1={f1_r:.4f} (n_feats={len(robust_feats)})")

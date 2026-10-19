@@ -44,11 +44,13 @@ from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
 from analysis_utils import (BASE, INSIGHTS, init_plot_style, save_fig,
-                            save_json, engagement_of, iter_jsonl,
+                            save_json, engagement_of,
                             linear_score, load_detector_model, parse_local_time,
                             title_of, detector_score, content_of, compact_text,
                             shannon_entropy, topk_coverage,
-                            bootstrap_median_ci, cliffs_delta, wilson_ci)
+                            bootstrap_median_ci, cliffs_delta, wilson_ci,
+                            oof_proba_cached)
+from derived_cache import iter_cached
 from framing_analysis import dedup_indices, specific_templates
 
 SCORES_INPUTS = {
@@ -93,18 +95,26 @@ def load_features() -> tuple[pd.DataFrame, pd.DataFrame]:
 
 
 def cv_auc(df: pd.DataFrame, feats: list[str], cv: StratifiedKFold,
-           X=None) -> dict:
+           X=None, cache_key: str | None = None) -> dict:
     """与 paper_detector.py 完全相同的逻辑回归交叉验证口径。
 
     传入 `X`（调用方按 feats 顺序切好的特征矩阵）时直接复用，避免为
     每个特征子集重复构造整张矩阵；X 为 None 时保持旧行为。
+
+    传入 `cache_key` 时改用带指纹校验的共享 OOF 缓存（body_only 与
+    paper_detector 的稳健特征、full 与全特征矩阵逐位一致，可直接命中）；
+    指纹不符会自动重算。
     """
     if X is None:
         X = df[feats].fillna(0).values
     y = (df["dataset"] == "aigc").astype(int).values
-    pipe = make_pipeline(StandardScaler(),
-                         LogisticRegression(max_iter=2000, class_weight="balanced"))
-    proba = cross_val_predict(pipe, X, y, cv=cv, method="predict_proba")[:, 1]
+    if cache_key is not None:
+        proba = oof_proba_cached(X, y, feats, cache_key=cache_key)
+    else:
+        pipe = make_pipeline(StandardScaler(),
+                             LogisticRegression(max_iter=2000,
+                                                class_weight="balanced"))
+        proba = cross_val_predict(pipe, X, y, cv=cv, method="predict_proba")[:, 1]
     return {
         "auc": float(roc_auc_score(y, proba)),
         "f1": float(f1_score(y, (proba >= 0.5).astype(int))),
@@ -138,7 +148,7 @@ def scan_titles(path: str) -> tuple[list[str], list, np.ndarray]:
     （下游计数时直接跳过 None）。
     """
     prefixes, ids, metas = [], [], []
-    for rec in iter_jsonl(path):
+    for rec in iter_cached(path):
         compact = compact_text(title_of(rec))
         prefixes.append(compact[:TITLE_PREFIX_LEN]
                         if len(compact) >= TITLE_PREFIX_LEN else None)
@@ -281,16 +291,24 @@ def main() -> None:
     X_of = lambda cols: X_full[:, [col_idx[c] for c in cols]]
     X_title = X_of(title_feats)
     ablation = {
-        "body_only": cv_auc(df, body_feats, cv, X_of(body_feats)),
+        "body_only": cv_auc(df, body_feats, cv, X_of(body_feats),
+                            cache_key="robust"),
         "title_only": cv_auc(df, title_feats, cv, X_title),
-        "full": cv_auc(df, feats_all, cv, X_full),
+        "full": cv_auc(df, feats_all, cv, X_full, cache_key="full"),
     }
     print("消融 AUC:", {k: round(v["auc"], 4) for k, v in ablation.items()})
 
     # ---- 2. 标题全量模型与三个子集打分 ----
     model = fit_title_model(df, title_feats, X_title)
     coefs = pd.Series(model["coef"], index=title_feats).sort_values()
-    exploring = pd.read_csv(BASE + "paper_features_exploring.csv.gz")
+    # 探索集只读本分析用到的列（标题特征、稳健正文特征 + 时间/领域/互动），
+    # 不再整表读入 37+ 列。
+    detector_model = load_detector_model()
+    exploring_cols = list(dict.fromkeys(
+        title_feats + list(detector_model["robust_features"])
+        + ["month", "domain", "likes", "collections", "comments"]))
+    exploring = pd.read_csv(BASE + "paper_features_exploring.csv.gz",
+                            usecols=exploring_cols)
 
     def score(frame: pd.DataFrame) -> np.ndarray:
         return linear_score(frame, model["features"], model["scaler_mean"],
@@ -313,7 +331,6 @@ def main() -> None:
     }
     exploring["title_p_ai"] = score(exploring)
     exploring["month"] = exploring["month"].astype(str)
-    detector_model = load_detector_model()
     exploring["body_p_ai"] = detector_score(exploring, detector_model, robust=True)
     corpus_stats["exploring"] = {
         "n": int(len(exploring)),

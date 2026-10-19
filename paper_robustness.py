@@ -29,7 +29,6 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import StratifiedKFold, cross_val_predict
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import make_pipeline
 from sklearn.metrics import (roc_auc_score, average_precision_score,
@@ -38,7 +37,7 @@ from sklearn.metrics import (roc_auc_score, average_precision_score,
 from analysis_utils import (BASE, FIGS, FEATURE_META, setup_chinese_fonts,
                             load_features, load_detector_model, detector_score,
                             detector_oof_scores, cliffs_delta, wilson_ci,
-                            bootstrap_auc, save_json)
+                            bootstrap_auc, save_json, oof_proba_cached)
 
 setup_chinese_fonts()
 
@@ -75,13 +74,16 @@ def part_length_matched(human: pd.DataFrame, aigc: pd.DataFrame) -> dict:
     # 一次分组拿行号，避免每个长度区间都对整表做一次布尔扫描/拷贝。
     h_groups = human.groupby(human_bins, observed=True).indices
     a_groups = aigc.groupby(aigc_bins, observed=True).indices
+    # 只保留参与比较的列，区间切片不再整行拷贝。
+    h_sel = human[CONSISTENCY_FEATS]
+    a_sel = aigc[CONSISTENCY_FEATS]
     for lab in LENGTH_LABELS:
         h_idx = h_groups.get(lab, [])
         a_idx = a_groups.get(lab, [])
         if len(h_idx) < MIN_BIN_N or len(a_idx) < MIN_BIN_N:
             continue
-        gh = human.iloc[h_idx]
-        ga = aigc.iloc[a_idx]
+        gh = h_sel.iloc[h_idx]
+        ga = a_sel.iloc[a_idx]
         rows[lab] = {"n_human": int(len(gh)), "n_aigc": int(len(ga)), "features": {}}
         for f in CONSISTENCY_FEATS:
             delta, p = cliffs_delta(ga[f].values, gh[f].values)
@@ -122,9 +124,12 @@ def part_domain_consistency(human: pd.DataFrame, aigc: pd.DataFrame) -> dict:
     pvals = np.full_like(matrix, np.nan)
     h_groups = human.groupby("domain").indices  # 一次分组，避免逐领域全表扫描
     a_groups = aigc.groupby("domain").indices
+    # 只保留领域列与参与比较的特征列，领域切片不再整行拷贝。
+    h_sel = human[["domain"] + CONSISTENCY_FEATS]
+    a_sel = aigc[["domain"] + CONSISTENCY_FEATS]
     for i, d in enumerate(domains):
-        gh = human.iloc[h_groups[d]]
-        ga = aigc.iloc[a_groups[d]]
+        gh = h_sel.iloc[h_groups[d]]
+        ga = a_sel.iloc[a_groups[d]]
         if len(gh) < MIN_DOMAIN_N or len(ga) < MIN_DOMAIN_N:
             continue
         for j, f in enumerate(CONSISTENCY_FEATS):
@@ -219,11 +224,12 @@ def part_cross_domain(df: pd.DataFrame, X: np.ndarray, y: np.ndarray,
     return {"per_domain": rows, "summary": summary}
 
 
-def part_detector_ci(X: np.ndarray, y: np.ndarray) -> dict:
-    pipe = make_pipeline(StandardScaler(),
-                         LogisticRegression(max_iter=2000, class_weight="balanced"))
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-    proba = cross_val_predict(pipe, X, y, cv=cv, method="predict_proba")[:, 1]
+def part_detector_ci(X: np.ndarray, y: np.ndarray,
+                     feats: list[str] | None = None) -> dict:
+    # 与 paper_detector / detector_diagnostics 共用带指纹校验的 OOF 缓存；
+    # 特征名缺失时退回列表坐标名（仅在缓存键不同的情况下重算）。
+    names = list(feats) if feats is not None else [f"x{i}" for i in range(X.shape[1])]
+    proba = oof_proba_cached(X, y, names, cache_key="full")
 
     boot = bootstrap_auc(y, proba, n_boot=1000)
     ap = float(average_precision_score(y, proba))
@@ -362,7 +368,7 @@ def main() -> None:
     print("汇总:", transfer["summary"])
 
     print("=== 4. 检测器置信区间与 PR ===")
-    det = part_detector_ci(X, y)
+    det = part_detector_ci(X, y, feats)
     print("AUC bootstrap:", det["auc_bootstrap"])
     print("AP:", det["average_precision"], "P≥0.9工作点:", det["pr_at_threshold_0.9"])
 

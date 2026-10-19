@@ -56,8 +56,9 @@ from scipy.stats import rankdata
 from analysis_utils import (BASE, INSIGHTS, body_cache, init_plot_style,
                             save_fig, save_json, cell_groups, cell_rank_cache,
                             clean_body, content_of, cv_auc, dedup_indices,
-                            engagement_of, iter_jsonl, parse_local_time,
+                            engagement_of, parse_local_time,
                             run_parallel, within_cell_spearman)
+from derived_cache import iter_cached
 from cta_analysis import CATEGORY_LABELS as CTA_LABELS
 from cta_analysis import CATEGORY_ORDER as CTA_ORDER
 from cta_analysis import cta_counts
@@ -255,7 +256,7 @@ def scan_corpus(path: str) -> dict:
     # 重复正文（探索集约 45%）直接复用上一次的 30 类向量；缓存值是只读的
     # int32 数组（下游只做 vstack 拷贝），复用同一对象不影响结果。
     cached = body_cache(category_vector)
-    for rec in iter_jsonl(path):
+    for rec in iter_cached(path):
         n_total += 1
         content = content_of(rec)
         body = clean_body(content)

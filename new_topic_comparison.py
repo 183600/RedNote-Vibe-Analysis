@@ -1317,17 +1317,20 @@ def main():
 
     unique_vocab_results = analyze_unique_vocabulary(grouped, word_counters)
     plot_unique_vocabulary(unique_vocab_results, output_dir)
+    del word_counters
 
     sentence_results = analyze_sentence_features(grouped)
     plot_sentence_features(sentence_results, output_dir)
 
     analyze_keyword_cooccurrence(cooccurrence)
+    del cooccurrence
 
     consistency_results = analyze_content_consistency(grouped)
     plot_content_consistency(consistency_results, output_dir)
 
     emotion_results = analyze_emotion_intensity(grouped, token_totals)
     plot_emotion_intensity(emotion_results, output_dir)
+    del token_totals
 
     time_results = analyze_time_distribution(grouped)
 

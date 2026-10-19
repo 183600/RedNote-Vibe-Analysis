@@ -4,12 +4,12 @@
 输出：`user_clustering_results.md`（此前误写到 word_correlation_extended_results.md，
 与词频相关性脚本的输出语义不符，已改为独立文件名，避免互相覆盖）。
 """
-import json
 import random
 import re
 from collections import defaultdict, Counter
 
 from analysis_utils import BASE, post_text
+from derived_cache import iter_cached
 
 # 22个真正的跨话题通用文风词
 cross_topic_words = [
@@ -28,22 +28,15 @@ def main():
     print("Loading...")
     note_by_user = defaultdict(lambda: defaultdict(int))
 
-    # 探索集里约 64% 记录的顶层 user_id 为空串；先做廉价的子串判定跳过
-    # json.loads，其余记录照常解析（该判定已在本数据集全量记录上验证
-    # 与 bool(item.get("user_id")) 完全一致）。
-    with open(BASE + "exploring_set_fixed.jsonl", encoding="utf-8") as f:
-        for line in f:
-            if not line or line.isspace():
-                continue
-            if '"user_id": ""' in line:
-                continue
-            item = json.loads(line)
-            user_id = item.get("user_id")
-            if not user_id:
-                continue
-            text = post_text(item)
-            for w in _CROSS_TOPIC_RE.findall(text):
-                note_by_user[user_id][w] += 1
+    # 探索集里约 64% 记录的顶层 user_id 为空串，直接跳过；派生缓存按原
+    # 字段投影，取值与逐行 json.loads 完全一致（缓存缺失时自动回退）。
+    for item in iter_cached(BASE + "exploring_set_fixed.jsonl"):
+        user_id = item.get("user_id")
+        if not user_id:
+            continue
+        text = post_text(item)
+        for w in _CROSS_TOPIC_RE.findall(text):
+            note_by_user[user_id][w] += 1
 
     print("Total users: " + str(len(note_by_user)))
 

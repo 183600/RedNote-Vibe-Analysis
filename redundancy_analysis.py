@@ -72,11 +72,12 @@ from analysis_utils import (BASE, INSIGHTS, LENGTH_BINS, PALETTE, body_cache,
                             cell_groups, cell_rank_cache, cliffs_delta,
                             clean_body, content_of, decile_table, dedup_indices,
                             domain_standardized_series, engagement_of,
-                            init_plot_style, iter_jsonl, length_bin_codes,
+                            init_plot_style, length_bin_codes,
                             length_matched_mean_gap, length_residualize,
                             ngram_repeat_share, parse_local_time, run_parallel,
                             save_fig, save_json, split_sentences, wilson_ci,
                             within_cell_spearman)
+from derived_cache import iter_cached
 from engagement_drivers_analysis import (cluster_bootstrap_fe_ols, fe_ols,
                                          prepare_fe)
 
@@ -202,7 +203,7 @@ def scan_corpus(path: str) -> dict:
     n_sent = []
     n_total = 0
     cached = body_cache(redundancy_metrics)
-    for rec in iter_jsonl(path):
+    for rec in iter_cached(path):
         n_total += 1
         content = content_of(rec)
         body = clean_body(content)

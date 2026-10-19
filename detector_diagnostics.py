@@ -39,17 +39,13 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from scipy.stats import spearmanr
-from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (accuracy_score, brier_score_loss, f1_score,
                              roc_auc_score)
-from sklearn.model_selection import StratifiedKFold, cross_val_predict
-from sklearn.pipeline import make_pipeline
-from sklearn.preprocessing import StandardScaler
 
 from analysis_utils import (BASE, INSIGHTS, init_plot_style, save_fig, save_json,
                             ece_from_bins, prior_corrected_proba,
                             reliability_bins, load_detector_model,
-                            threshold_metrics)
+                            threshold_metrics, oof_proba_cached)
 from paper_detector import LABELS
 
 META = ["dataset", "domain", "month", "model_family", "model",
@@ -77,20 +73,21 @@ def load_labeled() -> tuple[pd.DataFrame, list[str]]:
     return df, feats
 
 
-def cv_proba_X(X: np.ndarray, y: np.ndarray) -> np.ndarray:
-    """对已构建的特征矩阵做 5 折分层 CV 袋外概率（同管道同种子）。"""
-    pipe = make_pipeline(StandardScaler(),
-                         LogisticRegression(max_iter=2000,
-                                            class_weight="balanced"))
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
-    return cross_val_predict(pipe, X, y, cv=cv, method="predict_proba")[:, 1]
+def cv_proba_X(X: np.ndarray, y: np.ndarray, feats: list[str],
+               cache_key: str = "oof") -> np.ndarray:
+    """对已构建的特征矩阵做 5 折分层 CV 袋外概率（同管道同种子）。
+
+    与 `paper_detector.py` / `paper_robustness.py` 共用带指纹校验的派生
+    缓存：相同特征矩阵只训练一次，数值与重算逐位一致。
+    """
+    return oof_proba_cached(X, y, feats, cache_key=cache_key)
 
 
 def cv_proba(df: pd.DataFrame, feats: list[str]) -> np.ndarray:
     """5 折分层交叉验证的袋外概率，与 paper_detector.py 同管道同种子。"""
     X = df[feats].fillna(0).values
     y = (df["dataset"] == "aigc").astype(int).values
-    return cv_proba_X(X, y)
+    return cv_proba_X(X, y, feats, cache_key="full")
 
 
 def length_decile_table(df: pd.DataFrame, y, proba) -> list[dict]:
@@ -407,8 +404,9 @@ def main() -> None:
     # 特征矩阵只构建一次：稳健特征是全特征矩阵的列子集，直接切片复用
     X_full = df[feats].fillna(0).values
     col_idx = {c: i for i, c in enumerate(feats)}
-    proba = cv_proba_X(X_full, y)
-    proba_r = cv_proba_X(X_full[:, [col_idx[c] for c in robust_feats]], y)
+    proba = cv_proba_X(X_full, y, feats, cache_key="full")
+    proba_r = cv_proba_X(X_full[:, [col_idx[c] for c in robust_feats]], y,
+                         list(robust_feats), cache_key="robust")
     auc = float(roc_auc_score(y, proba))
     auc_r = float(roc_auc_score(y, proba_r))
     print(f"全特征 CV AUC={auc:.4f}（paper_detector 记录 0.9402）")

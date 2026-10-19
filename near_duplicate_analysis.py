@@ -46,6 +46,8 @@
 """
 from __future__ import annotations
 
+import os
+import tempfile
 from collections import defaultdict
 from functools import partial
 
@@ -456,6 +458,62 @@ def scan_dataset(key: str, path: str) -> dict:
     rows = [(i, body, aux) for _, i, body, aux in best.values()] + raw
     rows.sort()
     return {"path": path, "n_raw": n_raw, "docs": rows}
+
+
+class _SpilledSets:
+    """完整 5-gram 集合的磁盘溢写 + mmap 随机访问（序列接口，只读）。
+
+    候选生成只需要 bottom-k 概要；完整集合（参与匹配的全部文档约 300MB）
+    不必与概要、候选对同时常驻内存。逐篇顺序写到临时文件，校验时按需经
+    mmap 读取切片，操作系统按需换入页面，峰值 RSS 只保留概要部分。
+    值语义与内存中的「每篇一个排序去重 uint64 数组」完全一致。
+    """
+
+    def __init__(self):
+        fd, self._path = tempfile.mkstemp(prefix="near_dup_shingles_",
+                                          suffix=".u64")
+        os.close(fd)
+        self._fh = open(self._path, "wb")
+        self._sizes: list[int] = []
+        self._offsets: np.ndarray | None = None
+        self._mm: np.ndarray | None = None
+
+    def append(self, arr: np.ndarray) -> None:
+        self._sizes.append(int(arr.size))
+        self._fh.write(arr.tobytes())
+
+    def finalize(self) -> None:
+        self._fh.close()
+        self._fh = None
+        sizes = np.asarray(self._sizes, dtype=np.int64)
+        self._sizes = []
+        offsets = np.empty(sizes.size + 1, dtype=np.int64)
+        offsets[0] = 0
+        np.cumsum(sizes, out=offsets[1:])
+        self._offsets = offsets
+        if offsets[-1] > 0:
+            self._mm = np.memmap(self._path, dtype=np.uint64, mode="r")
+        else:
+            self._mm = np.empty(0, dtype=np.uint64)
+
+    def __len__(self) -> int:
+        return 0 if self._offsets is None else len(self._offsets) - 1
+
+    def __getitem__(self, i):
+        return self._mm[self._offsets[i]:self._offsets[i + 1]]
+
+    def close(self) -> None:
+        mm = self._mm
+        self._mm = None
+        if isinstance(mm, np.memmap):
+            mm._mmap.close()
+        if self._fh is not None:
+            self._fh.close()
+            self._fh = None
+        try:
+            os.unlink(self._path)
+        except OSError:
+            pass
 
 
 # --------------------------------------------------------------------------
@@ -955,61 +1013,63 @@ def collect_stats(docs: list, dataset: np.ndarray, within_j: np.ndarray,
 
 def main() -> int:
     init_plot_style()
-    scans = {name: scan_dataset(name, path) for name, path in DATASETS.items()}
-    scan_meta = {name: {"n_raw": scans[name]["n_raw"],
-                        "n_docs": len(scans[name]["docs"])} for name in scans}
-    all_docs = [(name, raw_i, body, aux)
-                for name in ("human", "aigc", "exploring")
-                for raw_i, body, aux in scans[name]["docs"]]
-    del scans  # 全量正文只保留 all_docs 一份引用
-
-    # 逐篇算 shingle 后立即把正文换成 60 字符片段并清空 all_docs 槽位：下游只
-    # 需要片段与长度，正文不必与不断增长的 shingle 集合同时驻留（峰值内存的
-    # 主要来源）；顺序与旧的「先全部算完再按 keep 过滤」完全一致。
-    sets: list = []
+    # 逐数据集扫描并立即算 shingle：完整集合溢写到磁盘、内存只留 bottom-k
+    # 概要与 60 字符片段，避免「全量正文 + 全量完整集合」同时常驻（页面由
+    # 操作系统按需换入，统计口径与旧实现逐位一致）。
+    store = _SpilledSets()
+    sketches: list = []
     docs: list = []
-    excluded = {name: 0 for name in scan_meta}
-    for j, (name, raw_i, body, aux) in enumerate(all_docs):
-        s = shingle_hashes(body)
-        if s.size >= MIN_SHINGLES:
-            sets.append(s)
-            docs.append((name, raw_i, body[:60], len(body), aux))
-        else:
-            excluded[name] += 1
-        all_docs[j] = None
-    del all_docs
-    dataset = np.asarray([d[0] for d in docs])
-    n_docs = len(docs)
-    # 校验用「unique 5-gram 数」（原实现口径）；正文长度由 collect_stats 自行取
-    shingle_counts = np.fromiter((s.size for s in sets), dtype=np.int64,
-                                 count=n_docs)
-    print(f"[近重复] 参与匹配 {n_docs:,} 篇（清洗后不足 {MIN_SHINGLES} 个 "
-          f"5-gram、按「空正文/纯标签」剔除 {sum(excluded.values()):,} 篇）")
+    shingle_sizes: list[int] = []
+    excluded = {name: 0 for name in DATASETS}
+    scan_meta: dict = {}
+    try:
+        for name, path in DATASETS.items():
+            scan = scan_dataset(name, path)
+            scan_meta[name] = {"n_raw": scan["n_raw"],
+                               "n_docs": len(scan["docs"])}
+            for raw_i, body, aux in scan["docs"]:
+                s = shingle_hashes(body)
+                if s.size >= MIN_SHINGLES:
+                    store.append(s)
+                    sketches.append(bottom_k(s).copy())
+                    shingle_sizes.append(int(s.size))
+                    docs.append((name, raw_i, body[:60], len(body), aux))
+                else:
+                    excluded[name] += 1
+            del scan
+        store.finalize()
+        dataset = np.asarray([d[0] for d in docs])
+        n_docs = len(docs)
+        # 校验用「unique 5-gram 数」（原实现口径）；正文长度由 collect_stats 自行取
+        shingle_counts = np.asarray(shingle_sizes, dtype=np.int64)
+        print(f"[近重复] 参与匹配 {n_docs:,} 篇（清洗后不足 {MIN_SHINGLES} 个 "
+              f"5-gram、按「空正文/纯标签」剔除 {sum(excluded.values()):,} 篇）")
 
-    # 直接由 bottom-k 切片拼出候选生成的展平数组（等价于旧实现里先填
-    # n_docs×K 概要矩阵再 flatnonzero 展平，但不构造 ~100MB 的概要矩阵
-    # 与同量级的 int64 下标临时数组）。
-    parts = [bottom_k(s) for s in sets]
-    part_lens = np.fromiter((p.size for p in parts), dtype=np.int64,
-                            count=n_docs)
-    hv = np.concatenate(parts)
-    del parts
-    doc_ids = np.repeat(np.arange(n_docs, dtype=np.int32), part_lens)
-    del part_lens
-    keys, counts = candidate_pair_keys_flat(hv, doc_ids, n_docs)
-    del hv, doc_ids
-    n_verified = int(select_verify_pairs(keys, counts, shingle_counts,
-                                         n_docs).size)
-    print(f"[近重复] 候选对 {keys.size:,}（校验子集 {n_verified:,}）")
-    pairs = verified_pairs(keys, counts, sets, lengths=shingle_counts,
-                           parallel=True)
-    n_candidate_pairs = int(keys.size)
-    del keys, counts
-    within_j = within_max_j(dataset, pairs, n_docs)
-    print(f"[近重复] J ≥ {MIN_J} 的对 {len(pairs):,}；召回自检中 ...")
-    recall = recall_check(sets, pairs)
-    print(f"[近重复] 召回自检: {recall['found_pairs']}/{recall['true_pairs']} "
-          f"= {recall['recall_pct']}%")
+        # 直接由 bottom-k 概要拼出候选生成的展平数组（等价于旧实现里先填
+        # n_docs×K 概要矩阵再 flatnonzero 展平，但不构造 ~100MB 的概要矩阵
+        # 与同量级的 int64 下标临时数组）。
+        part_lens = np.fromiter((p.size for p in sketches), dtype=np.int64,
+                                count=n_docs)
+        hv = np.concatenate(sketches)
+        del sketches
+        doc_ids = np.repeat(np.arange(n_docs, dtype=np.int32), part_lens)
+        del part_lens
+        keys, counts = candidate_pair_keys_flat(hv, doc_ids, n_docs)
+        del hv, doc_ids
+        n_verified = int(select_verify_pairs(keys, counts, shingle_counts,
+                                             n_docs).size)
+        print(f"[近重复] 候选对 {keys.size:,}（校验子集 {n_verified:,}）")
+        pairs = verified_pairs(keys, counts, store, lengths=shingle_counts,
+                               parallel=True)
+        n_candidate_pairs = int(keys.size)
+        del keys, counts
+        within_j = within_max_j(dataset, pairs, n_docs)
+        print(f"[近重复] J ≥ {MIN_J} 的对 {len(pairs):,}；召回自检中 ...")
+        recall = recall_check(store, pairs)
+        print(f"[近重复] 召回自检: {recall['found_pairs']}/{recall['true_pairs']} "
+              f"= {recall['recall_pct']}%")
+    finally:
+        store.close()
 
     scores = pd.read_csv(SCORES_PATH, usecols=["p_ai", "content_len"])
     out = collect_stats(docs, dataset, within_j, pairs, shingle_counts, scores)

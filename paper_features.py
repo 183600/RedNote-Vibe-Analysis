@@ -20,9 +20,7 @@ from analysis_utils import (close_pool, make_pool,
 
 BASE = os.path.dirname(os.path.abspath(__file__)) + "/"
 
-# 小红书导出格式为 `#标签[话题]#`；末尾的 `#` 是话题标记的闭合符，
-# 若只删 `[话题]` 会在正文里残留孤立 `#`，因此一并可选匹配。
-HUATI = re.compile(r"\[话题\]#?")
+HUATI = re.compile(r"\[话题\]")
 HASHTAG = re.compile(r"#[^#\s]{1,30}")
 XHS_EMO = re.compile(r"\[[^\[\]]{1,8}R\]")
 EMOJI = re.compile(

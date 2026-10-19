@@ -6,7 +6,7 @@
 或全量扫描原始 JSONL，互不写坏对方输出，可以任意单独重跑。
 
 用法：
-  python3 run_fork_pipeline.py                     # 运行全部 22 步
+  python3 run_fork_pipeline.py                     # 运行全部 23 步
   python3 run_fork_pipeline.py --list              # 只打印步骤
   python3 run_fork_pipeline.py --from 3            # 从第 3 步开始
   python3 run_fork_pipeline.py --only detector_diagnostics.py family_lexicon_analysis.py
@@ -63,6 +63,8 @@ STEPS = [
      "跨轴综合：五轴 30 类别的共现结构、联合 P(AI) 独立信号、轴空间可分性与堆叠互动 -> axis_synthesis_results.{json,md} + 2 图"),
     ("redundancy_analysis.py",
      "正文自重复：片段复读率/句间相似度/近重复句/复读句首的跨子集长度匹配差异、P(AI) 梯度、互动偏效应与季度趋势 -> redundancy_results.{json,md} + 2 图"),
+    ("experiential_analysis.py",
+     "经验叙述：自我指称/亲历证据/时间锚点/感官体验/关系他人的跨子集差异、长度匹配、P(AI) 梯度、判别力、互动与季度趋势 -> experiential_results.{json,md} + 2 图"),
 ]
 
 

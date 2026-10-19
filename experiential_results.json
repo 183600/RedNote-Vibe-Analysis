@@ -1,0 +1,4425 @@
+{
+ "meta": {
+  "min_body_len": 50,
+  "min_cell_n": 100,
+  "month_from": "202301",
+  "n_boot": 300,
+  "boot_seed": 42,
+  "min_quarter_n": 300,
+  "exploring_content_len_mismatch": 0,
+  "note": "人类/探索集按 note_id 去重（保留元数据最完整一条）；AIGC 无 note_id 逐记录；p_ai 按行序对齐 paper_exploring_scores.csv.gz；所有关联为观察性。"
+ },
+ "lexicon": {
+  "self": {
+   "label": "自我指称",
+   "words": [
+    "我",
+    "我们",
+    "咱",
+    "咱们",
+    "俺",
+    "自己",
+    "本人"
+   ]
+  },
+  "experience": {
+   "label": "亲历证据",
+   "words": [
+    "亲测",
+    "实测",
+    "自用",
+    "亲身体验",
+    "真实体验",
+    "个人经验",
+    "踩雷",
+    "踩过",
+    "用过",
+    "吃过",
+    "喝过",
+    "去过",
+    "试过",
+    "买过",
+    "穿过",
+    "住过",
+    "看完",
+    "吃完",
+    "用了",
+    "试了",
+    "穿了",
+    "买了",
+    "吃了",
+    "去了",
+    "说实话",
+    "说真的",
+    "讲真",
+    "不夸张",
+    "回购",
+    "空瓶",
+    "打卡"
+   ]
+  },
+  "time": {
+   "label": "时间锚点",
+   "words": [
+    "昨天",
+    "前天",
+    "今天",
+    "明天",
+    "上周",
+    "上个月",
+    "去年",
+    "今年",
+    "当时",
+    "那天",
+    "那次",
+    "后来",
+    "最近",
+    "刚刚",
+    "前几天",
+    "这两天",
+    "小时候",
+    "那会儿",
+    "一直以来"
+   ]
+  },
+  "sensory": {
+   "label": "感官体验",
+   "words": [
+    "闻到",
+    "香味",
+    "味道",
+    "口感",
+    "好吃",
+    "好喝",
+    "触感",
+    "手感",
+    "质地",
+    "肤感",
+    "上脸",
+    "刺痛",
+    "发红",
+    "过敏",
+    "看到",
+    "听到",
+    "摸起来",
+    "看起来",
+    "感觉",
+    "感受",
+    "声音"
+   ]
+  },
+  "relation": {
+   "label": "关系他人",
+   "words": [
+    "朋友",
+    "男朋友",
+    "女朋友",
+    "闺蜜",
+    "同事",
+    "老公",
+    "老婆",
+    "对象",
+    "室友",
+    "家人",
+    "妈妈",
+    "爸爸",
+    "宝宝",
+    "孩子",
+    "娃",
+    "婆婆",
+    "姐姐",
+    "妹妹",
+    "哥哥",
+    "弟弟",
+    "亲戚",
+    "邻居",
+    "老师",
+    "医生"
+   ]
+  }
+ },
+ "composite": {
+  "key": "grounding",
+  "label": "经验锚定合计",
+  "parts": [
+   "experience",
+   "time",
+   "sensory",
+   "relation"
+  ]
+ },
+ "subset_rates": {
+  "human": {
+   "n": 51672,
+   "chars": 24366981,
+   "categories": {
+    "self": {
+     "n": 51672,
+     "chars": 24366981,
+     "density100": 1.125,
+     "share": 0.8114
+    },
+    "experience": {
+     "n": 51672,
+     "chars": 24366981,
+     "density100": 0.1261,
+     "share": 0.3547
+    },
+    "time": {
+     "n": 51672,
+     "chars": 24366981,
+     "density100": 0.1538,
+     "share": 0.4112
+    },
+    "sensory": {
+     "n": 51672,
+     "chars": 24366981,
+     "density100": 0.2511,
+     "share": 0.5142
+    },
+    "relation": {
+     "n": 51672,
+     "chars": 24366981,
+     "density100": 0.3569,
+     "share": 0.4777
+    },
+    "grounding": {
+     "n": 51672,
+     "chars": 24366981,
+     "density100": 0.8879,
+     "share": 0.8467
+    }
+   }
+  },
+  "aigc": {
+   "n": 7018,
+   "chars": 2316351,
+   "categories": {
+    "self": {
+     "n": 7018,
+     "chars": 2316351,
+     "density100": 1.028,
+     "share": 0.7736
+    },
+    "experience": {
+     "n": 7018,
+     "chars": 2316351,
+     "density100": 0.1268,
+     "share": 0.2981
+    },
+    "time": {
+     "n": 7018,
+     "chars": 2316351,
+     "density100": 0.229,
+     "share": 0.5113
+    },
+    "sensory": {
+     "n": 7018,
+     "chars": 2316351,
+     "density100": 0.2709,
+     "share": 0.4771
+    },
+    "relation": {
+     "n": 7018,
+     "chars": 2316351,
+     "density100": 0.2947,
+     "share": 0.4078
+    },
+    "grounding": {
+     "n": 7018,
+     "chars": 2316351,
+     "density100": 0.9213,
+     "share": 0.833
+    }
+   }
+  },
+  "exploring": {
+   "n": 39941,
+   "chars": 14588567,
+   "categories": {
+    "self": {
+     "n": 39941,
+     "chars": 14588567,
+     "density100": 1.1846,
+     "share": 0.6633
+    },
+    "experience": {
+     "n": 39941,
+     "chars": 14588567,
+     "density100": 0.0903,
+     "share": 0.2122
+    },
+    "time": {
+     "n": 39941,
+     "chars": 14588567,
+     "density100": 0.118,
+     "share": 0.2808
+    },
+    "sensory": {
+     "n": 39941,
+     "chars": 14588567,
+     "density100": 0.1993,
+     "share": 0.3587
+    },
+    "relation": {
+     "n": 39941,
+     "chars": 14588567,
+     "density100": 0.2286,
+     "share": 0.3007
+    },
+    "grounding": {
+     "n": 39941,
+     "chars": 14588567,
+     "density100": 0.6362,
+     "share": 0.6554
+    }
+   }
+  }
+ },
+ "word_rates": {
+  "我": {
+   "category": "self",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 78.2419,
+    "share": 0.6881
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 71.8328,
+    "share": 0.6612
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 77.0322,
+    "share": 0.5398
+   }
+  },
+  "我们": {
+   "category": "self",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 13.1075,
+    "share": 0.2712
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 10.8231,
+    "share": 0.2055
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 13.0938,
+    "share": 0.1955
+   }
+  },
+  "咱": {
+   "category": "self",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.2733,
+    "share": 0.0104
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.2288,
+    "share": 0.0073
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.4318,
+    "share": 0.0111
+   }
+  },
+  "咱们": {
+   "category": "self",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.2265,
+    "share": 0.0091
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.6389,
+    "share": 0.018
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.3743,
+    "share": 0.0107
+   }
+  },
+  "俺": {
+   "category": "self",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1108,
+    "share": 0.0038
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.082,
+    "share": 0.0016
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.0775,
+    "share": 0.0023
+   }
+  },
+  "自己": {
+   "category": "self",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 20.0205,
+    "share": 0.3816
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 18.935,
+    "share": 0.3122
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 26.627,
+    "share": 0.3261
+   }
+  },
+  "本人": {
+   "category": "self",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.5171,
+    "share": 0.021
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.259,
+    "share": 0.008
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.8226,
+    "share": 0.0246
+   }
+  },
+  "亲测": {
+   "category": "experience",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0891,
+    "share": 0.0041
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.5914,
+    "share": 0.0194
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.2666,
+    "share": 0.0091
+   }
+  },
+  "实测": {
+   "category": "experience",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.016,
+    "share": 0.0007
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.1252,
+    "share": 0.004
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.1357,
+    "share": 0.0042
+   }
+  },
+  "自用": {
+   "category": "experience",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0817,
+    "share": 0.0033
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.0561,
+    "share": 0.0019
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.0514,
+    "share": 0.0018
+   }
+  },
+  "亲身体验": {
+   "category": "experience",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0189,
+    "share": 0.0009
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.013,
+    "share": 0.0004
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.0192,
+    "share": 0.0007
+   }
+  },
+  "真实体验": {
+   "category": "experience",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0037,
+    "share": 0.0001
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.0173,
+    "share": 0.0006
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.0363,
+    "share": 0.0013
+   }
+  },
+  "个人经验": {
+   "category": "experience",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0123,
+    "share": 0.0006
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.0259,
+    "share": 0.0009
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.037,
+    "share": 0.0013
+   }
+  },
+  "踩雷": {
+   "category": "experience",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.3271,
+    "share": 0.0137
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.3972,
+    "share": 0.0128
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.2728,
+    "share": 0.0092
+   }
+  },
+  "踩过": {
+   "category": "experience",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.025,
+    "share": 0.0012
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.0648,
+    "share": 0.002
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.0665,
+    "share": 0.0022
+   }
+  },
+  "用过": {
+   "category": "experience",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.2803,
+    "share": 0.0117
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.2072,
+    "share": 0.0067
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.1906,
+    "share": 0.0063
+   }
+  },
+  "吃过": {
+   "category": "experience",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.4313,
+    "share": 0.0181
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.177,
+    "share": 0.0053
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.2125,
+    "share": 0.0067
+   }
+  },
+  "喝过": {
+   "category": "experience",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.08,
+    "share": 0.0035
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.0345,
+    "share": 0.0011
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.0185,
+    "share": 0.0006
+   }
+  },
+  "去过": {
+   "category": "experience",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1995,
+    "share": 0.0086
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.1252,
+    "share": 0.0038
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.1988,
+    "share": 0.0065
+   }
+  },
+  "试过": {
+   "category": "experience",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.2171,
+    "share": 0.0095
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.5828,
+    "share": 0.0187
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.2824,
+    "share": 0.0094
+   }
+  },
+  "买过": {
+   "category": "experience",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1362,
+    "share": 0.0058
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.0561,
+    "share": 0.0019
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.0685,
+    "share": 0.0025
+   }
+  },
+  "穿过": {
+   "category": "experience",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1301,
+    "share": 0.0055
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.1597,
+    "share": 0.0051
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.1419,
+    "share": 0.0046
+   }
+  },
+  "住过": {
+   "category": "experience",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0197,
+    "share": 0.0009
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.0173,
+    "share": 0.0006
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.0322,
+    "share": 0.001
+   }
+  },
+  "看完": {
+   "category": "experience",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.3135,
+    "share": 0.0127
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.3367,
+    "share": 0.0091
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.3311,
+    "share": 0.0113
+   }
+  },
+  "吃完": {
+   "category": "experience",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.8512,
+    "share": 0.0346
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.7037,
+    "share": 0.0217
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.427,
+    "share": 0.0128
+   }
+  },
+  "用了": {
+   "category": "experience",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 1.177,
+    "share": 0.0464
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 1.4721,
+    "share": 0.0422
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.6156,
+    "share": 0.0202
+   }
+  },
+  "试了": {
+   "category": "experience",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.3406,
+    "share": 0.0152
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.9411,
+    "share": 0.0299
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.342,
+    "share": 0.0116
+   }
+  },
+  "穿了": {
+   "category": "experience",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1514,
+    "share": 0.0066
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.2159,
+    "share": 0.0067
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.111,
+    "share": 0.0038
+   }
+  },
+  "买了": {
+   "category": "experience",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 1.3227,
+    "share": 0.0521
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.9325,
+    "share": 0.0272
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.7814,
+    "share": 0.0241
+   }
+  },
+  "吃了": {
+   "category": "experience",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 1.7635,
+    "share": 0.0606
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.8332,
+    "share": 0.0232
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.6574,
+    "share": 0.0195
+   }
+  },
+  "去了": {
+   "category": "experience",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 1.5804,
+    "share": 0.0628
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 1.144,
+    "share": 0.0349
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 1.41,
+    "share": 0.0436
+   }
+  },
+  "说实话": {
+   "category": "experience",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.2068,
+    "share": 0.0094
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.4058,
+    "share": 0.0131
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.2365,
+    "share": 0.0082
+   }
+  },
+  "说真的": {
+   "category": "experience",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0985,
+    "share": 0.0045
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.1122,
+    "share": 0.0037
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.0781,
+    "share": 0.0028
+   }
+  },
+  "讲真": {
+   "category": "experience",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0419,
+    "share": 0.0019
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.095,
+    "share": 0.0031
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.0425,
+    "share": 0.0016
+   }
+  },
+  "不夸张": {
+   "category": "experience",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0624,
+    "share": 0.0029
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.0561,
+    "share": 0.0019
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.05,
+    "share": 0.0018
+   }
+  },
+  "回购": {
+   "category": "experience",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.2454,
+    "share": 0.0097
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.3108,
+    "share": 0.0101
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.0939,
+    "share": 0.0028
+   }
+  },
+  "空瓶": {
+   "category": "experience",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0263,
+    "share": 0.0011
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.0345,
+    "share": 0.0011
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.0103,
+    "share": 0.0004
+   }
+  },
+  "打卡": {
+   "category": "experience",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 2.3577,
+    "share": 0.0765
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 2.4305,
+    "share": 0.0657
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 1.8151,
+    "share": 0.0426
+   }
+  },
+  "昨天": {
+   "category": "time",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 1.5115,
+    "share": 0.0548
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.9411,
+    "share": 0.0298
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.5038,
+    "share": 0.0163
+   }
+  },
+  "前天": {
+   "category": "time",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1096,
+    "share": 0.0048
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.0691,
+    "share": 0.0023
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.0452,
+    "share": 0.0016
+   }
+  },
+  "今天": {
+   "category": "time",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 4.7076,
+    "share": 0.1687
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 7.7622,
+    "share": 0.224
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 3.8941,
+    "share": 0.1223
+   }
+  },
+  "明天": {
+   "category": "time",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.5126,
+    "share": 0.0206
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.6562,
+    "share": 0.0199
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.4181,
+    "share": 0.0135
+   }
+  },
+  "上周": {
+   "category": "time",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1576,
+    "share": 0.0069
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.3929,
+    "share": 0.0125
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.1721,
+    "share": 0.006
+   }
+  },
+  "上个月": {
+   "category": "time",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0513,
+    "share": 0.0023
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.1209,
+    "share": 0.004
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.0727,
+    "share": 0.0024
+   }
+  },
+  "去年": {
+   "category": "time",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.4654,
+    "share": 0.0184
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.6519,
+    "share": 0.0198
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.4812,
+    "share": 0.0153
+   }
+  },
+  "今年": {
+   "category": "time",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.9706,
+    "share": 0.0381
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.98,
+    "share": 0.0281
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.7855,
+    "share": 0.0239
+   }
+  },
+  "当时": {
+   "category": "time",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 1.2706,
+    "share": 0.0439
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.7123,
+    "share": 0.0212
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 1.1249,
+    "share": 0.0303
+   }
+  },
+  "那天": {
+   "category": "time",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.357,
+    "share": 0.0147
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.4188,
+    "share": 0.013
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.2742,
+    "share": 0.0087
+   }
+  },
+  "那次": {
+   "category": "time",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0357,
+    "share": 0.0016
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.1079,
+    "share": 0.0031
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.0308,
+    "share": 0.0011
+   }
+  },
+  "后来": {
+   "category": "time",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 1.4819,
+    "share": 0.055
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 1.3383,
+    "share": 0.0402
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 1.1269,
+    "share": 0.0333
+   }
+  },
+  "最近": {
+   "category": "time",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 2.2736,
+    "share": 0.0933
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 7.0369,
+    "share": 0.2122
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 1.8467,
+    "share": 0.0607
+   }
+  },
+  "刚刚": {
+   "category": "time",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.602,
+    "share": 0.0262
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.8634,
+    "share": 0.0276
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.401,
+    "share": 0.0138
+   }
+  },
+  "前几天": {
+   "category": "time",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.2393,
+    "share": 0.0109
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.2763,
+    "share": 0.0091
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.1906,
+    "share": 0.0067
+   }
+  },
+  "这两天": {
+   "category": "time",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1917,
+    "share": 0.0084
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.0475,
+    "share": 0.0016
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.109,
+    "share": 0.0038
+   }
+  },
+  "小时候": {
+   "category": "time",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.3451,
+    "share": 0.0137
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.3324,
+    "share": 0.0101
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.2317,
+    "share": 0.0071
+   }
+  },
+  "那会儿": {
+   "category": "time",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0259,
+    "share": 0.0011
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.1338,
+    "share": 0.0044
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.0288,
+    "share": 0.0011
+   }
+  },
+  "一直以来": {
+   "category": "time",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0702,
+    "share": 0.0033
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.0561,
+    "share": 0.0019
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.059,
+    "share": 0.0021
+   }
+  },
+  "闻到": {
+   "category": "sensory",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1219,
+    "share": 0.0055
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.2288,
+    "share": 0.0076
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.0603,
+    "share": 0.002
+   }
+  },
+  "香味": {
+   "category": "sensory",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.6693,
+    "share": 0.0266
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.613,
+    "share": 0.0192
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.1535,
+    "share": 0.0049
+   }
+  },
+  "味道": {
+   "category": "sensory",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 3.0697,
+    "share": 0.0944
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 2.573,
+    "share": 0.0687
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.9919,
+    "share": 0.0262
+   }
+  },
+  "口感": {
+   "category": "sensory",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 1.9383,
+    "share": 0.0628
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 1.9902,
+    "share": 0.0564
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.3893,
+    "share": 0.0112
+   }
+  },
+  "好吃": {
+   "category": "sensory",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 3.6229,
+    "share": 0.1018
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 1.9772,
+    "share": 0.0527
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 2.0454,
+    "share": 0.0459
+   }
+  },
+  "好喝": {
+   "category": "sensory",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.6808,
+    "share": 0.0245
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.5224,
+    "share": 0.0145
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.1871,
+    "share": 0.006
+   }
+  },
+  "触感": {
+   "category": "sensory",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0525,
+    "share": 0.0024
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.0907,
+    "share": 0.003
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.0596,
+    "share": 0.0021
+   }
+  },
+  "手感": {
+   "category": "sensory",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1416,
+    "share": 0.0058
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.1813,
+    "share": 0.0058
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.1693,
+    "share": 0.005
+   }
+  },
+  "质地": {
+   "category": "sensory",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.5261,
+    "share": 0.0191
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.6217,
+    "share": 0.0185
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.2618,
+    "share": 0.0075
+   }
+  },
+  "肤感": {
+   "category": "sensory",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0599,
+    "share": 0.0025
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.0432,
+    "share": 0.0014
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.194,
+    "share": 0.0049
+   }
+  },
+  "上脸": {
+   "category": "sensory",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1921,
+    "share": 0.0074
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.1943,
+    "share": 0.0061
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.1597,
+    "share": 0.0044
+   }
+  },
+  "刺痛": {
+   "category": "sensory",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0772,
+    "share": 0.003
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.1036,
+    "share": 0.0033
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.0425,
+    "share": 0.0015
+   }
+  },
+  "发红": {
+   "category": "sensory",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0628,
+    "share": 0.0025
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.0648,
+    "share": 0.0021
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.0178,
+    "share": 0.0007
+   }
+  },
+  "过敏": {
+   "category": "sensory",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.6517,
+    "share": 0.0128
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.3583,
+    "share": 0.0071
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.0912,
+    "share": 0.0027
+   }
+  },
+  "看到": {
+   "category": "sensory",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 3.6927,
+    "share": 0.1374
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 3.6998,
+    "share": 0.1046
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 3.2306,
+    "share": 0.0936
+   }
+  },
+  "听到": {
+   "category": "sensory",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.4477,
+    "share": 0.018
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.449,
+    "share": 0.0144
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.4079,
+    "share": 0.0134
+   }
+  },
+  "摸起来": {
+   "category": "sensory",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.0694,
+    "share": 0.0031
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.2288,
+    "share": 0.0073
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.0528,
+    "share": 0.0019
+   }
+  },
+  "看起来": {
+   "category": "sensory",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.5577,
+    "share": 0.0236
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.626,
+    "share": 0.0195
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.5114,
+    "share": 0.0169
+   }
+  },
+  "感觉": {
+   "category": "sensory",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 6.1628,
+    "share": 0.2018
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 9.3984,
+    "share": 0.2193
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 6.4057,
+    "share": 0.1526
+   }
+  },
+  "感受": {
+   "category": "sensory",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 1.715,
+    "share": 0.0631
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 2.3528,
+    "share": 0.065
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 3.7968,
+    "share": 0.0952
+   }
+  },
+  "声音": {
+   "category": "sensory",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.6025,
+    "share": 0.021
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.7685,
+    "share": 0.0218
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.7033,
+    "share": 0.0201
+   }
+  },
+  "朋友": {
+   "category": "relation",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 5.5612,
+    "share": 0.1663
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 5.854,
+    "share": 0.1535
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 4.7688,
+    "share": 0.1182
+   }
+  },
+  "男朋友": {
+   "category": "relation",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.625,
+    "share": 0.0165
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.4706,
+    "share": 0.0127
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.6162,
+    "share": 0.0145
+   }
+  },
+  "女朋友": {
+   "category": "relation",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1826,
+    "share": 0.006
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.0993,
+    "share": 0.0031
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.4572,
+    "share": 0.0083
+   }
+  },
+  "闺蜜": {
+   "category": "relation",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.568,
+    "share": 0.0194
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 1.6491,
+    "share": 0.0472
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.292,
+    "share": 0.0083
+   }
+  },
+  "同事": {
+   "category": "relation",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.6948,
+    "share": 0.0224
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 1.1527,
+    "share": 0.0313
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 1.2126,
+    "share": 0.0246
+   }
+  },
+  "老公": {
+   "category": "relation",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 1.1955,
+    "share": 0.0281
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.708,
+    "share": 0.0154
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 1.1639,
+    "share": 0.017
+   }
+  },
+  "老婆": {
+   "category": "relation",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1715,
+    "share": 0.0049
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.1856,
+    "share": 0.0043
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.7143,
+    "share": 0.0097
+   }
+  },
+  "对象": {
+   "category": "relation",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.3718,
+    "share": 0.0123
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.2547,
+    "share": 0.0074
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.5024,
+    "share": 0.0145
+   }
+  },
+  "室友": {
+   "category": "relation",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1629,
+    "share": 0.0055
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.2892,
+    "share": 0.0081
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.1275,
+    "share": 0.0031
+   }
+  },
+  "家人": {
+   "category": "relation",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.9127,
+    "share": 0.035
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.8375,
+    "share": 0.0259
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 1.1365,
+    "share": 0.0357
+   }
+  },
+  "妈妈": {
+   "category": "relation",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 2.9831,
+    "share": 0.0644
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 1.5196,
+    "share": 0.0352
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.9768,
+    "share": 0.0204
+   }
+  },
+  "爸爸": {
+   "category": "relation",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.8651,
+    "share": 0.0233
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.3626,
+    "share": 0.0088
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.279,
+    "share": 0.0065
+   }
+  },
+  "宝宝": {
+   "category": "relation",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 5.2112,
+    "share": 0.0758
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 5.0424,
+    "share": 0.0603
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 1.6102,
+    "share": 0.0301
+   }
+  },
+  "孩子": {
+   "category": "relation",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 7.5007,
+    "share": 0.1182
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 3.5573,
+    "share": 0.0547
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 3.6412,
+    "share": 0.0506
+   }
+  },
+  "娃": {
+   "category": "relation",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 1.8176,
+    "share": 0.042
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 2.5342,
+    "share": 0.0416
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 1.5642,
+    "share": 0.0266
+   }
+  },
+  "婆婆": {
+   "category": "relation",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.3821,
+    "share": 0.0075
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.5224,
+    "share": 0.0076
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 1.1358,
+    "share": 0.0088
+   }
+  },
+  "姐姐": {
+   "category": "relation",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 1.2767,
+    "share": 0.0429
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 1.252,
+    "share": 0.0356
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.4791,
+    "share": 0.013
+   }
+  },
+  "妹妹": {
+   "category": "relation",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.3295,
+    "share": 0.0094
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.1209,
+    "share": 0.0034
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.1104,
+    "share": 0.003
+   }
+  },
+  "哥哥": {
+   "category": "relation",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.4715,
+    "share": 0.0144
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.354,
+    "share": 0.0094
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.1131,
+    "share": 0.003
+   }
+  },
+  "弟弟": {
+   "category": "relation",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.2614,
+    "share": 0.0069
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.0604,
+    "share": 0.0019
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.0843,
+    "share": 0.0022
+   }
+  },
+  "亲戚": {
+   "category": "relation",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1473,
+    "share": 0.0054
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.1641,
+    "share": 0.0046
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.1227,
+    "share": 0.0037
+   }
+  },
+  "邻居": {
+   "category": "relation",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 0.1141,
+    "share": 0.0041
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 0.1511,
+    "share": 0.0048
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.0699,
+    "share": 0.0021
+   }
+  },
+  "老师": {
+   "category": "relation",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 2.0766,
+    "share": 0.0459
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 1.0232,
+    "share": 0.0214
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.9727,
+    "share": 0.0204
+   }
+  },
+  "医生": {
+   "category": "relation",
+   "human": {
+    "n": 51672,
+    "per10k_chars": 1.809,
+    "share": 0.0382
+   },
+   "aigc": {
+    "n": 7018,
+    "per10k_chars": 1.3081,
+    "share": 0.0261
+   },
+   "exploring": {
+    "n": 39941,
+    "per10k_chars": 0.7088,
+    "share": 0.0141
+   }
+  }
+ },
+ "length_matched": {
+  "self": {
+   "aigc": {
+    "incidence_gap": {
+     "gap": -0.02645,
+     "se": 0.0054,
+     "ci_low": -0.03704,
+     "ci_high": -0.01586,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 7018
+    },
+    "density_gap": {
+     "gap": 0.06386,
+     "se": 0.01527,
+     "ci_low": 0.03394,
+     "ci_high": 0.09378,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 7018
+    }
+   },
+   "exploring": {
+    "incidence_gap": {
+     "gap": 0.01867,
+     "se": 0.00298,
+     "ci_low": 0.01282,
+     "ci_high": 0.02452,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 39941
+    },
+    "density_gap": {
+     "gap": -0.06191,
+     "se": 0.01016,
+     "ci_low": -0.08183,
+     "ci_high": -0.04199,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 39941
+    }
+   }
+  },
+  "experience": {
+   "aigc": {
+    "incidence_gap": {
+     "gap": 0.00394,
+     "se": 0.00646,
+     "ci_low": -0.00873,
+     "ci_high": 0.0166,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 7018
+    },
+    "density_gap": {
+     "gap": 0.0171,
+     "se": 0.00339,
+     "ci_low": 0.01046,
+     "ci_high": 0.02375,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 7018
+    }
+   },
+   "exploring": {
+    "incidence_gap": {
+     "gap": 0.08128,
+     "se": 0.00351,
+     "ci_low": 0.0744,
+     "ci_high": 0.08816,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 39941
+    },
+    "density_gap": {
+     "gap": 0.04286,
+     "se": 0.00174,
+     "ci_low": 0.03944,
+     "ci_high": 0.04628,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 39941
+    }
+   }
+  },
+  "time": {
+   "aigc": {
+    "incidence_gap": {
+     "gap": -0.1426,
+     "se": 0.00686,
+     "ci_low": -0.15604,
+     "ci_high": -0.12916,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 7018
+    },
+    "density_gap": {
+     "gap": -0.05366,
+     "se": 0.0042,
+     "ci_low": -0.0619,
+     "ci_high": -0.04543,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 7018
+    }
+   },
+   "exploring": {
+    "incidence_gap": {
+     "gap": 0.06134,
+     "se": 0.00371,
+     "ci_low": 0.05408,
+     "ci_high": 0.0686,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 39941
+    },
+    "density_gap": {
+     "gap": 0.04163,
+     "se": 0.00196,
+     "ci_low": 0.03779,
+     "ci_high": 0.04547,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 39941
+    }
+   }
+  },
+  "sensory": {
+   "aigc": {
+    "incidence_gap": {
+     "gap": -0.02752,
+     "se": 0.00683,
+     "ci_low": -0.04092,
+     "ci_high": -0.01413,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 7018
+    },
+    "density_gap": {
+     "gap": 0.00873,
+     "se": 0.00529,
+     "ci_low": -0.00163,
+     "ci_high": 0.01909,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 7018
+    }
+   },
+   "exploring": {
+    "incidence_gap": {
+     "gap": 0.05778,
+     "se": 0.00378,
+     "ci_low": 0.05037,
+     "ci_high": 0.06518,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 39941
+    },
+    "density_gap": {
+     "gap": 0.05411,
+     "se": 0.00278,
+     "ci_low": 0.04867,
+     "ci_high": 0.05956,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 39941
+    }
+   }
+  },
+  "relation": {
+   "aigc": {
+    "incidence_gap": {
+     "gap": -0.00763,
+     "se": 0.00681,
+     "ci_low": -0.02097,
+     "ci_high": 0.00571,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 7018
+    },
+    "density_gap": {
+     "gap": 0.05538,
+     "se": 0.00756,
+     "ci_low": 0.04056,
+     "ci_high": 0.07021,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 7018
+    }
+   },
+   "exploring": {
+    "incidence_gap": {
+     "gap": 0.10242,
+     "se": 0.00371,
+     "ci_low": 0.09515,
+     "ci_high": 0.10969,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 39941
+    },
+    "density_gap": {
+     "gap": 0.13369,
+     "se": 0.00423,
+     "ci_low": 0.1254,
+     "ci_high": 0.14198,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 39941
+    }
+   }
+  },
+  "grounding": {
+   "aigc": {
+    "incidence_gap": {
+     "gap": -0.04134,
+     "se": 0.00468,
+     "ci_low": -0.05052,
+     "ci_high": -0.03216,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 7018
+    },
+    "density_gap": {
+     "gap": 0.02755,
+     "se": 0.01132,
+     "ci_low": 0.00536,
+     "ci_high": 0.04974,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 7018
+    }
+   },
+   "exploring": {
+    "incidence_gap": {
+     "gap": 0.06091,
+     "se": 0.00293,
+     "ci_low": 0.05517,
+     "ci_high": 0.06665,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 39941
+    },
+    "density_gap": {
+     "gap": 0.2723,
+     "se": 0.00597,
+     "ci_low": 0.2606,
+     "ci_high": 0.284,
+     "used_bins": 4,
+     "n_a": 51672,
+     "n_b": 39941
+    }
+   }
+  }
+ },
+ "gradient": {
+  "n": 39941,
+  "short_excluded": 20220,
+  "n_cells": 313,
+  "categories": {
+   "self": {
+    "deciles": [
+     {
+      "decile": 1,
+      "n": 3994,
+      "mean": 1.2746492925513515,
+      "ci_low": 1.2255591785799078,
+      "ci_high": 1.3237394065227952,
+      "p_range": [
+       4.254682210288514e-05,
+       0.0879122284676263
+      ]
+     },
+     {
+      "decile": 2,
+      "n": 3994,
+      "mean": 1.195114034799195,
+      "ci_low": 1.1514573424308072,
+      "ci_high": 1.238770727167583,
+      "p_range": [
+       0.0879122284676263,
+       0.1835380864357041
+      ]
+     },
+     {
+      "decile": 3,
+      "n": 3995,
+      "mean": 1.1270378761324127,
+      "ci_low": 1.08556272887326,
+      "ci_high": 1.1685130233915653,
+      "p_range": [
+       0.1835380864357041,
+       0.28575394395375864
+      ]
+     },
+     {
+      "decile": 4,
+      "n": 3993,
+      "mean": 1.108708974211296,
+      "ci_low": 1.066478102834034,
+      "ci_high": 1.1509398455885582,
+      "p_range": [
+       0.28575394395375864,
+       0.3959542619467934
+      ]
+     },
+     {
+      "decile": 5,
+      "n": 3994,
+      "mean": 1.0776170355664336,
+      "ci_low": 1.0359834514166333,
+      "ci_high": 1.119250619716234,
+      "p_range": [
+       0.3959542619467934,
+       0.5080032549725187
+      ]
+     },
+     {
+      "decile": 6,
+      "n": 3995,
+      "mean": 1.0552636693790083,
+      "ci_low": 1.0136127471264407,
+      "ci_high": 1.096914591631576,
+      "p_range": [
+       0.5080032549725187,
+       0.6265349888919737
+      ]
+     },
+     {
+      "decile": 7,
+      "n": 3993,
+      "mean": 1.030264543487795,
+      "ci_low": 0.9899353185554172,
+      "ci_high": 1.070593768420173,
+      "p_range": [
+       0.6265349888919737,
+       0.7433453158519601
+      ]
+     },
+     {
+      "decile": 8,
+      "n": 3994,
+      "mean": 0.951976342931996,
+      "ci_low": 0.9128844509721621,
+      "ci_high": 0.9910682348918298,
+      "p_range": [
+       0.7433453158519601,
+       0.8524326517624365
+      ]
+     },
+     {
+      "decile": 9,
+      "n": 3994,
+      "mean": 0.8981054932816019,
+      "ci_low": 0.8585523938340189,
+      "ci_high": 0.937658592729185,
+      "p_range": [
+       0.8524326517624365,
+       0.9448063705161308
+      ]
+     },
+     {
+      "decile": 10,
+      "n": 3995,
+      "mean": 0.8466078857310052,
+      "ci_low": 0.8067774103263597,
+      "ci_high": 0.8864383611356507,
+      "p_range": [
+       0.9448063705161308,
+       0.9999998685800257
+      ]
+     }
+    ],
+    "weighted_rho": -0.0872,
+    "neg_cell_share": 0.8617,
+    "n_cells": 94,
+    "stratified_rho": -0.0317,
+    "stratified_cells": 111,
+    "cliff_delta_top_vs_bottom": -0.1785,
+    "cliff_p": 1.3581293803509738e-46,
+    "decile_p_range": [
+     4.254682210288514e-05,
+     0.9999998685800257
+    ]
+   },
+   "experience": {
+    "deciles": [
+     {
+      "decile": 1,
+      "n": 3994,
+      "mean": 0.1123803932317516,
+      "ci_low": 0.0973823357606174,
+      "ci_high": 0.12737845070288578,
+      "p_range": [
+       4.254682210288514e-05,
+       0.0879122284676263
+      ]
+     },
+     {
+      "decile": 2,
+      "n": 3994,
+      "mean": 0.0966943531895564,
+      "ci_low": 0.08943964414495445,
+      "ci_high": 0.10394906223415834,
+      "p_range": [
+       0.0879122284676263,
+       0.1835380864357041
+      ]
+     },
+     {
+      "decile": 3,
+      "n": 3995,
+      "mean": 0.0938500738120138,
+      "ci_low": 0.08601314903804398,
+      "ci_high": 0.10168699858598361,
+      "p_range": [
+       0.1835380864357041,
+       0.28575394395375864
+      ]
+     },
+     {
+      "decile": 4,
+      "n": 3993,
+      "mean": 0.09872552418558578,
+      "ci_low": 0.09041938494685599,
+      "ci_high": 0.10703166342431557,
+      "p_range": [
+       0.28575394395375864,
+       0.3959542619467934
+      ]
+     },
+     {
+      "decile": 5,
+      "n": 3994,
+      "mean": 0.09537212130404607,
+      "ci_low": 0.08692507085278667,
+      "ci_high": 0.10381917175530547,
+      "p_range": [
+       0.3959542619467934,
+       0.5080032549725187
+      ]
+     },
+     {
+      "decile": 6,
+      "n": 3995,
+      "mean": 0.07720416592897365,
+      "ci_low": 0.07015985093433116,
+      "ci_high": 0.08424848092361614,
+      "p_range": [
+       0.5080032549725187,
+       0.6265349888919737
+      ]
+     },
+     {
+      "decile": 7,
+      "n": 3993,
+      "mean": 0.08369001457404908,
+      "ci_low": 0.07595730977365667,
+      "ci_high": 0.09142271937444149,
+      "p_range": [
+       0.6265349888919737,
+       0.7433453158519601
+      ]
+     },
+     {
+      "decile": 8,
+      "n": 3994,
+      "mean": 0.08925677950015835,
+      "ci_low": 0.0806415920786868,
+      "ci_high": 0.0978719669216299,
+      "p_range": [
+       0.7433453158519601,
+       0.8524326517624365
+      ]
+     },
+     {
+      "decile": 9,
+      "n": 3994,
+      "mean": 0.10127930823372601,
+      "ci_low": 0.09171158311421504,
+      "ci_high": 0.11084703335323698,
+      "p_range": [
+       0.8524326517624365,
+       0.9448063705161308
+      ]
+     },
+     {
+      "decile": 10,
+      "n": 3995,
+      "mean": 0.12223734477168692,
+      "ci_low": 0.11052005961705444,
+      "ci_high": 0.1339546299263194,
+      "p_range": [
+       0.9448063705161308,
+       0.9999998685800257
+      ]
+     }
+    ],
+    "weighted_rho": -0.076,
+    "neg_cell_share": 0.8936,
+    "n_cells": 94,
+    "stratified_rho": -0.0022,
+    "stratified_cells": 111,
+    "cliff_delta_top_vs_bottom": -0.0804,
+    "cliff_p": 1.6271915092947131e-19,
+    "decile_p_range": [
+     4.254682210288514e-05,
+     0.9999998685800257
+    ]
+   },
+   "time": {
+    "deciles": [
+     {
+      "decile": 1,
+      "n": 3994,
+      "mean": 0.12602947235453274,
+      "ci_low": 0.11730141010770175,
+      "ci_high": 0.13475753460136375,
+      "p_range": [
+       4.254682210288514e-05,
+       0.0879122284676263
+      ]
+     },
+     {
+      "decile": 2,
+      "n": 3994,
+      "mean": 0.1433925932250817,
+      "ci_low": 0.13351153237827276,
+      "ci_high": 0.1532736540718906,
+      "p_range": [
+       0.0879122284676263,
+       0.1835380864357041
+      ]
+     },
+     {
+      "decile": 3,
+      "n": 3995,
+      "mean": 0.1284610806709738,
+      "ci_low": 0.11944918033746371,
+      "ci_high": 0.1374729810044839,
+      "p_range": [
+       0.1835380864357041,
+       0.28575394395375864
+      ]
+     },
+     {
+      "decile": 4,
+      "n": 3993,
+      "mean": 0.1297320149944603,
+      "ci_low": 0.12021859745257882,
+      "ci_high": 0.13924543253634178,
+      "p_range": [
+       0.28575394395375864,
+       0.3959542619467934
+      ]
+     },
+     {
+      "decile": 5,
+      "n": 3994,
+      "mean": 0.12649542883023265,
+      "ci_low": 0.1173855184161869,
+      "ci_high": 0.13560533924427842,
+      "p_range": [
+       0.3959542619467934,
+       0.5080032549725187
+      ]
+     },
+     {
+      "decile": 6,
+      "n": 3995,
+      "mean": 0.13273683549281604,
+      "ci_low": 0.12301298647180844,
+      "ci_high": 0.14246068451382363,
+      "p_range": [
+       0.5080032549725187,
+       0.6265349888919737
+      ]
+     },
+     {
+      "decile": 7,
+      "n": 3993,
+      "mean": 0.13667748144129688,
+      "ci_low": 0.12605465909971234,
+      "ci_high": 0.14730030378288142,
+      "p_range": [
+       0.6265349888919737,
+       0.7433453158519601
+      ]
+     },
+     {
+      "decile": 8,
+      "n": 3994,
+      "mean": 0.15339629580931202,
+      "ci_low": 0.14160120214406935,
+      "ci_high": 0.1651913894745547,
+      "p_range": [
+       0.7433453158519601,
+       0.8524326517624365
+      ]
+     },
+     {
+      "decile": 9,
+      "n": 3994,
+      "mean": 0.16542242072462413,
+      "ci_low": 0.15311984978774706,
+      "ci_high": 0.17772499166150119,
+      "p_range": [
+       0.8524326517624365,
+       0.9448063705161308
+      ]
+     },
+     {
+      "decile": 10,
+      "n": 3995,
+      "mean": 0.16709349785874844,
+      "ci_low": 0.15343100027832682,
+      "ci_high": 0.18075599543917006,
+      "p_range": [
+       0.9448063705161308,
+       0.9999998685800257
+      ]
+     }
+    ],
+    "weighted_rho": -0.0431,
+    "neg_cell_share": 0.766,
+    "n_cells": 94,
+    "stratified_rho": 0.0102,
+    "stratified_cells": 111,
+    "cliff_delta_top_vs_bottom": -0.0655,
+    "cliff_p": 8.50800485152348e-12,
+    "decile_p_range": [
+     4.254682210288514e-05,
+     0.9999998685800257
+    ]
+   },
+   "sensory": {
+    "deciles": [
+     {
+      "decile": 1,
+      "n": 3994,
+      "mean": 0.2697612246706017,
+      "ci_low": 0.2546328892966707,
+      "ci_high": 0.2848895600445327,
+      "p_range": [
+       4.254682210288514e-05,
+       0.0879122284676263
+      ]
+     },
+     {
+      "decile": 2,
+      "n": 3994,
+      "mean": 0.23637576970912855,
+      "ci_low": 0.22368003523506352,
+      "ci_high": 0.24907150418319357,
+      "p_range": [
+       0.0879122284676263,
+       0.1835380864357041
+      ]
+     },
+     {
+      "decile": 3,
+      "n": 3995,
+      "mean": 0.2145807280268748,
+      "ci_low": 0.20229549908373504,
+      "ci_high": 0.22686595697001458,
+      "p_range": [
+       0.1835380864357041,
+       0.28575394395375864
+      ]
+     },
+     {
+      "decile": 4,
+      "n": 3993,
+      "mean": 0.21758940600059326,
+      "ci_low": 0.20538189502144105,
+      "ci_high": 0.22979691697974547,
+      "p_range": [
+       0.28575394395375864,
+       0.3959542619467934
+      ]
+     },
+     {
+      "decile": 5,
+      "n": 3994,
+      "mean": 0.19858751277543155,
+      "ci_low": 0.18652597741884297,
+      "ci_high": 0.21064904813202012,
+      "p_range": [
+       0.3959542619467934,
+       0.5080032549725187
+      ]
+     },
+     {
+      "decile": 6,
+      "n": 3995,
+      "mean": 0.19793334320634284,
+      "ci_low": 0.1854549550906607,
+      "ci_high": 0.21041173132202498,
+      "p_range": [
+       0.5080032549725187,
+       0.6265349888919737
+      ]
+     },
+     {
+      "decile": 7,
+      "n": 3993,
+      "mean": 0.18428436166113632,
+      "ci_low": 0.17230609688049883,
+      "ci_high": 0.1962626264417738,
+      "p_range": [
+       0.6265349888919737,
+       0.7433453158519601
+      ]
+     },
+     {
+      "decile": 8,
+      "n": 3994,
+      "mean": 0.1972274917580604,
+      "ci_low": 0.1835350916960291,
+      "ci_high": 0.2109198918200917,
+      "p_range": [
+       0.7433453158519601,
+       0.8524326517624365
+      ]
+     },
+     {
+      "decile": 9,
+      "n": 3994,
+      "mean": 0.18619555139520552,
+      "ci_low": 0.17194870803930784,
+      "ci_high": 0.2004423947511032,
+      "p_range": [
+       0.8524326517624365,
+       0.9448063705161308
+      ]
+     },
+     {
+      "decile": 10,
+      "n": 3995,
+      "mean": 0.21755298239726806,
+      "ci_low": 0.200936118455173,
+      "ci_high": 0.2341698463393631,
+      "p_range": [
+       0.9448063705161308,
+       0.9999998685800257
+      ]
+     }
+    ],
+    "weighted_rho": -0.1251,
+    "neg_cell_share": 0.9043,
+    "n_cells": 94,
+    "stratified_rho": -0.0611,
+    "stratified_cells": 111,
+    "cliff_delta_top_vs_bottom": -0.1692,
+    "cliff_p": 3.354871917494744e-57,
+    "decile_p_range": [
+     4.254682210288514e-05,
+     0.9999998685800257
+    ]
+   },
+   "relation": {
+    "deciles": [
+     {
+      "decile": 1,
+      "n": 3994,
+      "mean": 0.23020331709626324,
+      "ci_low": 0.21294241974747402,
+      "ci_high": 0.24746421444505246,
+      "p_range": [
+       4.254682210288514e-05,
+       0.0879122284676263
+      ]
+     },
+     {
+      "decile": 2,
+      "n": 3994,
+      "mean": 0.2188954695695397,
+      "ci_low": 0.2032332919771351,
+      "ci_high": 0.2345576471619443,
+      "p_range": [
+       0.0879122284676263,
+       0.1835380864357041
+      ]
+     },
+     {
+      "decile": 3,
+      "n": 3995,
+      "mean": 0.22019666318251366,
+      "ci_low": 0.20433554041047347,
+      "ci_high": 0.23605778595455384,
+      "p_range": [
+       0.1835380864357041,
+       0.28575394395375864
+      ]
+     },
+     {
+      "decile": 4,
+      "n": 3993,
+      "mean": 0.21120640764314869,
+      "ci_low": 0.19580840661481488,
+      "ci_high": 0.2266044086714825,
+      "p_range": [
+       0.28575394395375864,
+       0.3959542619467934
+      ]
+     },
+     {
+      "decile": 5,
+      "n": 3994,
+      "mean": 0.21602016632327922,
+      "ci_low": 0.20074083668748474,
+      "ci_high": 0.2312994959590737,
+      "p_range": [
+       0.3959542619467934,
+       0.5080032549725187
+      ]
+     },
+     {
+      "decile": 6,
+      "n": 3995,
+      "mean": 0.21344795395899818,
+      "ci_low": 0.1978923126524036,
+      "ci_high": 0.22900359526559277,
+      "p_range": [
+       0.5080032549725187,
+       0.6265349888919737
+      ]
+     },
+     {
+      "decile": 7,
+      "n": 3993,
+      "mean": 0.21559624688186013,
+      "ci_low": 0.199650812194469,
+      "ci_high": 0.23154168156925126,
+      "p_range": [
+       0.6265349888919737,
+       0.7433453158519601
+      ]
+     },
+     {
+      "decile": 8,
+      "n": 3994,
+      "mean": 0.20968977267761146,
+      "ci_low": 0.19344568919778016,
+      "ci_high": 0.22593385615744277,
+      "p_range": [
+       0.7433453158519601,
+       0.8524326517624365
+      ]
+     },
+     {
+      "decile": 9,
+      "n": 3994,
+      "mean": 0.20275326688032172,
+      "ci_low": 0.18697096639352162,
+      "ci_high": 0.21853556736712182,
+      "p_range": [
+       0.8524326517624365,
+       0.9448063705161308
+      ]
+     },
+     {
+      "decile": 10,
+      "n": 3995,
+      "mean": 0.23132122495042437,
+      "ci_low": 0.21339092571802237,
+      "ci_high": 0.24925152418282637,
+      "p_range": [
+       0.9448063705161308,
+       0.9999998685800257
+      ]
+     }
+    ],
+    "weighted_rho": -0.0492,
+    "neg_cell_share": 0.6915,
+    "n_cells": 94,
+    "stratified_rho": 0.0207,
+    "stratified_cells": 111,
+    "cliff_delta_top_vs_bottom": -0.0716,
+    "cliff_p": 9.787423409928536e-13,
+    "decile_p_range": [
+     4.254682210288514e-05,
+     0.9999998685800257
+    ]
+   },
+   "grounding": {
+    "deciles": [
+     {
+      "decile": 1,
+      "n": 3994,
+      "mean": 0.7383744073531492,
+      "ci_low": 0.708249283075102,
+      "ci_high": 0.7684995316311963,
+      "p_range": [
+       4.254682210288514e-05,
+       0.0879122284676263
+      ]
+     },
+     {
+      "decile": 2,
+      "n": 3994,
+      "mean": 0.6953581856933063,
+      "ci_low": 0.6704795962036451,
+      "ci_high": 0.7202367751829676,
+      "p_range": [
+       0.0879122284676263,
+       0.1835380864357041
+      ]
+     },
+     {
+      "decile": 3,
+      "n": 3995,
+      "mean": 0.6570885456923761,
+      "ci_low": 0.632915153353623,
+      "ci_high": 0.6812619380311291,
+      "p_range": [
+       0.1835380864357041,
+       0.28575394395375864
+      ]
+     },
+     {
+      "decile": 4,
+      "n": 3993,
+      "mean": 0.6572533528237879,
+      "ci_low": 0.6327793379396223,
+      "ci_high": 0.6817273677079536,
+      "p_range": [
+       0.28575394395375864,
+       0.3959542619467934
+      ]
+     },
+     {
+      "decile": 5,
+      "n": 3994,
+      "mean": 0.6364752292329896,
+      "ci_low": 0.6126693662282574,
+      "ci_high": 0.6602810922377218,
+      "p_range": [
+       0.3959542619467934,
+       0.5080032549725187
+      ]
+     },
+     {
+      "decile": 6,
+      "n": 3995,
+      "mean": 0.6213222985871308,
+      "ci_low": 0.5969703151101269,
+      "ci_high": 0.6456742820641348,
+      "p_range": [
+       0.5080032549725187,
+       0.6265349888919737
+      ]
+     },
+     {
+      "decile": 7,
+      "n": 3993,
+      "mean": 0.6202481045583425,
+      "ci_low": 0.5955144826530924,
+      "ci_high": 0.6449817264635925,
+      "p_range": [
+       0.6265349888919737,
+       0.7433453158519601
+      ]
+     },
+     {
+      "decile": 8,
+      "n": 3994,
+      "mean": 0.6495703397451422,
+      "ci_low": 0.6220405899313884,
+      "ci_high": 0.677100089558896,
+      "p_range": [
+       0.7433453158519601,
+       0.8524326517624365
+      ]
+     },
+     {
+      "decile": 9,
+      "n": 3994,
+      "mean": 0.6556505472338775,
+      "ci_low": 0.6287810569977457,
+      "ci_high": 0.6825200374700093,
+      "p_range": [
+       0.8524326517624365,
+       0.9448063705161308
+      ]
+     },
+     {
+      "decile": 10,
+      "n": 3995,
+      "mean": 0.7382050499781277,
+      "ci_low": 0.7075192845714654,
+      "ci_high": 0.7688908153847901,
+      "p_range": [
+       0.9448063705161308,
+       0.9999998685800257
+      ]
+     }
+    ],
+    "weighted_rho": -0.0488,
+    "neg_cell_share": 0.7128,
+    "n_cells": 94,
+    "stratified_rho": -0.0066,
+    "stratified_cells": 111,
+    "cliff_delta_top_vs_bottom": -0.0491,
+    "cliff_p": 8.221619105853047e-05,
+    "decile_p_range": [
+     4.254682210288514e-05,
+     0.9999998685800257
+    ]
+   }
+  },
+  "words": {
+   "我": {
+    "category": "self",
+    "weighted_rho": -0.0817,
+    "neg_cell_share": 0.8723,
+    "n_cells": 94
+   },
+   "我们": {
+    "category": "self",
+    "weighted_rho": -0.0497,
+    "neg_cell_share": 0.766,
+    "n_cells": 94
+   },
+   "咱": {
+    "category": "self",
+    "weighted_rho": 0.0242,
+    "neg_cell_share": 0.4444,
+    "n_cells": 72
+   },
+   "咱们": {
+    "category": "self",
+    "weighted_rho": 0.022,
+    "neg_cell_share": 0.3014,
+    "n_cells": 73
+   },
+   "俺": {
+    "category": "self",
+    "weighted_rho": -0.0132,
+    "neg_cell_share": 0.619,
+    "n_cells": 42
+   },
+   "自己": {
+    "category": "self",
+    "weighted_rho": -0.1345,
+    "neg_cell_share": 0.9681,
+    "n_cells": 94
+   },
+   "本人": {
+    "category": "self",
+    "weighted_rho": -0.0427,
+    "neg_cell_share": 0.7753,
+    "n_cells": 89
+   },
+   "亲测": {
+    "category": "experience",
+    "weighted_rho": 0.0641,
+    "neg_cell_share": 0.2069,
+    "n_cells": 58
+   },
+   "实测": {
+    "category": "experience",
+    "weighted_rho": 0.0278,
+    "neg_cell_share": 0.2895,
+    "n_cells": 38
+   },
+   "自用": {
+    "category": "experience",
+    "weighted_rho": 0.0017,
+    "neg_cell_share": 0.6176,
+    "n_cells": 34
+   },
+   "亲身体验": {
+    "category": "experience",
+    "weighted_rho": -0.0063,
+    "neg_cell_share": 0.45,
+    "n_cells": 20
+   },
+   "真实体验": {
+    "category": "experience",
+    "weighted_rho": 0.0369,
+    "neg_cell_share": 0.2,
+    "n_cells": 25
+   },
+   "个人经验": {
+    "category": "experience",
+    "weighted_rho": -0.0203,
+    "neg_cell_share": 0.7368,
+    "n_cells": 19
+   },
+   "踩雷": {
+    "category": "experience",
+    "weighted_rho": 0.0175,
+    "neg_cell_share": 0.3929,
+    "n_cells": 56
+   },
+   "踩过": {
+    "category": "experience",
+    "weighted_rho": 0.0148,
+    "neg_cell_share": 0.4062,
+    "n_cells": 32
+   },
+   "用过": {
+    "category": "experience",
+    "weighted_rho": -0.0215,
+    "neg_cell_share": 0.7,
+    "n_cells": 50
+   },
+   "吃过": {
+    "category": "experience",
+    "weighted_rho": -0.024,
+    "neg_cell_share": 0.6909,
+    "n_cells": 55
+   },
+   "喝过": {
+    "category": "experience",
+    "weighted_rho": -0.0156,
+    "neg_cell_share": 0.6429,
+    "n_cells": 14
+   },
+   "去过": {
+    "category": "experience",
+    "weighted_rho": -0.0283,
+    "neg_cell_share": 0.6875,
+    "n_cells": 64
+   },
+   "试过": {
+    "category": "experience",
+    "weighted_rho": -0.0241,
+    "neg_cell_share": 0.6984,
+    "n_cells": 63
+   },
+   "买过": {
+    "category": "experience",
+    "weighted_rho": -0.03,
+    "neg_cell_share": 0.7561,
+    "n_cells": 41
+   },
+   "穿过": {
+    "category": "experience",
+    "weighted_rho": -0.0069,
+    "neg_cell_share": 0.6122,
+    "n_cells": 49
+   },
+   "住过": {
+    "category": "experience",
+    "weighted_rho": -0.0198,
+    "neg_cell_share": 0.7778,
+    "n_cells": 18
+   },
+   "看完": {
+    "category": "experience",
+    "weighted_rho": -0.0107,
+    "neg_cell_share": 0.6111,
+    "n_cells": 72
+   },
+   "吃完": {
+    "category": "experience",
+    "weighted_rho": -0.0415,
+    "neg_cell_share": 0.7895,
+    "n_cells": 76
+   },
+   "用了": {
+    "category": "experience",
+    "weighted_rho": -0.0438,
+    "neg_cell_share": 0.7308,
+    "n_cells": 78
+   },
+   "试了": {
+    "category": "experience",
+    "weighted_rho": -0.0431,
+    "neg_cell_share": 0.7792,
+    "n_cells": 77
+   },
+   "穿了": {
+    "category": "experience",
+    "weighted_rho": -0.0039,
+    "neg_cell_share": 0.5532,
+    "n_cells": 47
+   },
+   "买了": {
+    "category": "experience",
+    "weighted_rho": -0.0652,
+    "neg_cell_share": 0.8315,
+    "n_cells": 89
+   },
+   "吃了": {
+    "category": "experience",
+    "weighted_rho": -0.0518,
+    "neg_cell_share": 0.8,
+    "n_cells": 85
+   },
+   "去了": {
+    "category": "experience",
+    "weighted_rho": -0.0812,
+    "neg_cell_share": 0.9231,
+    "n_cells": 91
+   },
+   "说实话": {
+    "category": "experience",
+    "weighted_rho": -0.0345,
+    "neg_cell_share": 0.7246,
+    "n_cells": 69
+   },
+   "说真的": {
+    "category": "experience",
+    "weighted_rho": -0.0111,
+    "neg_cell_share": 0.6,
+    "n_cells": 45
+   },
+   "讲真": {
+    "category": "experience",
+    "weighted_rho": 0.0064,
+    "neg_cell_share": 0.4062,
+    "n_cells": 32
+   },
+   "不夸张": {
+    "category": "experience",
+    "weighted_rho": -0.0014,
+    "neg_cell_share": 0.5135,
+    "n_cells": 37
+   },
+   "回购": {
+    "category": "experience",
+    "weighted_rho": -0.0115,
+    "neg_cell_share": 0.625,
+    "n_cells": 32
+   },
+   "空瓶": {
+    "category": "experience",
+    "weighted_rho": 0.0239,
+    "neg_cell_share": 0.2222,
+    "n_cells": 9
+   },
+   "打卡": {
+    "category": "experience",
+    "weighted_rho": 0.0114,
+    "neg_cell_share": 0.4598,
+    "n_cells": 87
+   },
+   "昨天": {
+    "category": "time",
+    "weighted_rho": -0.0278,
+    "neg_cell_share": 0.7333,
+    "n_cells": 75
+   },
+   "前天": {
+    "category": "time",
+    "weighted_rho": -0.0262,
+    "neg_cell_share": 0.7647,
+    "n_cells": 34
+   },
+   "今天": {
+    "category": "time",
+    "weighted_rho": 0.0252,
+    "neg_cell_share": 0.3617,
+    "n_cells": 94
+   },
+   "明天": {
+    "category": "time",
+    "weighted_rho": 0.0065,
+    "neg_cell_share": 0.4416,
+    "n_cells": 77
+   },
+   "上周": {
+    "category": "time",
+    "weighted_rho": 0.0082,
+    "neg_cell_share": 0.4643,
+    "n_cells": 56
+   },
+   "上个月": {
+    "category": "time",
+    "weighted_rho": -0.0029,
+    "neg_cell_share": 0.5714,
+    "n_cells": 42
+   },
+   "去年": {
+    "category": "time",
+    "weighted_rho": -0.0413,
+    "neg_cell_share": 0.8312,
+    "n_cells": 77
+   },
+   "今年": {
+    "category": "time",
+    "weighted_rho": -0.0317,
+    "neg_cell_share": 0.7079,
+    "n_cells": 89
+   },
+   "当时": {
+    "category": "time",
+    "weighted_rho": -0.0876,
+    "neg_cell_share": 0.908,
+    "n_cells": 87
+   },
+   "那天": {
+    "category": "time",
+    "weighted_rho": -0.0188,
+    "neg_cell_share": 0.5606,
+    "n_cells": 66
+   },
+   "那次": {
+    "category": "time",
+    "weighted_rho": -0.0064,
+    "neg_cell_share": 0.6667,
+    "n_cells": 27
+   },
+   "后来": {
+    "category": "time",
+    "weighted_rho": -0.0619,
+    "neg_cell_share": 0.8488,
+    "n_cells": 86
+   },
+   "最近": {
+    "category": "time",
+    "weighted_rho": -0.0344,
+    "neg_cell_share": 0.7553,
+    "n_cells": 94
+   },
+   "刚刚": {
+    "category": "time",
+    "weighted_rho": -0.0203,
+    "neg_cell_share": 0.6353,
+    "n_cells": 85
+   },
+   "前几天": {
+    "category": "time",
+    "weighted_rho": -0.0372,
+    "neg_cell_share": 0.7941,
+    "n_cells": 68
+   },
+   "这两天": {
+    "category": "time",
+    "weighted_rho": -0.0307,
+    "neg_cell_share": 0.75,
+    "n_cells": 52
+   },
+   "小时候": {
+    "category": "time",
+    "weighted_rho": -0.0364,
+    "neg_cell_share": 0.7429,
+    "n_cells": 70
+   },
+   "那会儿": {
+    "category": "time",
+    "weighted_rho": 0.0066,
+    "neg_cell_share": 0.5926,
+    "n_cells": 27
+   },
+   "一直以来": {
+    "category": "time",
+    "weighted_rho": -0.0143,
+    "neg_cell_share": 0.6512,
+    "n_cells": 43
+   },
+   "闻到": {
+    "category": "sensory",
+    "weighted_rho": 0.0071,
+    "neg_cell_share": 0.439,
+    "n_cells": 41
+   },
+   "香味": {
+    "category": "sensory",
+    "weighted_rho": -0.0021,
+    "neg_cell_share": 0.537,
+    "n_cells": 54
+   },
+   "味道": {
+    "category": "sensory",
+    "weighted_rho": -0.0373,
+    "neg_cell_share": 0.7722,
+    "n_cells": 79
+   },
+   "口感": {
+    "category": "sensory",
+    "weighted_rho": 0.0028,
+    "neg_cell_share": 0.449,
+    "n_cells": 49
+   },
+   "好吃": {
+    "category": "sensory",
+    "weighted_rho": -0.0277,
+    "neg_cell_share": 0.7073,
+    "n_cells": 82
+   },
+   "好喝": {
+    "category": "sensory",
+    "weighted_rho": -0.0056,
+    "neg_cell_share": 0.5769,
+    "n_cells": 52
+   },
+   "触感": {
+    "category": "sensory",
+    "weighted_rho": 0.0261,
+    "neg_cell_share": 0.4167,
+    "n_cells": 36
+   },
+   "手感": {
+    "category": "sensory",
+    "weighted_rho": -0.0268,
+    "neg_cell_share": 0.6944,
+    "n_cells": 36
+   },
+   "质地": {
+    "category": "sensory",
+    "weighted_rho": 0.0156,
+    "neg_cell_share": 0.359,
+    "n_cells": 39
+   },
+   "肤感": {
+    "category": "sensory",
+    "weighted_rho": 0.0126,
+    "neg_cell_share": 0.3182,
+    "n_cells": 22
+   },
+   "上脸": {
+    "category": "sensory",
+    "weighted_rho": -0.0008,
+    "neg_cell_share": 0.56,
+    "n_cells": 25
+   },
+   "刺痛": {
+    "category": "sensory",
+    "weighted_rho": 0.0107,
+    "neg_cell_share": 0.3,
+    "n_cells": 30
+   },
+   "发红": {
+    "category": "sensory",
+    "weighted_rho": -0.0042,
+    "neg_cell_share": 0.5294,
+    "n_cells": 17
+   },
+   "过敏": {
+    "category": "sensory",
+    "weighted_rho": -0.0083,
+    "neg_cell_share": 0.5526,
+    "n_cells": 38
+   },
+   "看到": {
+    "category": "sensory",
+    "weighted_rho": -0.0859,
+    "neg_cell_share": 0.883,
+    "n_cells": 94
+   },
+   "听到": {
+    "category": "sensory",
+    "weighted_rho": -0.0324,
+    "neg_cell_share": 0.7246,
+    "n_cells": 69
+   },
+   "摸起来": {
+    "category": "sensory",
+    "weighted_rho": -0.0132,
+    "neg_cell_share": 0.6,
+    "n_cells": 30
+   },
+   "看起来": {
+    "category": "sensory",
+    "weighted_rho": -0.0492,
+    "neg_cell_share": 0.8182,
+    "n_cells": 88
+   },
+   "感觉": {
+    "category": "sensory",
+    "weighted_rho": -0.1498,
+    "neg_cell_share": 0.9574,
+    "n_cells": 94
+   },
+   "感受": {
+    "category": "sensory",
+    "weighted_rho": -0.0555,
+    "neg_cell_share": 0.6522,
+    "n_cells": 92
+   },
+   "声音": {
+    "category": "sensory",
+    "weighted_rho": -0.0132,
+    "neg_cell_share": 0.6027,
+    "n_cells": 73
+   },
+   "朋友": {
+    "category": "relation",
+    "weighted_rho": -0.0522,
+    "neg_cell_share": 0.7742,
+    "n_cells": 93
+   },
+   "男朋友": {
+    "category": "relation",
+    "weighted_rho": -0.019,
+    "neg_cell_share": 0.6885,
+    "n_cells": 61
+   },
+   "女朋友": {
+    "category": "relation",
+    "weighted_rho": -0.0349,
+    "neg_cell_share": 0.7872,
+    "n_cells": 47
+   },
+   "闺蜜": {
+    "category": "relation",
+    "weighted_rho": 0.0368,
+    "neg_cell_share": 0.2353,
+    "n_cells": 68
+   },
+   "同事": {
+    "category": "relation",
+    "weighted_rho": 0.0046,
+    "neg_cell_share": 0.4359,
+    "n_cells": 78
+   },
+   "老公": {
+    "category": "relation",
+    "weighted_rho": -0.0203,
+    "neg_cell_share": 0.597,
+    "n_cells": 67
+   },
+   "老婆": {
+    "category": "relation",
+    "weighted_rho": -0.0276,
+    "neg_cell_share": 0.678,
+    "n_cells": 59
+   },
+   "对象": {
+    "category": "relation",
+    "weighted_rho": -0.0117,
+    "neg_cell_share": 0.6349,
+    "n_cells": 63
+   },
+   "室友": {
+    "category": "relation",
+    "weighted_rho": -0.016,
+    "neg_cell_share": 0.5918,
+    "n_cells": 49
+   },
+   "家人": {
+    "category": "relation",
+    "weighted_rho": 0.0252,
+    "neg_cell_share": 0.4382,
+    "n_cells": 89
+   },
+   "妈妈": {
+    "category": "relation",
+    "weighted_rho": -0.024,
+    "neg_cell_share": 0.6548,
+    "n_cells": 84
+   },
+   "爸爸": {
+    "category": "relation",
+    "weighted_rho": -0.0167,
+    "neg_cell_share": 0.629,
+    "n_cells": 62
+   },
+   "宝宝": {
+    "category": "relation",
+    "weighted_rho": -0.0405,
+    "neg_cell_share": 0.7391,
+    "n_cells": 92
+   },
+   "孩子": {
+    "category": "relation",
+    "weighted_rho": -0.0448,
+    "neg_cell_share": 0.7444,
+    "n_cells": 90
+   },
+   "娃": {
+    "category": "relation",
+    "weighted_rho": -0.0002,
+    "neg_cell_share": 0.5517,
+    "n_cells": 87
+   },
+   "婆婆": {
+    "category": "relation",
+    "weighted_rho": -0.0241,
+    "neg_cell_share": 0.8214,
+    "n_cells": 28
+   },
+   "姐姐": {
+    "category": "relation",
+    "weighted_rho": -0.0154,
+    "neg_cell_share": 0.6118,
+    "n_cells": 85
+   },
+   "妹妹": {
+    "category": "relation",
+    "weighted_rho": -0.0163,
+    "neg_cell_share": 0.625,
+    "n_cells": 48
+   },
+   "哥哥": {
+    "category": "relation",
+    "weighted_rho": -0.011,
+    "neg_cell_share": 0.5333,
+    "n_cells": 45
+   },
+   "弟弟": {
+    "category": "relation",
+    "weighted_rho": -0.0149,
+    "neg_cell_share": 0.5897,
+    "n_cells": 39
+   },
+   "亲戚": {
+    "category": "relation",
+    "weighted_rho": -0.0043,
+    "neg_cell_share": 0.5116,
+    "n_cells": 43
+   },
+   "邻居": {
+    "category": "relation",
+    "weighted_rho": 0.0026,
+    "neg_cell_share": 0.5143,
+    "n_cells": 35
+   },
+   "老师": {
+    "category": "relation",
+    "weighted_rho": -0.0251,
+    "neg_cell_share": 0.7067,
+    "n_cells": 75
+   },
+   "医生": {
+    "category": "relation",
+    "weighted_rho": -0.0282,
+    "neg_cell_share": 0.6719,
+    "n_cells": 64
+   }
+  }
+ },
+ "separability": {
+  "n_human": 51672,
+  "n_aigc": 7018,
+  "univariate_auc": {
+   "self": 0.4897,
+   "experience": 0.4786,
+   "time": 0.5733,
+   "sensory": 0.5001,
+   "relation": 0.4688,
+   "grounding": 0.5208
+  },
+  "combined_cv": {
+   "auc": 0.5875,
+   "f1": 0.2464,
+   "acc": 0.6828,
+   "n_features": 6
+  }
+ },
+ "engagement": {
+  "month_from": "202301",
+  "min_body_len": 50,
+  "n_boot": 300,
+  "boot_seed": 42,
+  "fe": {
+   "likes": {
+    "features": [
+     "self",
+     "experience",
+     "time",
+     "sensory",
+     "relation",
+     "p_ai",
+     "content_len",
+     "n_hashtags"
+    ],
+    "coef": {
+     "self": 0.0358,
+     "experience": 0.0077,
+     "time": 0.0015,
+     "sensory": -0.001,
+     "relation": 0.0045,
+     "p_ai": -0.0403,
+     "content_len": 0.0252,
+     "n_hashtags": 0.1553
+    },
+    "ci_low": {
+     "self": 0.0217,
+     "experience": -0.0052,
+     "time": -0.0171,
+     "sensory": -0.0174,
+     "relation": -0.007,
+     "p_ai": -0.0567,
+     "content_len": 0.0063,
+     "n_hashtags": 0.1346
+    },
+    "ci_high": {
+     "self": 0.0529,
+     "experience": 0.0252,
+     "time": 0.0187,
+     "sensory": 0.0146,
+     "relation": 0.0196,
+     "p_ai": -0.0236,
+     "content_len": 0.044,
+     "n_hashtags": 0.1843
+    },
+    "n_obs": 54969,
+    "n_cells": 116
+   },
+   "collections": {
+    "features": [
+     "self",
+     "experience",
+     "time",
+     "sensory",
+     "relation",
+     "p_ai",
+     "content_len",
+     "n_hashtags"
+    ],
+    "coef": {
+     "self": -0.0094,
+     "experience": 0.003,
+     "time": -0.0073,
+     "sensory": -0.0163,
+     "relation": 0.0063,
+     "p_ai": -0.026,
+     "content_len": 0.0941,
+     "n_hashtags": 0.1812
+    },
+    "ci_low": {
+     "self": -0.0238,
+     "experience": -0.0113,
+     "time": -0.024,
+     "sensory": -0.0322,
+     "relation": -0.0044,
+     "p_ai": -0.0435,
+     "content_len": 0.0722,
+     "n_hashtags": 0.1584
+    },
+    "ci_high": {
+     "self": 0.006,
+     "experience": 0.0205,
+     "time": 0.0093,
+     "sensory": 0.0002,
+     "relation": 0.0203,
+     "p_ai": -0.0071,
+     "content_len": 0.1153,
+     "n_hashtags": 0.2122
+    },
+    "n_obs": 54969,
+    "n_cells": 116
+   },
+   "comments": {
+    "features": [
+     "self",
+     "experience",
+     "time",
+     "sensory",
+     "relation",
+     "p_ai",
+     "content_len",
+     "n_hashtags"
+    ],
+    "coef": {
+     "self": 0.0767,
+     "experience": 0.0245,
+     "time": 0.0227,
+     "sensory": 0.0127,
+     "relation": 0.0628,
+     "p_ai": -0.0697,
+     "content_len": -0.0651,
+     "n_hashtags": 0.0359
+    },
+    "ci_low": {
+     "self": 0.0614,
+     "experience": 0.0103,
+     "time": 0.0111,
+     "sensory": -0.0008,
+     "relation": 0.0439,
+     "p_ai": -0.0809,
+     "content_len": -0.085,
+     "n_hashtags": 0.02
+    },
+    "ci_high": {
+     "self": 0.0965,
+     "experience": 0.0426,
+     "time": 0.034,
+     "sensory": 0.0268,
+     "relation": 0.0804,
+     "p_ai": -0.0577,
+     "content_len": -0.0428,
+     "n_hashtags": 0.0537
+    },
+    "n_obs": 54969,
+    "n_cells": 116
+   }
+  }
+ },
+ "family": {
+  "families": {
+   "gpt": {
+    "n": 1682,
+    "density100": {
+     "self": 1.0214,
+     "experience": 0.1202,
+     "time": 0.2021,
+     "sensory": 0.2552,
+     "relation": 0.2813,
+     "grounding": 0.8587
+    }
+   },
+   "gemini": {
+    "n": 1143,
+    "density100": {
+     "self": 1.1947,
+     "experience": 0.1361,
+     "time": 0.2771,
+     "sensory": 0.4211,
+     "relation": 0.2871,
+     "grounding": 1.1213
+    }
+   },
+   "deepseek": {
+    "n": 1476,
+    "density100": {
+     "self": 0.7712,
+     "experience": 0.1242,
+     "time": 0.2132,
+     "sensory": 0.1569,
+     "relation": 0.2982,
+     "grounding": 0.7924
+    }
+   },
+   "anthropic": {
+    "n": 723,
+    "density100": {
+     "self": 1.0064,
+     "experience": 0.1675,
+     "time": 0.2477,
+     "sensory": 0.2912,
+     "relation": 0.3414,
+     "grounding": 1.0478
+    }
+   },
+   "glm": {
+    "n": 752,
+    "density100": {
+     "self": 1.1129,
+     "experience": 0.1159,
+     "time": 0.2166,
+     "sensory": 0.2965,
+     "relation": 0.3028,
+     "grounding": 0.9319
+    }
+   },
+   "qwen": {
+    "n": 1242,
+    "density100": {
+     "self": 1.088,
+     "experience": 0.1098,
+     "time": 0.2291,
+     "sensory": 0.2236,
+     "relation": 0.2858,
+     "grounding": 0.8484
+    }
+   }
+  },
+  "models": {
+   "gpt-o3": {
+    "n": 444,
+    "density100": {
+     "self": 0.9045,
+     "experience": 0.1214,
+     "time": 0.1922,
+     "sensory": 0.216,
+     "relation": 0.294,
+     "grounding": 0.8236
+    }
+   },
+   "gemini-1.5": {
+    "n": 465,
+    "density100": {
+     "self": 1.2802,
+     "experience": 0.1509,
+     "time": 0.2947,
+     "sensory": 0.4334,
+     "relation": 0.3031,
+     "grounding": 1.1821
+    }
+   },
+   "deepseek-v3": {
+    "n": 379,
+    "density100": {
+     "self": 0.9024,
+     "experience": 0.1623,
+     "time": 0.3046,
+     "sensory": 0.2301,
+     "relation": 0.3505,
+     "grounding": 1.0476
+    }
+   },
+   "gpt-4o": {
+    "n": 408,
+    "density100": {
+     "self": 1.2825,
+     "experience": 0.1242,
+     "time": 0.2052,
+     "sensory": 0.319,
+     "relation": 0.283,
+     "grounding": 0.9315
+    }
+   },
+   "claude-3-7-sonnet": {
+    "n": 349,
+    "density100": {
+     "self": 1.046,
+     "experience": 0.1596,
+     "time": 0.2349,
+     "sensory": 0.2947,
+     "relation": 0.3274,
+     "grounding": 1.0166
+    }
+   },
+   "glm-3": {
+    "n": 397,
+    "density100": {
+     "self": 1.0339,
+     "experience": 0.1313,
+     "time": 0.219,
+     "sensory": 0.3546,
+     "relation": 0.3232,
+     "grounding": 1.0281
+    }
+   },
+   "deepseek-r1-250120": {
+    "n": 554,
+    "density100": {
+     "self": 0.6272,
+     "experience": 0.1046,
+     "time": 0.1967,
+     "sensory": 0.1411,
+     "relation": 0.2596,
+     "grounding": 0.702
+    }
+   },
+   "gemini-2.0": {
+    "n": 460,
+    "density100": {
+     "self": 1.0688,
+     "experience": 0.1198,
+     "time": 0.2696,
+     "sensory": 0.4138,
+     "relation": 0.2827,
+     "grounding": 1.0858
+    }
+   },
+   "deepseek-r1-250528": {
+    "n": 543,
+    "density100": {
+     "self": 0.8231,
+     "experience": 0.1176,
+     "time": 0.1673,
+     "sensory": 0.1227,
+     "relation": 0.3004,
+     "grounding": 0.7081
+    }
+   },
+   "qwen3": {
+    "n": 399,
+    "density100": {
+     "self": 0.6148,
+     "experience": 0.1305,
+     "time": 0.2489,
+     "sensory": 0.138,
+     "relation": 0.2879,
+     "grounding": 0.8052
+    }
+   },
+   "glm-4": {
+    "n": 355,
+    "density100": {
+     "self": 1.2474,
+     "experience": 0.0898,
+     "time": 0.2124,
+     "sensory": 0.1978,
+     "relation": 0.2682,
+     "grounding": 0.7681
+    }
+   },
+   "gpt-o4": {
+    "n": 403,
+    "density100": {
+     "self": 0.7661,
+     "experience": 0.118,
+     "time": 0.2052,
+     "sensory": 0.162,
+     "relation": 0.2659,
+     "grounding": 0.7511
+    }
+   },
+   "gemini-2.5": {
+    "n": 218,
+    "density100": {
+     "self": 1.2862,
+     "experience": 0.142,
+     "time": 0.2626,
+     "sensory": 0.4148,
+     "relation": 0.2697,
+     "grounding": 1.0891
+    }
+   },
+   "claude-sonnet-4": {
+    "n": 374,
+    "density100": {
+     "self": 0.9687,
+     "experience": 0.1751,
+     "time": 0.2599,
+     "sensory": 0.2879,
+     "relation": 0.3548,
+     "grounding": 1.0776
+    }
+   },
+   "qwen2": {
+    "n": 408,
+    "density100": {
+     "self": 1.1723,
+     "experience": 0.0855,
+     "time": 0.1676,
+     "sensory": 0.2024,
+     "relation": 0.258,
+     "grounding": 0.7135
+    }
+   },
+   "qwen2.5": {
+    "n": 435,
+    "density100": {
+     "self": 1.4382,
+     "experience": 0.1111,
+     "time": 0.2605,
+     "sensory": 0.3161,
+     "relation": 0.3062,
+     "grounding": 0.9939
+    }
+   },
+   "gpt-4.1": {
+    "n": 427,
+    "density100": {
+     "self": 1.0877,
+     "experience": 0.1166,
+     "time": 0.2071,
+     "sensory": 0.3065,
+     "relation": 0.2778,
+     "grounding": 0.908
+    }
+   }
+  }
+ },
+ "quarterly": {
+  "quarters": [
+   "2023Q2",
+   "2023Q3",
+   "2023Q4",
+   "2024Q1",
+   "2024Q2",
+   "2024Q3",
+   "2024Q4",
+   "2025Q1",
+   "2025Q2"
+  ],
+  "n": {
+   "2023Q2": 336,
+   "2023Q3": 583,
+   "2023Q4": 571,
+   "2024Q1": 2860,
+   "2024Q2": 3421,
+   "2024Q3": 4594,
+   "2024Q4": 4686,
+   "2025Q1": 7362,
+   "2025Q2": 15218
+  },
+  "raw": {
+   "self": [
+    1.2502,
+    1.2068,
+    1.2141,
+    0.8942,
+    1.0009,
+    0.9828,
+    1.0455,
+    1.0848,
+    1.092
+   ],
+   "experience": [
+    0.1013,
+    0.0941,
+    0.088,
+    0.0907,
+    0.1021,
+    0.1046,
+    0.1004,
+    0.0984,
+    0.0928
+   ],
+   "time": [
+    0.1417,
+    0.0991,
+    0.1223,
+    0.1588,
+    0.1601,
+    0.1363,
+    0.1466,
+    0.1273,
+    0.1422
+   ],
+   "sensory": [
+    0.2088,
+    0.2392,
+    0.163,
+    0.247,
+    0.2438,
+    0.2396,
+    0.2287,
+    0.2088,
+    0.1852
+   ],
+   "relation": [
+    0.2682,
+    0.2655,
+    0.2814,
+    0.1232,
+    0.1775,
+    0.1818,
+    0.1914,
+    0.2338,
+    0.248
+   ],
+   "grounding": [
+    0.72,
+    0.6979,
+    0.6547,
+    0.6197,
+    0.6834,
+    0.6623,
+    0.6672,
+    0.6682,
+    0.6683
+   ]
+  },
+  "domain_std": {
+   "self": [
+    1.1788,
+    1.1553,
+    1.1567,
+    1.0911,
+    1.0756,
+    1.0845,
+    1.1134,
+    1.0653,
+    0.952
+   ],
+   "experience": [
+    0.1019,
+    0.0953,
+    0.1055,
+    0.0751,
+    0.0867,
+    0.0942,
+    0.095,
+    0.0995,
+    0.0964
+   ],
+   "time": [
+    0.1378,
+    0.1109,
+    0.1241,
+    0.1711,
+    0.1672,
+    0.1333,
+    0.1422,
+    0.1265,
+    0.1303
+   ],
+   "sensory": [
+    0.1778,
+    0.2135,
+    0.1668,
+    0.1913,
+    0.2307,
+    0.2266,
+    0.2081,
+    0.2045,
+    0.1966
+   ],
+   "relation": [
+    0.28,
+    0.2653,
+    0.2649,
+    0.163,
+    0.2008,
+    0.1948,
+    0.2012,
+    0.2341,
+    0.2333
+   ],
+   "grounding": [
+    0.6975,
+    0.6849,
+    0.6613,
+    0.6005,
+    0.6853,
+    0.6489,
+    0.6466,
+    0.6646,
+    0.6566
+   ]
+  },
+  "trend": {
+   "self": {
+    "rho": -0.4167,
+    "p": 0.26458604674749636,
+    "rho_domain_std": -0.8667,
+    "p_domain_std": 0.002495398285990204
+   },
+   "experience": {
+    "rho": 0.0667,
+    "p": 0.8646897846262036,
+    "rho_domain_std": -0.1667,
+    "p_domain_std": 0.668231040071504
+   },
+   "time": {
+    "rho": 0.2667,
+    "p": 0.48792227483870076,
+    "rho_domain_std": 0.0667,
+    "p_domain_std": 0.8646897846262036
+   },
+   "sensory": {
+    "rho": -0.1833,
+    "p": 0.6368198117628943,
+    "rho_domain_std": 0.2833,
+    "p_domain_std": 0.46003032896572005
+   },
+   "relation": {
+    "rho": -0.3667,
+    "p": 0.3317398014330152,
+    "rho_domain_std": -0.45,
+    "p_domain_std": 0.22421610749233675
+   },
+   "grounding": {
+    "rho": -0.25,
+    "p": 0.5164895523012261,
+    "rho_domain_std": -0.45,
+    "p_domain_std": 0.22421610749233675
+   }
+  },
+  "share_any": {
+   "self": [
+    0.756,
+    0.7118,
+    0.683,
+    0.643,
+    0.6709,
+    0.6504,
+    0.6601,
+    0.6773,
+    0.658
+   ],
+   "experience": [
+    0.244,
+    0.2333,
+    0.1839,
+    0.2094,
+    0.2222,
+    0.2201,
+    0.2096,
+    0.2195,
+    0.2038
+   ],
+   "time": [
+    0.3095,
+    0.2539,
+    0.2592,
+    0.3031,
+    0.2952,
+    0.2682,
+    0.2825,
+    0.2825,
+    0.2774
+   ],
+   "sensory": [
+    0.4107,
+    0.4048,
+    0.3503,
+    0.3934,
+    0.3937,
+    0.3727,
+    0.3641,
+    0.372,
+    0.3276
+   ],
+   "relation": [
+    0.375,
+    0.3533,
+    0.3503,
+    0.2196,
+    0.2613,
+    0.2667,
+    0.2678,
+    0.3215,
+    0.3295
+   ],
+   "grounding": [
+    0.7381,
+    0.6878,
+    0.6637,
+    0.6339,
+    0.6685,
+    0.6576,
+    0.6421,
+    0.6726,
+    0.6471
+   ]
+  }
+ }
+}

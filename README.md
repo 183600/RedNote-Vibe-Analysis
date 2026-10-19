@@ -10,7 +10,7 @@
 - [🗂 Repository Layout](#-repository-layout)
 - [📄 Paper](#-paper)
 - [📊 Fork 分析](#-fork-分析) — [数据集概览](#数据集概览) · [词频相关性矩阵](#词频相关性矩阵) · [关键发现](#关键发现) · [常见词分析](#常见词助词虚词分析)
-  - 深潜分析：[deep_dive](#深潜分析deep_dive_analysispy) · [framing](#框架模板化分析framing_analysispy) · [title_style](#标题端ai-味分析title_style_analysispy) · [title_body](#标题正文-ai-味组合title_body_congruence_analysispy) · [diversity](#文本多样性与节奏深潜diversity_analysispy) · [detector](#检测器诊断detector_diagnosticspy) · [family_lexicon](#模型家族词表指纹family_lexicon_analysispy) · [engagement_structure](#互动结构与ai-味惩罚分解engagement_structure_analysispy) · [engagement_drivers](#互动惩罚的逐特征载体engagement_drivers_analysispy) · [author_style](#作者层分解作者间-vs-人内author_style_analysispy) · [symbol](#话题标签与表情生态symbol_analysispy) · [near_duplicate](#近重复内容与模板复用near_duplicate_analysispy) · [family_transfer](#风格家族迁移野外高-ai-味帖的构成与互动回报family_transfer_analysispy) · [stance](#语气情态层谨慎断言强化与呼语stance_analysispy) · [concreteness](#具体性层数字单位量值地名与模糊量词concreteness_analysispy) · [cta](#互动引导语层评论点赞收藏关注转发与催购cta_analysispy) · [typography](#标点与排版层感叹号结构与短行排版typography_analysispy) · [discourse](#篇章连接层因果转折递进序列举例与总结discourse_analysispy) · [axis_synthesis](#跨轴综合五轴风格指标的共现结构独立信号与互动堆叠axis_synthesis_analysispy) · [redundancy](#正文自重复与句式复读redundancy_analysispy)
+  - 深潜分析：[deep_dive](#深潜分析deep_dive_analysispy) · [framing](#框架模板化分析framing_analysispy) · [title_style](#标题端ai-味分析title_style_analysispy) · [title_body](#标题正文-ai-味组合title_body_congruence_analysispy) · [diversity](#文本多样性与节奏深潜diversity_analysispy) · [detector](#检测器诊断detector_diagnosticspy) · [family_lexicon](#模型家族词表指纹family_lexicon_analysispy) · [engagement_structure](#互动结构与ai-味惩罚分解engagement_structure_analysispy) · [engagement_drivers](#互动惩罚的逐特征载体engagement_drivers_analysispy) · [author_style](#作者层分解作者间-vs-人内author_style_analysispy) · [symbol](#话题标签与表情生态symbol_analysispy) · [near_duplicate](#近重复内容与模板复用near_duplicate_analysispy) · [family_transfer](#风格家族迁移野外高-ai-味帖的构成与互动回报family_transfer_analysispy) · [stance](#语气情态层谨慎断言强化与呼语stance_analysispy) · [concreteness](#具体性层数字单位量值地名与模糊量词concreteness_analysispy) · [cta](#互动引导语层评论点赞收藏关注转发与催购cta_analysispy) · [typography](#标点与排版层感叹号结构与短行排版typography_analysispy) · [discourse](#篇章连接层因果转折递进序列举例与总结discourse_analysispy) · [axis_synthesis](#跨轴综合五轴风格指标的共现结构独立信号与互动堆叠axis_synthesis_analysispy) · [redundancy](#正文自重复与句式复读redundancy_analysispy) · [experiential](#经验叙述与自我披露experiential_analysispy)
   - [生成的可视化图表](#生成的可视化图表) · [分析脚本](#分析脚本)
 - [Supported Tasks](#supported-tasks)
 - [Citation](#citation)
@@ -150,11 +150,13 @@ This script will:
 | `insights/axis_synthesis_structure.png`、`insights/axis_synthesis_signal.png` + `axis_synthesis_results.{json,md}` | Figures and result files produced by `axis_synthesis_analysis.py` |
 | `redundancy_analysis.py` | Within-post self-repetition deep dive on four a priori metrics (repeated char 6-gram share via 64-bit rolling hash, max pairwise sentence similarity via char 3-gram Jaccard, near-duplicate-sentence share, repeated sentence-opening share): length-matched cross-subset gaps, wild P(AI) gradient with within-cell and length-stratified ρ, month×domain FE engagement betas for likes/collections/comments (cluster-bootstrap CIs), 6-family / 17-model fingerprints, quarterly trends |
 | `insights/redundancy_lexicon.png`、`insights/redundancy_gradient.png` + `redundancy_results.{json,md}` | Figures and result files produced by `redundancy_analysis.py` |
+| `experiential_analysis.py` | Experiential-narration deep dive on five a priori lexicons (self-reference, first-hand evidence, time anchors, sensory detail, relational others): post-level incidence and char-level density, length-matched cross-subset gaps, wild P(AI) gradient with within-cell and length-stratified ρ, human-vs-AIGC discriminability (univariate AUC + 5-fold CV), month×domain FE engagement betas for likes/collections/comments (cluster-bootstrap CIs), 6-family / 17-model fingerprints, quarterly trends |
+| `insights/experiential_lexicon.png`、`insights/experiential_gradient.png` + `experiential_results.{json,md}` | Figures and result files produced by `experiential_analysis.py` |
 | `run_fork_pipeline.py` | Runner for the 21-step deep-dive suite (`--list` / `--from N` / `--only SCRIPT`) |
 | `pipeline_common.py` | Shared step-runner behind `run_paper_pipeline.py` / `run_fork_pipeline.py` (step selection, CLI, sequential execution) |
 | `*.py` (other) | Exploratory fork analyses: word frequency, particles, topics, sentiment, time, domains, user clustering, … |
 | `output/` | Figures from the joint exploratory analysis |
-| `tests/` | Unit tests for `analysis_utils.py` (incl. calibration/threshold/within-cell/length-bin/decile helpers), framing helpers, the title/diversity/symbol/near-duplicate/engagement-driver/author-decomposition/family-transfer/title-body-congruence/stance/concreteness/CTA/typography/discourse/redundancy pure functions, and the shared pipeline runner (`python3 -m unittest discover -s tests`) |
+| `tests/` | Unit tests for `analysis_utils.py` (incl. calibration/threshold/within-cell/length-bin/decile helpers), framing helpers, the title/diversity/symbol/near-duplicate/engagement-driver/author-decomposition/family-transfer/title-body-congruence/stance/concreteness/CTA/typography/discourse/redundancy/experiential pure functions, and the shared pipeline runner (`python3 -m unittest discover -s tests`) |
 | `ci_gate.py` | CI quality gate (syntax + research-data integrity) |
 
 All analyses are deterministic (fixed random seeds) and can be re-run independently; the paper pipeline order is documented in [paper.md](paper.md), Appendix A.
@@ -425,6 +427,17 @@ Run the full pipeline in order with `python3 run_paper_pipeline.py` (or `--list`
 3. **互动偏效应两极分化**：控制 P(AI)、正文长度与标签数后（n=51,672、112 个单元、整群 bootstrap 300 次），复读句首占比三端全负（点赞 -0.0375 [-0.0544, -0.0237]、收藏 -0.0273、评论 -0.0562），句间最大相似度只压评论（-0.0425），近重复句占比只抬评论（+0.0457）；片段复读率在点赞/收藏端显著为正（+0.0767/+0.0783）。P(AI) 自身三端仍全负（-0.0402/-0.0205/-0.0789），说明 AI 味互动惩罚并非由自重复承载（观察性关联，不作因果解读）。
 4. **家族指纹与季度趋势**：长度标准化后 Gemini 句间最大相似度最高（+0.0296）、DeepSeek 最低（-0.0165），Claude 片段复读最高（+0.0092）、DeepSeek 最低（-0.0095），GLM 偏复读句首（+0.0054）；探索集片段复读率季度显著上升（2023Q2 0.0494 → 2025Q2 0.0982，ρ=+0.833，固定领域×长度权重后 +0.750），近重复句占比原始趋势 +0.750（控制后 +0.500 不显著），句间最大相似度与复读句首无显著趋势（观察性关联，不作因果解读）。
 
+### 经验叙述与自我披露（`experiential_analysis.py`）
+
+既有风格轴刻画「怎么写」，本分析补上「写的是不是一段被亲身经历、带时间地点与感官细节的生活」：用五个先验词表（自我指称 7 词、亲历证据 31 词、时间锚点 19 词、感官体验 21 词、关系他人 24 词，共 102 个标记）统计三子集的发生率与字符层密度，并把后四类合成「经验锚定」；同时检验长度匹配差异、探索集 P(AI) 梯度（含长度分层）、仅用词表的 human/AIGC 判别力、月份×领域 FE 互动偏效应（点赞/收藏/评论，整群 bootstrap 300 次）、6 家族指纹与季度趋势。结果图在 `insights/experiential_lexicon.png`、`insights/experiential_gradient.png`，数据在 `experiential_results.json` 与 `experiential_results.md`。人类/探索集按 note_id 去重，正文 ≥50 字，p_ai 按行序对齐（content_len mismatch=0）：
+
+1. **野外帖子的「经验锚定」显著更稀**：含任一经验锚定标记的帖子占比 human 84.7% / AIGC 83.3% / exploring 65.5%；字符层密度 human 0.888 / AIGC 0.921 / exploring 0.636 次/百字。按对照长度分布加权后，人类−探索集发生率 +6.1 个百分点 [+5.5, +6.7]、密度 +0.272 [+0.261, +0.284]；人类−AIGC 的密度差仅 +0.028 [+0.005, +0.050]，但结构不同：AIGC 的时间锚点密度更高（0.229 vs 0.154）、关系他人更低（0.295 vs 0.357），亲历证据与感官体验接近。
+2. **P(AI) 越高，经验叙述越少**：探索集（39,941 篇去重笔记 / 313 个单元）自我指称 ρ=-0.087、亲历证据 -0.076、时间锚点 -0.043、感官体验 -0.125、关系他人 -0.049、经验锚定合计 -0.049；感官体验 90.4% 的单元为负、自我指称 86.2% 为负，首尾十分位 δ 分别为 -0.169 与 -0.178。长度分层后大部分轴接近 0（感官 -0.061、自我 -0.032），说明梯度部分来自长度构成，但感官体验仍稳定为负。
+3. **高 P(AI) 帖「声称亲测」却少具体体验**：逐词负端是「感觉」-0.150、「自己」-0.135、「当时」-0.088、「看到」-0.086、「我」-0.082、「去了」-0.081、「买了」-0.065、「后来」-0.062；正端却是「亲测」+0.064、「真实体验」+0.037、「闺蜜」+0.037、「实测」+0.028、「触感」+0.026、「今天」+0.025、「家人」+0.025、「咱」+0.024——生成痕迹更多落在「亲测/实测」的宣称与泛化关系词，而不是可感知的当下细节。
+4. **单轴判别力有限，时间锚点最强**：单标记 AUC（human=0）自我指称 0.490、亲历证据 0.479、时间锚点 0.573、感官体验 0.500、关系他人 0.469、经验锚定 0.521；六项指标联合逻辑回归 5 折 CV AUC=0.588。经验叙述是与标点/篇章/语气不同的独立弱信号，而不是强检测器。
+5. **互动回报集中在「人」与「关系」**：控制 P(AI)、正文长度与标签数后（n=54,969、116 个单元、整群 bootstrap 300 次），自我指称点赞 β=+0.036 [+0.022, +0.053]、评论 +0.077 [+0.061, +0.097]；关系他人评论 +0.063 [+0.044, +0.080]；亲历证据与时间锚点主要抬评论（+0.025/+0.023），感官体验三端均不显著；同期 P(AI) 仍三端全负（-0.040/-0.026/-0.070）——「我在场、我与谁」与更高评论互动独立相关（观察性关联，不作因果解读）。
+6. **家族与时间：Gemini 最外放，DeepSeek 最克制；自我指称缓慢退潮**：AIGC 家族经验锚定密度 Gemini 1.121 / Claude 1.048 / GLM 0.932 / GPT 0.859 / Qwen 0.848 / DeepSeek 0.792；Gemini 的感官体验（0.421）约为 DeepSeek（0.157）的 2.7 倍，Claude 的亲历证据最高（0.168）。探索集季度趋势中，仅自我指称在固定领域权重后显著下降（1.250→1.092，ρ=-0.867，p=0.002），其余类别无显著单调趋势（观察性关联，不作因果解读）。
+
 ### 生成的可视化图表
 
 | 文件 | 描述 |
@@ -471,6 +484,8 @@ Run the full pipeline in order with `python3 run_paper_pipeline.py` (or `--list`
 | `insights/axis_synthesis_signal.png` | 跨轴信号图（五轴联合 P(AI) 偏效应森林图、轴空间 CV AUC、轴堆叠分层与 P(AI)、联合互动偏效应森林图） |
 | `insights/redundancy_lexicon.png` | 自重复画像图（三子集四指标均值与 95% CI、跨子集长度匹配差异森林图、指标随长度走势、句间最大相似度分布） |
 | `insights/redundancy_gradient.png` | 自重复梯度图（P(AI) 十分位曲线、四指标单元内 ρ 与长度分层 ρ、互动偏效应森林图（点赞/收藏/评论）、家族指纹热力图、季度趋势、近重复句普及率） |
+| `insights/experiential_lexicon.png` | 经验叙述图（三子集五类标记与合计密度、逐词 AIGC−人类过量/欠用） |
+| `insights/experiential_gradient.png` | 经验叙述梯度图（P(AI) 十分位曲线、逐词单元内 ρ、互动偏效应森林图（点赞/收藏/评论）、家族指纹热力图、季度趋势、单标记与联合 AUC） |
 | `output/` | 领域、话题、互动等探索性图表合集 |
 | `paper_figs/` | 论文管线图表（检测器、漂移、互动、稳健性） |
 
@@ -510,13 +525,29 @@ Run the full pipeline in order with `python3 run_paper_pipeline.py` (or `--list`
 - `discourse_analysis.py` - 篇章连接：因果/转折/递进/序列/举例/总结 6 类先验连接词（37 词）+ 口语/书面语域，跨子集密度与逐词过量使用、帖均类别数、P(AI) 梯度（含长度分层）、互动偏效应（点赞/收藏/评论）、家族指纹与季度趋势（输出 `insights/discourse_*.png`、`discourse_results.json/md`）
 - `axis_synthesis_analysis.py` - 跨轴综合：五轴 30 类别的单元内共现、联合 P(AI) 独立信号（复合 + 30 类别全模型 FE，整群 bootstrap CI）、轴空间 CV AUC（human vs AIGC）、轴堆叠（0–5 同向轴）与联合互动偏效应（输出 `insights/axis_synthesis_*.png`、`axis_synthesis_results.json/md`）
 - `redundancy_analysis.py` - 正文自重复：片段复读率/句间最大相似度/近重复句占比/复读句首占比的跨子集长度匹配差异、探索集 P(AI) 梯度（单元内 ρ 与长度分层 ρ）、互动偏效应（点赞/收藏/评论，月份×领域 FE + 整群 bootstrap CI）、家族/模型指纹与季度趋势（输出 `insights/redundancy_*.png`、`redundancy_results.json/md`）
+- `experiential_analysis.py` - 经验叙述与自我披露：自我指称/亲历证据/时间锚点/感官体验/关系他人五类先验词表的跨子集发生率与密度、长度匹配差异、P(AI) 梯度（含长度分层）、human/AIGC 判别力、互动偏效应（点赞/收藏/评论）、家族指纹与季度趋势（输出 `insights/experiential_*.png`、`experiential_results.json/md`）
 - `quick_start.py` - BERT 基线训练
 
-深潜分析套件可一键顺序执行：`python3 run_fork_pipeline.py`（`--list` / `--from N` / `--only 脚本名`，编排 deep_dive / framing / title_style / title_body_congruence / diversity / detector_diagnostics / family_lexicon / engagement_structure / engagement_drivers / author_style / user_clustering / symbol / near_duplicate / family_transfer / stance / concreteness / cta / typography / discourse / axis_synthesis / redundancy 共 21 步，输出统一落在 `insights/`）。两个管线运行器共用 `pipeline_common.py` 的步骤选择与顺序执行实现（含未知脚本名校验），其单元测试见 `tests/test_pipeline_common.py`。
+深潜分析套件可一键顺序执行：`python3 run_fork_pipeline.py`（`--list` / `--from N` / `--only 脚本名`，编排 deep_dive / framing / title_style / title_body_congruence / diversity / detector_diagnostics / family_lexicon / engagement_structure / engagement_drivers / author_style / user_clustering / symbol / near_duplicate / family_transfer / stance / concreteness / cta / typography / discourse / axis_synthesis / redundancy / experiential 共 22 个分析步骤 + 派生缓存，输出统一落在 `insights/`）。两个管线运行器共用 `pipeline_common.py` 的步骤选择与顺序执行实现（含未知脚本名校验），其单元测试见 `tests/test_pipeline_common.py`。
 
 所有脚本使用 `analysis_utils.py` 中的统一数据读取、中文字体、检测器打分与统计工具（含概率校准 `reliability_bins` / `expected_calibration_error` / `prior_corrected_proba`、阈值指标 `threshold_metrics`，以及长度分箱 `length_bin_codes` / 十分位表 `decile_table` / 固定权重时间序列 `domain_standardized_series` 等跨脚本复用的统计辅助）；其单元测试见 `tests/`。
 
 中文字体由 `setup_chinese_fonts()` 自动解析：依次扫描 `REDNOTE_FONT_DIR`、`assets/fonts/`、系统字体目录（Noto Sans CJK/SC、思源黑体、文泉驿等），找不到时回退下载 Noto Sans SC（另含单色 emoji 字体）并缓存到 `~/.cache/rednote-vibe/fonts`；也可用 `REDNOTE_FONT_PATH` 直接指定字体文件，或设 `REDNOTE_FONT_DOWNLOAD=0` 禁用联网下载。写回 CSV 时使用内容比较（`write_csv_gz_if_changed`），内容未变则不触碰文件；`paper_drift.py --figs-only` 可只重绘图表、完全不写 `paper_exploring_scores.csv.gz`。
+
+## 🔁 Reproducibility & Quality Gates
+
+All analyses are deterministic (fixed seeds) and read the raw `.jsonl` research files without modifying them; shared derived caches are written to the system temp directory.
+
+```bash
+pip install -r requirements.txt
+python3 -m unittest discover -s tests   # synthetic unit tests, seconds
+python3 ci_gate.py                      # syntax + protected data + JSONL sanity
+python3 run_paper_pipeline.py           # paper pipeline
+python3 run_fork_pipeline.py --list     # inspect the 23 deep-dive steps
+python3 run_fork_pipeline.py            # run all deep-dive analyses
+```
+
+Each analysis writes `*_results.{json,md}` next to its script and figures to `insights/`, `paper_figs/` or `output/`. The `.jsonl` and `.csv.gz` files are research data and must stay read-only; `ci_gate.py` refuses empty/truncated datasets and unparsable JSONL.
 
 ---
 

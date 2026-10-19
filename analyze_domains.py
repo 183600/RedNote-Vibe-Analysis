@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 import heapq
-import json
 import re
 from collections import Counter
 
 from analysis_utils import BASE
+from derived_cache import iter_cached
 
 # 全文件共用一个预编译 CJK 正则
 _CJK_RUN_RE = re.compile(r'[\u4e00-\u9fff]+')
@@ -34,21 +34,18 @@ def main():
     domain_counts = Counter()
     domain_bits = {}
 
-    with open(BASE + 'exploring_set_fixed.jsonl', 'rb') as f:
-        for line in f:
-            try:
-                item = json.loads(line)
-                domain = item.get('domain', 'unknown')
-                domain_counts[domain] += 1
-                bit = domain_bits.setdefault(domain, 1 << len(domain_bits))
-                text = item.get('note_title', '') + ' ' + (
-                    item.get('desc', '') or item.get('note_content', ''))
-                words = _CJK_RUN_RE.findall(text)
-                for w in set(words):
-                    if len(w) >= 2 and w not in exclude:
-                        word_info[w] = _bump(word_info.get(w), bit)
-            except:
-                pass
+    # 派生缓存命中时直接读取字段投影（pickle），避免对 100MB 文件逐行
+    # json.loads；缓存缺失时自动回退逐行解析，结果一致。集合推导式在
+    # 构造 set 时即过滤掉单字/停用词，省去先建全集再过滤的中间对象。
+    for item in iter_cached(BASE + 'exploring_set_fixed.jsonl'):
+        domain = item.get('domain', 'unknown')
+        domain_counts[domain] += 1
+        bit = domain_bits.setdefault(domain, 1 << len(domain_bits))
+        text = item.get('note_title', '') + ' ' + (
+            item.get('desc', '') or item.get('note_content', ''))
+        for w in {w for w in _CJK_RUN_RE.findall(text)
+                  if len(w) >= 2 and w not in exclude}:
+            word_info[w] = _bump(word_info.get(w), bit)
 
     domain_display = {
         u'\u60c5\u611f': '情感', u'\u7a7f\u642d': '穿搭', u'\u5fc3\u7406': '心理',

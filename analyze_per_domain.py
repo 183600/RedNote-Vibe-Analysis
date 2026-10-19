@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
-import json
 import re
 from collections import defaultdict, Counter
 
 from analysis_utils import BASE
+from derived_cache import iter_cached
 
 exclude = set([u'话题', u'时尚薯', u'生活薯', u'知识薯', u'美食薯', u'校园薯',
                u'薯队长', u'薯条小助手', u'小红书创作学院', u'笔记灵感'])
@@ -33,25 +33,20 @@ def main():
     domain_word_freq = {d: Counter() for d in major_domains}
     domain_total = {d: 0 for d in major_domains}
 
-    with open(BASE + "exploring_set_fixed.jsonl", "rb") as f:
-        for line in f:
-            try:
-                s = line.decode("utf-8")
-                item = json.loads(s)
-                domain = item.get("domain", "unknown")
-                if domain not in major_domains:
-                    continue
-            
-                text = item.get("note_title", "") + " " + (
-                    item.get("desc", "") or item.get("note_content", ""))
-                words = _CJK_RUN_RE.findall(text)
-            
-                domain_total[domain] += 1
-                for w in set(words):
-                    if w in _CROSS_TOPIC_WORDS:
-                        domain_word_freq[domain][w] += 1
-            except:
-                pass
+    # 派生缓存命中时直接读取字段投影（pickle），避免对 100MB 文件逐行
+    # json.loads；缓存缺失时自动回退逐行解析，结果一致。
+    for item in iter_cached(BASE + "exploring_set_fixed.jsonl"):
+        domain = item.get("domain", "unknown")
+        if domain not in major_domains:
+            continue
+
+        text = item.get("note_title", "") + " " + (
+            item.get("desc", "") or item.get("note_content", ""))
+        words = _CJK_RUN_RE.findall(text)
+
+        domain_total[domain] += 1
+        for w in set(words) & _CROSS_TOPIC_WORDS:
+            domain_word_freq[domain][w] += 1
 
     print("Domain totals:")
     for d in major_domains:

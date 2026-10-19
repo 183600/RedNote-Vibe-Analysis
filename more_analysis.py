@@ -7,7 +7,7 @@ import codecs
 from collections import Counter
 from functools import partial
 
-from analysis_utils import run_parallel
+from analysis_utils import iter_jsonl_codecs, run_parallel
 
 RE_DIGITS = re.compile(r"\d+")
 # 连续的非 \w 字符（标点/空白）作为分隔符直接切词，等价于原先「标点→空格再 split」。
@@ -159,34 +159,28 @@ def stream_all(filepath, sample_size=5000, seed=42):
     total = 0
     rng = random.Random(seed)
     sample = []
-    with codecs.open(filepath, "r", encoding="utf-8") as f:
-        for line in f:
-            try:
-                item = json.loads(line)
-            except Exception:
-                continue
+    for item in iter_jsonl_codecs(filepath):
+        text = item.get("desc", "") or item.get("note_content", "")
+        title = item.get("note_title", "")
 
-            text = item.get("desc", "") or item.get("note_content", "")
-            title = item.get("note_title", "")
+        emoji_desc.update(extract_emojis(text))
+        emoji_title.update(extract_emojis(title))
+        tags_desc.update(extract_hashtags(text))
+        tags_title.update(extract_hashtags(title))
 
-            emoji_desc.update(extract_emojis(text))
-            emoji_title.update(extract_emojis(title))
-            tags_desc.update(extract_hashtags(text))
-            tags_title.update(extract_hashtags(title))
+        words = tokenize(text)
+        words_title = tokenize(title)
 
-            words = tokenize(text)
-            words_title = tokenize(title)
+        if len(sample) < sample_size:
+            sample.append((text, title, words, words_title))
+        else:
+            j = rng.randint(0, total)
+            if j < sample_size:
+                sample[j] = (text, title, words, words_title)
 
-            if len(sample) < sample_size:
-                sample.append((text, title, words, words_title))
-            else:
-                j = rng.randint(0, total)
-                if j < sample_size:
-                    sample[j] = (text, title, words, words_title)
-
-            freq_desc.update(words)
-            freq_title.update(words_title)
-            total += 1
+        freq_desc.update(words)
+        freq_title.update(words_title)
+        total += 1
 
     for text, title, words, words_title in sample:
         if len(words) >= 2:

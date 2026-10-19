@@ -90,6 +90,26 @@ def tokenize(text: str) -> list[str]:
     return out
 
 
+_TOK_SEP = "\x00"
+
+
+def tokenize_encode(body: str) -> tuple:
+    """`tokenize` 的进程池任务版：顺带在 worker 内算好 MTLD 并紧凑编码。
+
+    返回 (tokens 编码, token 数, mtld 或 None)：token 列表连接成单个
+    字符串回传（父进程按 `_TOK_SEP` 还原），避免逐个 token 小对象的
+    pickle/IPC 开销；MTLD 只在达到 `MIN_TOKENS_MTLD` 时计算（与父进程
+    原先的门槛一致）。token 本身含分隔符（理论上的 \\u0000）时回退传输
+    原列表，保证任何输入下与 `tokenize` 结果逐位一致。
+    """
+    toks = tokenize(body)
+    joined = _TOK_SEP.join(toks)
+    if joined.count(_TOK_SEP) != len(toks) - 1:
+        joined = toks
+    mt = mtld(toks) if len(toks) >= MIN_TOKENS_MTLD else None
+    return joined, len(toks), mt
+
+
 def heaps_curve(doc_tokens: list[list[str]],
                 max_tokens: int | None = None) -> tuple[np.ndarray, np.ndarray]:
     """Heaps 定律累积曲线：逐文档累计 token 数与词型数。
@@ -240,11 +260,11 @@ def sample_lexical(path: str, pool=None, offsets=None) -> dict:
     heap_tokens: list[int] = []
     heap_types: list[int] = []
     n_tokens = 0
-    batch = 512
+    batch = 2048
     # 重复正文（同一文本多帖）分词结果相同，缓存其 token 列表复用；
     # 仅缓存确实重复出现的正文，避免内存随抽样规模增长。
     body_counts = Counter(bodies)
-    tok_cache: dict[str, list[str]] = {}
+    tok_cache: dict[str, tuple] = {}
     for start in range(0, len(bodies), batch):
         chunk = bodies[start:start + batch]
         need: list[str] = []
@@ -254,17 +274,19 @@ def sample_lexical(path: str, pool=None, offsets=None) -> dict:
                 continue
             need_index[b] = len(need)
             need.append(b)
-        tok_lists = (pool.map(tokenize, need) if pool is not None
-                     else [tokenize(t) for t in need])
+        tok_lists = (pool.map(tokenize_encode, need) if pool is not None
+                     else [tokenize_encode(t) for t in need])
         for b, i in need_index.items():
             if body_counts[b] > 1:
                 tok_cache[b] = tok_lists[i]
         for b in chunk:
-            toks = tok_cache[b] if b in tok_cache else tok_lists[need_index[b]]
-            if len(toks) < MIN_TOKENS_MTLD:
+            enc = tok_cache[b] if b in tok_cache else tok_lists[need_index[b]]
+            joined, ntok, mt = enc
+            if ntok < MIN_TOKENS_MTLD:
                 continue
-            mtld_values.append(mtld(toks))
+            mtld_values.append(mt)
             if n_tokens < HEAPS_BUDGET:
+                toks = joined.split(_TOK_SEP) if isinstance(joined, str) else joined
                 for tok in toks:
                     if n_tokens >= HEAPS_BUDGET:
                         break

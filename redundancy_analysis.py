@@ -123,9 +123,10 @@ TARGETS = (("likes", "点赞"), ("collections", "收藏"), ("comments", "评论"
 # --------------------------------------------------------------------------
 def char_ngram_set(text: str, n: int = 3) -> frozenset:
     """字符 n-gram 集合（长度不足 n 返回空集）。"""
-    if len(text) < n:
+    m = len(text) - n + 1
+    if m <= 0:
         return frozenset()
-    return frozenset(text[i:i + n] for i in range(len(text) - n + 1))
+    return frozenset(text[i:i + n] for i in range(m))
 
 
 def jaccard(a: frozenset, b: frozenset) -> float:
@@ -149,22 +150,30 @@ def sentence_repetition(text: str | None) -> dict:
     if len(sentences) < 2:
         return out
     sets = [char_ngram_set(s) for s in sentences]
+    sizes = [len(st) for st in sets]
     involved = np.zeros(len(sentences), dtype=bool)
     max_sim = 0.0
     # 上三角两两比较：句数通常 <30，包级别的集合交并比逐对正则扫描更快。
+    # 集合大小预先算好（省掉每对的两次 len）；交集为空时 Jaccard 必为 0，
+    # 直接跳过除法（对 max_sim/近重复判定无影响）。
     for i in range(len(sentences)):
         si = sets[i]
+        li = sizes[i]
         for j in range(i + 1, len(sentences)):
-            sim = jaccard(si, sets[j])
+            inter = len(si & sets[j])
+            if not inter:
+                continue
+            sim = inter / (li + sizes[j] - inter)
             if sim > max_sim:
                 max_sim = sim
             if sim >= DUP_SIM_THRESHOLD:
                 involved[i] = involved[j] = True
     out["max_sim"] = float(max_sim)
     out["dup_sent"] = float(involved.mean())
-    openings = Counter(s[:OPENING_CHARS] for s in sentences)
+    openings_list = [s[:OPENING_CHARS] for s in sentences]
+    openings = Counter(openings_list)
     out["open_rep"] = float(
-        sum(1 for s in sentences if openings[s[:OPENING_CHARS]] >= 2)
+        sum(1 for o in openings_list if openings[o] >= 2)
         / len(sentences))
     return out
 

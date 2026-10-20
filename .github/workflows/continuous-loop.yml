@@ -527,8 +527,11 @@ jobs:
           }
 
           reject_phase() {
-            echo "[gate] git reset --hard HEAD + git clean -fd —— 撤销本阶段全部改动"
-            git reset --hard HEAD
+            # 阶段内允许 agent 自己 git commit（防超时丢进度），
+            # 因此回滚要回到「本阶段开始时的 HEAD」，不能只回到当前 HEAD。
+            local base="${PHASE_BASE:-HEAD}"
+            echo "[gate] git reset --hard ${base} + git clean -fd —— 撤销本阶段全部改动"
+            git reset --hard "$base"
             git clean -fd
             ensure_gate
             ensure_datafiles
@@ -857,6 +860,7 @@ jobs:
               echo '3. .github 目录是 CI 配置，绝对不要删除、修改或移动其中任何文件；'
               echo '4. 修复后必须自行运行测试并确认完全通过。'
             } > /tmp/tg_fix_prompt.txt
+            PHASE_BASE="$(git rev-parse HEAD)"
             run_phase "testfix" "$(cat /tmp/tg_fix_prompt.txt)" "$TG_FIX_BUDGET" || true
 
 
@@ -924,6 +928,7 @@ jobs:
               case "$phase" in
                 perf|bug) P="$(fast_prompt "$phase" "$P")" ;;
               esac
+              PHASE_BASE="$(git rev-parse HEAD)"
               run_phase "$phase" "$P" "$T"
 
               # ---- 质量门禁：通过才提交；不通过则整段撤销 ----

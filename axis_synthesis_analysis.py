@@ -727,9 +727,17 @@ def main() -> None:
     share_by_stack = stack_shares(stack_arr, ok_stack)
     mean_p_ai = {str(k): mean_ci(p_ai[stack_arr == k], seed=BOOT_SEED)
                  for k in order_ks}
+    # within_cell_spearman 没有哨兵语义；若把 -1 当作真实堆叠数传入，
+    # 有效轴不足 5 的帖子会以“0 轴”身份参与排序，污染单元内相关。
+    # 这里只在五轴均可用的帖子内计算，并重建对应的单元分组与秩缓存。
+    valid_stack = stack_arr >= 0
+    valid_cells = cells[valid_stack]
+    valid_p_ai = p_ai[valid_stack]
+    valid_groups = cell_groups(valid_cells, MIN_CELL_N)
     stack_rho = within_cell_spearman(
-        stack_arr.astype(float), p_ai, cells, min_cell_n=MIN_CELL_N,
-        groups=groups, y_ranks=cell_rank_cache(p_ai, groups))
+        stack_arr[valid_stack].astype(float), valid_p_ai, valid_cells,
+        min_cell_n=MIN_CELL_N, groups=valid_groups,
+        y_ranks=cell_rank_cache(valid_p_ai, valid_groups))
     print("堆叠分布：" + "；".join(
         f"{k} 轴 {share_by_stack[str(k)]:.1%}（P(AI)={mean_p_ai[str(k)]['mean']:.3f}）"
         for k in order_ks))

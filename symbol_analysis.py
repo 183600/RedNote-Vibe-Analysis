@@ -187,7 +187,9 @@ def tag_structure(note_tags: list[list[str]],
     total = int(counts.sum())
     uniq = len(tag_counts)
     singles = sum(1 for c in tag_counts.values() if c == 1)
-    len_sum = sum(len(t) * c for t, c in tag_counts.items())
+    # 标签长度均值与 tags_total 同口径：按全部标签出现次数加权，
+    # 而不是「标签 × 出现该标签的笔记数」（同帖重复标签会低估）。
+    len_sum = sum(len(t) for ts in note_tags for t in ts)
     return {
         "n_notes": int(n_notes),
         "n_tagged": tagged,

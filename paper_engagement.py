@@ -63,7 +63,7 @@ def main():
         n=("log_likes", "size"),
         likes_med=("likes", "median"),
         log_likes_mean=("log_likes", "mean"),
-        log_likes_se=("log_likes", lambda s: s.std() / np.sqrt(len(s))),
+        log_likes_se=("log_likes", lambda s: s.std(ddof=1) / np.sqrt(len(s))),
         comments_med=("comments", "median"),
         p_lo=("p_ai", "min"), p_hi=("p_ai", "max"),
     )

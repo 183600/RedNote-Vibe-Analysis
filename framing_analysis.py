@@ -532,13 +532,16 @@ def main() -> None:
     tmpl_h = np.asarray([h in h_open_set for h in heads_valid])
     n_v = int(head_valid.sum())
 
-    order = np.argsort(p_v, kind="stable")
     decile = np.empty(n_v, dtype=np.int64)
-    decile[order] = np.minimum(np.arange(n_v) * 10 // n_v, 9)
+    if n_v:
+        order = np.argsort(p_v, kind="stable")
+        decile[order] = np.minimum(np.arange(n_v) * 10 // n_v, 9)
     deciles = []
     for d in range(10):
         m = decile == d
         n_m = int(m.sum())
+        if n_m == 0:
+            continue
         k_a = int(tmpl_a[m].sum())
         k_t = int(tmpl_top[m].sum())
         k_h = int(tmpl_h[m].sum())

@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from collections import defaultdict, Counter
+import re
+from collections import Counter
 
 from analysis_utils import BASE
 from derived_cache import iter_cached
@@ -15,6 +16,13 @@ cross_topic_words = [
     u'最后', u'记录吧就现在', u'运动', u'汗颜', u'种草', u'飞吻', u'记住',
     u'大学生', u'总结', u'职场', u'穿搭', u'上海', u'但是', u'宝子们', u'个月'
 ]
+
+# 长词优先的单个交替模式：同一段文字只归属一个词，避免「我的日常」
+# 同时计入「日常」这类嵌套子串导致词频虚高。
+_CROSS_TOPIC_RE = re.compile(
+    "|".join(re.escape(w) for w in sorted(set(cross_topic_words),
+                                            key=len, reverse=True)))
+
 # 主要话题
 major_domains = [u'\u60c5\u611f', u'\u7a7f\u642d', u'\u5fc3\u7406', u'\u5065\u5eb7', u'\u804c\u573a', u'\u65c5\u884c']
 domain_names = {u'\u60c5\u611f': '情感', u'\u7a7f\u642d': '穿搭', u'\u5fc3\u7406': '心理',
@@ -37,9 +45,9 @@ def main():
             item.get("desc") or item.get("note_content") or "")
 
         domain_total[domain] += 1
-        for w in cross_topic_words:
-            if w in text:
-                domain_word_freq[domain][w] += 1
+        # 每帖每词最多计一次；最长优先、非重叠匹配，避免嵌套词重复计分。
+        for w in set(_CROSS_TOPIC_RE.findall(text)):
+            domain_word_freq[domain][w] += 1
 
     print("Domain totals:")
     for d in major_domains:

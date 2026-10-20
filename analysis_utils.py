@@ -1527,7 +1527,7 @@ def decile_table(values, scores, n_bins: int = 10) -> list[dict]:
         rows.append({
             "decile": b + 1, "n": n,
             "mean": float(v.mean()),
-            "ci_low": float(max(v.mean() - 1.96 * se, 0.0)),
+            "ci_low": float(v.mean() - 1.96 * se),
             "ci_high": float(v.mean() + 1.96 * se),
             "p_range": [float(edges[b]), float(edges[b + 1])],
         })

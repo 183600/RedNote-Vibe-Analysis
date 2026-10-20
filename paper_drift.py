@@ -174,7 +174,9 @@ def main(with_scores: bool = True):
     # 季度均值与两套基线一次性按列算好（与逐特征单独算完全等价）。
     feat_cols = [f for f, _ in feat_show]
     qm_all = expl_q.groupby("quarter")[feat_cols].mean().reindex(quarters)
-    h_bases = human[feat_cols].mean()
+    # 与上方数值基线保持同一干净窗口，避免实时爬取窗口的采样断层
+    # 把单特征曲线的人类基线整体抬高。
+    h_bases = human_clean[feat_cols].mean()
     a_bases = aigc_feats[feat_cols].mean()
     for ax, (f, lab) in zip(axes.flat, feat_show):
         qm = qm_all[f]

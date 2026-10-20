@@ -34,7 +34,7 @@ from sklearn.pipeline import make_pipeline
 from sklearn.metrics import (roc_auc_score, average_precision_score,
                              precision_recall_curve)
 
-from analysis_utils import (BASE, FIGS, FEATURE_META, setup_chinese_fonts,
+from analysis_utils import (BASE, FIGS, setup_chinese_fonts,
                             load_features, load_detector_model, detector_score,
                             detector_oof_scores, cliffs_delta, wilson_ci,
                             bootstrap_auc, save_json, oof_proba_cached)
@@ -339,13 +339,18 @@ def load_reference_auc() -> float:
 
 
 def main() -> None:
-    human = load_features("human")
-    aigc = load_features("aigc")
-    expl = load_features("exploring")
+    # 本脚本只用检测器特征与 dataset/domain/month；其余元数据列（模型名、
+    # 互动量等）整表读取后从未参与计算，按需裁列以降低峰值内存。
+    model = load_detector_model()
+    feats = list(model["features"])
+    cols = list(dict.fromkeys(["dataset", "domain", "month", "content_len"]
+                              + feats))
+    human = load_features("human", usecols=cols)
+    aigc = load_features("aigc", usecols=cols)
+    expl = load_features("exploring", usecols=cols)
 
-    feats = [c for c in human.columns if c not in FEATURE_META]
     df = pd.concat([human, aigc], ignore_index=True)
-    X = df[feats].fillna(0).values
+    X = df[feats].to_numpy(dtype=float, copy=False, na_value=0.0)
     y = (df["dataset"] == "aigc").astype(int).values
 
     print("=== 1. 长度匹配 ===")

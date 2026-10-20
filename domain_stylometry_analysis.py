@@ -45,7 +45,6 @@ Outputs
 """
 from __future__ import annotations
 
-import json
 import math
 import os
 
@@ -61,6 +60,7 @@ from analysis_utils import (BASE, INSIGHTS, PALETTE, cell_groups,
                             dedup_indices, detector_oof_all, init_plot_style,
                             load_detector_model, load_features, save_fig,
                             save_json, wilson_ci, within_cell_spearman)
+from derived_cache import iter_cached
 from engagement_drivers_analysis import (cluster_bootstrap_fe_ols, fe_ols,
                                          prepare_fe)
 
@@ -233,10 +233,16 @@ def domain_penalty(df: pd.DataFrame, target: str,
 def load_frames() -> dict:
     """Load features/scores, score human+AIGC out-of-fold, verify alignment."""
     model = load_detector_model()
-    human = load_features("human")
-    aigc = load_features("aigc")
-    expl = load_features("exploring")
-    scores = pd.read_csv(SCORES_PATH)
+    # 这三个宽表各有 46–47 列，但本脚本只用检测器稳健特征、领域/月份与
+    # 互动列；按需取列可显著降低三份特征表的常驻内存（约 150k 行）。
+    feats = list(model["robust_features"])
+    human = load_features("human", usecols=feats + ["month", "domain"])
+    aigc = load_features("aigc", usecols=feats + ["domain", "model_family"])
+    expl = load_features("exploring", usecols=[
+        "month", "domain", "content_len", "n_hashtags",
+        "likes", "collections", "comments"])
+    scores = pd.read_csv(SCORES_PATH, usecols=[
+        "month", "domain", "content_len", "p_ai", "p_ai_full"])
     scores["month"] = scores["month"].astype(str)
 
     if len(scores) != len(expl):
@@ -302,15 +308,15 @@ def dedup_sensitivity(expl: pd.DataFrame,
     if not os.path.isfile(path):
         return {"available": False}
     ids, meta = [], []
-    with open(path, encoding="utf-8") as f:
-        for line in f:
-            rec = json.loads(line)
-            ids.append(rec.get("note_id"))
-            has_meta = (bool(rec.get("user_id"))
-                        and rec.get("domain") not in (None, "", UNKNOWN))
-            meta.append(int(has_meta) + int(bool(rec.get("likes")))
-                        + int(bool(rec.get("collections")))
-                        + int(bool(rec.get("comments"))))
+    # 与特征表同序的单遍投影读取；派生缓存缺失时 iter_cached 自动回退
+    # 逐行解析，取值口径完全一致。
+    for rec in iter_cached(path):
+        ids.append(rec.get("note_id"))
+        has_meta = (bool(rec.get("user_id"))
+                    and rec.get("domain") not in (None, "", UNKNOWN))
+        meta.append(int(has_meta) + int(bool(rec.get("likes")))
+                    + int(bool(rec.get("collections")))
+                    + int(bool(rec.get("comments"))))
     if len(ids) != len(expl):
         return {"available": False, "reason": "row count differs from features"}
     keep = dedup_indices(ids, meta)

@@ -1220,13 +1220,16 @@ def weekday_of(value) -> int | None:
     return dt.weekday() if dt is not None else None
 
 
-def load_features(dataset: str, base: str = BASE) -> pd.DataFrame:
+def load_features(dataset: str, base: str = BASE,
+                  usecols=None) -> pd.DataFrame:
     """读取 paper_features_{dataset}.csv.gz 并规范化 month 列。
 
     缺失月份（如 AIGC 子集无时间戳）统一为空串，避免 NaN 经 astype(str)
     变成字面量 "nan" 后参与字符串比较（"nan" >= "202207" 为真）。
+    `usecols` 可只读取调用方实际用到的列，降低宽表常驻内存。
     """
-    df = pd.read_csv(base + f"paper_features_{dataset}.csv.gz")
+    df = pd.read_csv(base + f"paper_features_{dataset}.csv.gz",
+                     usecols=usecols)
     if "month" in df.columns:
         df["month"] = df["month"].fillna("").astype(str)
     return df
@@ -1242,7 +1245,12 @@ def linear_score(df: pd.DataFrame, features, mean, scale, coef, intercept) -> np
 
     所有自定义特征子集的打分（如仅标题特征）复用这一实现，避免重复公式。
     """
-    z = (df[list(features)].fillna(0).values - np.asarray(mean)) / np.asarray(scale)
+    # 先转成一份 float 矩阵，再原地标准化：避免 fillna/subtract/divide
+    # 连续生成多份同尺寸临时数组（探索集 9 万行 × 37 列时约省 80MB 峰值），
+    # 数值上与 `(fillna(0) - mean) / scale` 逐位一致。
+    z = df[list(features)].to_numpy(dtype=float, copy=True, na_value=0.0)
+    z -= np.asarray(mean)
+    z /= np.asarray(scale)
     logit = z @ np.asarray(coef) + intercept
     return 1.0 / (1.0 + np.exp(-logit))
 
@@ -1365,7 +1373,12 @@ def detector_oof_all(human: pd.DataFrame, aigc: pd.DataFrame, model: dict,
     交叉验证（每个调用点约 3–5 秒），数值与重算逐位一致。
     """
     feats = list(model["robust_features"] if robust else model["features"])
-    X = pd.concat([human[feats], aigc[feats]], ignore_index=True).fillna(0).values
+    # 直接按行拼接两份 float 矩阵（缺失填 0），避免 concat + fillna 生成
+    # 多份同尺寸中间表；数值与旧写法逐位一致。
+    X = np.vstack([
+        human[feats].to_numpy(dtype=float, copy=False, na_value=0.0),
+        aigc[feats].to_numpy(dtype=float, copy=False, na_value=0.0),
+    ])
     y = np.r_[np.zeros(len(human), dtype=int), np.ones(len(aigc), dtype=int)]
     return oof_proba_cached(X, y, feats, seed=seed, folds=5,
                             cache_key="robust" if robust else "full",
@@ -1776,7 +1789,7 @@ def cv_auc(df: pd.DataFrame, feats: list[str], cv=None,
 
     if cv is None:
         cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=seed)
-    X = df[list(feats)].fillna(0).values
+    X = df[list(feats)].to_numpy(dtype=float, copy=False, na_value=0.0)
     y = (df[label_col] == positive).astype(int).values
     pipe = make_pipeline(StandardScaler(),
                          LogisticRegression(max_iter=2000,

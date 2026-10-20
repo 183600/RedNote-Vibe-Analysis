@@ -6,7 +6,7 @@
 或全量扫描原始 JSONL，互不写坏对方输出，可以任意单独重跑。
 
 用法：
-  python3 run_fork_pipeline.py                     # 运行全部 26 步
+  python3 run_fork_pipeline.py                     # 运行全部 27 步
   python3 run_fork_pipeline.py --list              # 只打印步骤
   python3 run_fork_pipeline.py --from 3            # 从第 3 步开始
   python3 run_fork_pipeline.py --only detector_diagnostics.py family_lexicon_analysis.py
@@ -29,6 +29,8 @@ STEPS = [
      "标题端 AI 味（消融/像人度/互动/模板）-> title_style_results.{json,md} + 3 图"),
     ("title_body_congruence_analysis.py",
      "标题×正文 AI 味组合（四象限/时间演化/模型一致性/象限互动）-> title_body_congruence_results.{json,md} + 2 图"),
+    ("title_body_lexical_analysis.py",
+     "标题-正文词汇耦合（覆盖率/Jaccard/原样摘录、长度匹配、P(AI) 梯度、互动偏效应、家族指纹与季度趋势）-> title_body_lexical_results.{json,md} + 2 图"),
     ("diversity_analysis.py",
      "句长 burstiness / MTLD / Heaps β -> diversity_results.{json,md} + 2 图"),
     ("detector_diagnostics.py",

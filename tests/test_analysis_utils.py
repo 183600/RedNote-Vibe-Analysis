@@ -22,6 +22,7 @@ from analysis_utils import (post_text, content_of, clean_body, body_cache,
                             cliffs_delta, cliffs_delta_from_u, wilson_ci,
                             bootstrap_auc, setup_chinese_fonts,
                             dataset_path, title_of, compact_text,
+                            lexical_tokens, lexical_overlap, title_is_excerpt,
                             split_sentences, burstiness, mtld,
                             prefix_ngram_stats, bootstrap_median_ci,
                             DATASETS, linear_score, prior_corrected_proba,
@@ -137,6 +138,38 @@ class TestTextHelpers(unittest.TestCase):
         self.assertAlmostEqual(topk_coverage([5, 3, 2], k=1), 0.5)
         self.assertAlmostEqual(topk_coverage([5, 3, 2], k=3), 1.0)
         self.assertEqual(topk_coverage([], k=5), 0.0)
+
+
+class TestLexicalCouplingHelpers(unittest.TestCase):
+    def test_lexical_tokens_mixed_script(self):
+        got = lexical_tokens("Ai 3.14 猫，写作技巧")
+        self.assertEqual(got, {"ai", "3.14", "猫", "写作", "作技", "技巧"})
+        self.assertEqual(lexical_tokens(""), frozenset())
+        self.assertEqual(lexical_tokens("猫", n=1), {"猫"})
+
+    def test_lexical_tokens_rejects_invalid_n(self):
+        with self.assertRaises(ValueError):
+            lexical_tokens("文本", n=0)
+
+    def test_lexical_overlap_known_values(self):
+        ov = lexical_overlap("Ai 3.14 猫", "ai 3.14 狗")
+        self.assertEqual(ov["n_title"], 3)
+        self.assertEqual(ov["n_body"], 3)
+        self.assertEqual(ov["n_common"], 2)
+        self.assertAlmostEqual(ov["coverage"], 2 / 3)
+        self.assertAlmostEqual(ov["body_coverage"], 2 / 3)
+        self.assertAlmostEqual(ov["jaccard"], 2 / 4)
+        self.assertAlmostEqual(ov["title_only_share"], 1 / 3)
+        empty = lexical_overlap("", "")
+        self.assertEqual(empty["coverage"], 0.0)
+        self.assertEqual(empty["jaccard"], 0.0)
+
+    def test_title_is_excerpt_compact_and_min_length(self):
+        self.assertTrue(title_is_excerpt("这是一个标题", "前言 这是一个标题 正文"))
+        self.assertFalse(title_is_excerpt("短标题", "短标题"))
+        self.assertTrue(title_is_excerpt("短标题", "短标题", min_chars=3))
+        self.assertFalse(title_is_excerpt("另一个标题", "这是一个标题"))
+        self.assertFalse(title_is_excerpt(None, "正文"))
 
 
 class TestStatsHelpers(unittest.TestCase):

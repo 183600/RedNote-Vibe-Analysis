@@ -822,6 +822,76 @@ def compact_text(text: str | None) -> str:
     return re.sub(r"\s+", "", str(text or ""))
 
 
+# 标题-正文词汇耦合用的轻量分词：汉字连续串取字符 n-gram，英文/数字按整词。
+# 不依赖 jieba，避免词表版本差异让「耦合」指标随环境漂移。
+_LEX_CJK_RE = re.compile(r"[\u4e00-\u9fff]+")
+_LEX_LATIN_RE = re.compile(r"[A-Za-z]+")
+_LEX_NUMBER_RE = re.compile(r"\d+(?:\.\d+)?")
+_LEX_SEP_RE = re.compile(r"[^\u4e00-\u9fffA-Za-z0-9.]+")
+
+
+def lexical_tokens(text: str | None, n: int = 2) -> frozenset:
+    """把文本切成确定性的轻量词元集合（汉字 n-gram + 英文/数字整词）。
+
+    汉字连续串按字符 n-gram 切分（长度不足 n 的串保留原串），英文统一小写、
+    数字保留小数；标点、空白、emoji 均作为分隔符丢弃。与 jieba 分词相比，
+    该实现没有词表/版本依赖，跨机器重跑结果逐位一致，适合做标题与正文的
+    词汇重合度度量。
+    """
+    if n < 1:
+        raise ValueError("n must be >= 1")
+    s = _LEX_SEP_RE.sub(" ", str(text or ""))
+    tokens: set[str] = set()
+    for run in _LEX_CJK_RE.findall(s):
+        if len(run) <= n:
+            tokens.add(run)
+        else:
+            tokens.update(run[i:i + n] for i in range(len(run) - n + 1))
+    tokens.update(w.lower() for w in _LEX_LATIN_RE.findall(s))
+    tokens.update(_LEX_NUMBER_RE.findall(s))
+    return frozenset(tokens)
+
+
+def lexical_overlap(title: str | None, body: str | None,
+                    n: int = 2) -> dict:
+    """标题与正文的词汇重合度（标题词元被正文覆盖的比例等）。
+
+    返回 ``{n_title, n_body, n_common, coverage, body_coverage, jaccard,
+    title_only_share}``：
+
+    - ``coverage`` = |T∩B| / |T|：标题有多少词元在正文中出现；
+    - ``body_coverage`` = |T∩B| / |B|：正文有多少词元被标题提前给出；
+    - ``jaccard`` = |T∩B| / |T∪B|；
+    - ``title_only_share`` = 1 − coverage：标题中正文未出现的信息占比。
+
+    标题或正文为空时各比值为 0（``n_*`` 仍如实返回 0）。
+    """
+    t = lexical_tokens(title, n=n)
+    b = lexical_tokens(body, n=n)
+    common = len(t & b)
+    union = len(t | b)
+    return {
+        "n_title": len(t), "n_body": len(b), "n_common": common,
+        "coverage": common / len(t) if t else 0.0,
+        "body_coverage": common / len(b) if b else 0.0,
+        "jaccard": common / union if union else 0.0,
+        "title_only_share": 1.0 - (common / len(t) if t else 0.0),
+    }
+
+
+def title_is_excerpt(title: str | None, body: str | None,
+                     min_chars: int = 6) -> bool:
+    """判断标题是否为正文的原样片段（去掉空白后标题整体出现在正文中）。
+
+    仅用于识别「标题直接摘自正文」这一形态；短于 ``min_chars`` 的标题
+    太容易偶然命中，一律返回 False。
+    """
+    t = compact_text(title)
+    if len(t) < min_chars:
+        return False
+    return t in compact_text(body)
+
+
 # 话题标签：`#` 后跟最多 30 个非 `#`/空白/方括号字符。排除方括号是为了
 # 兼容 AIGC 与探索集的导出格式 `#标签[话题]#`（标签体在 `[话题]` 前结束）。
 _TAG_RE = re.compile(r"#([^#\s\[\]]{1,30})")

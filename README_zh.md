@@ -8,7 +8,7 @@
 - [📄 论文](#-论文)
 - [📊 Fork 分析](#-fork-分析)
   - [数据集概览](#数据集概览) · [词频相关性矩阵](#词频相关性矩阵) · [关键发现](#关键发现) · [常见词分析](#常见词助词虚词分析)
-  - 深潜分析：[deep_dive](#深潜分析deep_dive_analysispy) · [framing](#框架模板化分析framing_analysispy) · [title_style](#标题端ai-味分析title_style_analysispy) · [title_body](#标题正文-ai-味组合title_body_congruence_analysispy) · [diversity](#文本多样性与节奏深潜diversity_analysispy) · [detector](#检测器诊断detector_diagnosticspy) · [family_lexicon](#模型家族词表指纹family_lexicon_analysispy) · [engagement_structure](#互动结构与ai-味惩罚分解engagement_structure_analysispy) · [engagement_drivers](#互动惩罚的逐特征载体engagement_drivers_analysispy) · [author_style](#作者层分解作者间-vs-人内author_style_analysispy) · [symbol](#话题标签与表情生态symbol_analysispy) · [near_duplicate](#近重复内容与模板复用near_duplicate_analysispy) · [family_transfer](#风格家族迁移野外高-ai-味帖的构成与互动回报family_transfer_analysispy) · [stance](#语气情态层谨慎断言强化与呼语stance_analysispy) · [concreteness](#具体性层数字单位量值地名与模糊量词concreteness_analysispy) · [cta](#互动引导语层评论点赞收藏关注转发与催购cta_analysispy) · [typography](#标点与排版层感叹号结构与短行排版typography_analysispy) · [discourse](#篇章连接层因果转折递进序列举例与总结discourse_analysispy) · [axis_synthesis](#跨轴综合五轴风格指标的共现结构独立信号与互动堆叠axis_synthesis_analysispy) · [redundancy](#正文自重复与句式复读redundancy_analysispy) · [experiential](#经验叙述与自我披露experiential_analysispy) · [affect](#情绪与效价affect_analysispy) · [domain_stylometry](#领域异质性渗透互动惩罚与家族构成domain_stylometry_analysispy) · [data_audit](#数据质量审计data_auditpy)
+  - 深潜分析：[deep_dive](#深潜分析deep_dive_analysispy) · [framing](#框架模板化分析framing_analysispy) · [title_style](#标题端ai-味分析title_style_analysispy) · [title_body](#标题正文-ai-味组合title_body_congruence_analysispy) · [title_body_lexical](#标题-正文词汇耦合title_body_lexical_analysispy) · [diversity](#文本多样性与节奏深潜diversity_analysispy) · [detector](#检测器诊断detector_diagnosticspy) · [family_lexicon](#模型家族词表指纹family_lexicon_analysispy) · [engagement_structure](#互动结构与ai-味惩罚分解engagement_structure_analysispy) · [engagement_drivers](#互动惩罚的逐特征载体engagement_drivers_analysispy) · [author_style](#作者层分解作者间-vs-人内author_style_analysispy) · [symbol](#话题标签与表情生态symbol_analysispy) · [near_duplicate](#近重复内容与模板复用near_duplicate_analysispy) · [family_transfer](#风格家族迁移野外高-ai-味帖的构成与互动回报family_transfer_analysispy) · [stance](#语气情态层谨慎断言强化与呼语stance_analysispy) · [concreteness](#具体性层数字单位量值地名与模糊量词concreteness_analysispy) · [cta](#互动引导语层评论点赞收藏关注转发与催购cta_analysispy) · [typography](#标点与排版层感叹号结构与短行排版typography_analysispy) · [discourse](#篇章连接层因果转折递进序列举例与总结discourse_analysispy) · [axis_synthesis](#跨轴综合五轴风格指标的共现结构独立信号与互动堆叠axis_synthesis_analysispy) · [redundancy](#正文自重复与句式复读redundancy_analysispy) · [experiential](#经验叙述与自我披露experiential_analysispy) · [affect](#情绪与效价affect_analysispy) · [domain_stylometry](#领域异质性渗透互动惩罚与家族构成domain_stylometry_analysispy) · [data_audit](#数据质量审计data_auditpy)
   - [生成的可视化图表](#生成的可视化图表) · [分析脚本](#分析脚本)
 - [参考资料](#参考资料)
 - [许可证](#许可证)
@@ -145,6 +145,15 @@
 2. **独立性是持续状态**：各季度标题-正文秩相关始终接近 0（+0.003–+0.054）；半年度双高占比从 2023H1 的 5.7% 缓升到 2025H1 的 7.5%，标题端高稳定在 14.5%–19.1%。
 3. **模型级像人度两端弱相关**：17 个 LLM 的标题均值与正文均值秩相关仅 ρ=+0.395（p=0.12）——「正文更不像人」不代表「标题也更不像人」，两端像人度是两个弱相关的排序。
 4. **惩罚集中在正文端高象限**：相对 Q1 双低，Q2 标题端高点赞 +0.074 [+0.038, +0.102]、Q3 正文端高 -0.170 [-0.205, -0.142]、Q4 双高 -0.091 [-0.131, -0.047]（收藏同向），零点赞密度仅 Q3/Q4 显著为正；控制正文长度与标签数后 Q2 仍为 +0.042、Q3 -0.152、Q4 -0.081（Q3/Q4 的负偏效应在 Q50/Q70/Q80 阈值下方向与量级稳定，Q2 在 Q50 下接近 0）。标题端高不降反升、正文端高最差、双高的惩罚反而小于纯正文端高——进一步把「AI 味惩罚」定位在正文端，同时说明营销式标题并未与正文 AI 味叠加恶化（象限为观察性分组，不作因果解读）。
+
+### 标题-正文词汇耦合（`title_body_lexical_analysis.py`）
+
+前两节看标题端 AI 分数与两端分数的组合，本分析回到文本本身：标题里的词元有多少真的出现在正文里？用确定性轻量分词（汉字字符 2-gram + 英文/数字整词，不依赖 jieba）计算 `coverage`（标题词元被正文覆盖的比例）、`jaccard`（标题/正文词元集合的 Jaccard）与 `excerpt`（去空白后标题 ≥6 字且原样出现在正文中）。人类/探索集按 note_id 去重，正文 ≥50 字；同时做领域标准化、标题/正文长度匹配、探索集 P(AI) 梯度（标题/正文长度分层）、月份×领域 FE 互动、6 家族指纹与季度趋势。结果图在 `insights/title_body_lexicon.png`、`title_body_gradient.png`，数据在 `title_body_lexical_results.json` 与 `title_body_lexical_results.md`：
+
+1. **人类标题更贴合正文，且差距不是长度或领域造成的**：coverage 均值 human 0.567 / AIGC 0.324 / exploring 0.399，标题覆盖率 ≥0.5 的帖子占 54.5% / 19.9% / 34.0%；标题原样摘录率 11.48% / 0.33% / 2.53%。固定人类领域权重后三组 coverage 为 0.567 / 0.327 / 0.362；按标题长度匹配后人类−AIGC +0.199 [+0.194, +0.204]、人类−探索集 +0.123 [+0.119, +0.126]，按正文长度匹配为 +0.224 [+0.218, +0.230] / +0.139 [+0.134, +0.144]；摘录率差距为 +12.6pp / +9.9pp（标题长度匹配）。Jaccard 对长度更敏感：标题长度匹配后人类−探索集反而为 -0.013 [-0.0138, -0.0121]，说明稳健的跨语料信号主要是「标题词元被正文兑现」，而不是对称的集合重合。剔除标题原样摘录帖后，coverage 的标题长度匹配差距仍为 +0.127 [+0.122, +0.132]（人类−AIGC）与 +0.067 [+0.063, +0.071]（人类−探索集）——约三分之一至一半的匹配差距来自摘录形态，剩余差异仍然存在。
+2. **野外 P(AI) 与词汇耦合只有弱关联**：探索集 36,251 篇（79 个「月份×领域」单元）coverage 与 P(AI) 的单元内加权 ρ=-0.044（70.9% 单元为负），标题长度分层后 -0.072、正文长度分层后 +0.008；Jaccard 原始 ρ=+0.111，但正文长度分层后仅 +0.025；摘录率 ρ=+0.006。与语气、标点、篇章等轴相比，词汇耦合不是稳定的野外「AI 味」信号——标题与正文脱节主要体现在人类 vs AIGC 的跨语料对比，而不是连续 P(AI) 梯度上。
+3. **高 coverage 在野外对应更低互动，而非更高**：控制 P(AI)、标题词元数、正文长度、标签数、其余耦合指标与月份×领域 FE 后（n=29,107、79 个单元、整群 bootstrap 300 次），coverage 每 1 SD 的偏效应为点赞 -0.100 [-0.119, -0.081]、收藏 -0.091 [-0.111, -0.070]、评论 -0.062 [-0.080, -0.045]；标题词元数为 +0.081 / +0.112 / +0.015，摘录率仅评论端 -0.019 [-0.030, -0.009]，P(AI) 自身仍三端全负。即「标题兑现正文」在跨语料上更像人类，但在野外并不带来更高互动（观察性关联，不作因果解读）。
+4. **生成端指纹、时间与判别力**：AIGC 家族 coverage 为 GLM 0.378 > Gemini 0.363 > Claude 0.351 > GPT 0.328 > Qwen 0.304 > DeepSeek 0.264，按正文长度标准化后依次为 +0.062 / +0.029 / +0.023 / +0.001 / -0.022 / -0.048；各家族摘录率均 ≤1.3%，Gemini 为 0。探索集季度趋势中 coverage 固定领域权重后基本持平（ρ=+0.05，p=0.90），摘录率 +0.75（p=0.020，2.3%→3.1%）、Jaccard +0.68（p=0.042），但幅度有限。human vs AIGC 单指标 AUC：coverage 0.705 [0.700, 0.710]、Jaccard 0.556、摘录率 0.556；仅三项耦合特征的 5 折 CV AUC=0.713，标题词元数+正文长度对照 0.682，五项合并 0.797——词汇耦合是中等强度、可解释的辅助信号，不能单独当作野外 AI 味检测器。
 
 ### 文本多样性与节奏深潜（`diversity_analysis.py`）
 
@@ -356,6 +365,7 @@
 | `insights/framing_formulaicity.png`、`framing_gradient.png` | 框架模板化图表（开篇/收尾集中度、收尾符号构成、P(AI) 梯度、季度扩散） |
 | `insights/title_detector.png`、`title_dynamics.png`、`title_formulaicity.png` | 标题端分析图表（特征权重消融、半年度动态与互动、标题前缀集中度） |
 | `insights/title_body_congruence.png`、`title_body_engagement.png` | 标题×正文 AI 味组合图（联合分布与象限、半年度演化、季度独立性、模型级散点；象限互动偏效应森林图与零点赞密度） |
+| `insights/title_body_lexicon.png`、`title_body_gradient.png` | 标题-正文词汇耦合图（覆盖率 ECDF、三指标水平、正文长度曲线、长度匹配差异；P(AI) 梯度、分层稳健性、互动偏效应、家族指纹、季度趋势、判别力） |
 | `insights/diversity_burstiness.png`、`diversity_lexical.png` | 文本多样性图表（句长分布/burstiness ECDF、MTLD 小提琴图与 Heaps 曲线） |
 | `insights/detector_calibration.png`、`detector_errors.png`、`detector_uncertainty.png` | 检测器诊断图（可靠性曲线/阈值权衡、长度与领域错误切片、置信度分层时间线） |
 | `insights/family_lexicon.png` | 模型家族词表指纹（词×家族 log-odds 热力图、AI 味词密度） |
@@ -411,6 +421,7 @@
 - `framing_analysis.py` - 开篇/收尾框架模板化与 AI 风格关联（输出 `insights/framing_*.png`、`framing_results.json/md`）
 - `title_style_analysis.py` - 标题端 AI 味：标题特征消融、模型标题像人度、标题互动与模板（输出 `insights/title_*.png`、`title_style_results.json/md`）
 - `title_body_congruence_analysis.py` - 标题×正文 AI 味四象限组合：构成/半年度演化/季度独立性与 17 模型一致性、象限互动偏效应（FE + 整群 bootstrap，含长度/标签控制与阈值敏感性，输出 `insights/title_body_*.png`、`title_body_congruence_results.json/md`）
+- `title_body_lexical_analysis.py` - 标题-正文词汇耦合：确定性词元覆盖率/Jaccard/原样摘录、领域与标题/正文长度匹配、探索集 P(AI) 梯度与分层稳健性、月份×领域 FE 互动、家族指纹、季度趋势与判别力（输出 `insights/title_body_lexicon.png`、`title_body_gradient.png`、`title_body_lexical_results.json/md`）
 - `diversity_analysis.py` - 句长 burstiness / MTLD / Heaps β 多样性与节奏分析（输出 `insights/diversity_*.png`、`diversity_results.json/md`）
 - `detector_diagnostics.py` - 检测器概率校准 / 阈值敏感性 / 错分切片 / 探索集不确定性（输出 `insights/detector_*.png`、`detector_diagnostics_results.json/md`）
 - `family_lexicon_analysis.py` - AIGC 子集内家族/单模型词表指纹（输出 `insights/family_lexicon.png`、`family_lexicon_results.json/md`）
@@ -434,9 +445,9 @@
 - `data_audit.py` - 只读数据质量审计：文件清单、schema 覆盖、空/短正文、重复 note_id/正文、缺失领域与时间、features 缺失列、JSONL↔features↔scores 行数与行序、清洗长度漂移（输出 `insights/data_audit.png`、`data_audit_results.json/md`）
 - `quick_start.py` - BERT 基线训练
 
-深潜分析套件可一键顺序执行：`python3 run_fork_pipeline.py`（`--list` / `--from N` / `--only 脚本名`，编排 deep_dive / framing / title_style / title_body_congruence / diversity / detector_diagnostics / family_lexicon / engagement_structure / engagement_drivers / author_style / user_clustering / symbol / near_duplicate / family_transfer / stance / concreteness / cta / typography / discourse / axis_synthesis / redundancy / experiential / affect / domain_stylometry / data_audit 共 25 个分析步骤 + 派生缓存（26 步），输出统一落在 `insights/`）。两个管线运行器共用 `pipeline_common.py` 的步骤选择与顺序执行实现（含未知脚本名校验），其单元测试见 `tests/test_pipeline_common.py`。
+深潜分析套件可一键顺序执行：`python3 run_fork_pipeline.py`（`--list` / `--from N` / `--only 脚本名`，编排 deep_dive / framing / title_style / title_body_congruence / title_body_lexical / diversity / detector_diagnostics / family_lexicon / engagement_structure / engagement_drivers / author_style / user_clustering / symbol / near_duplicate / family_transfer / stance / concreteness / cta / typography / discourse / axis_synthesis / redundancy / experiential / affect / domain_stylometry / data_audit 共 26 个分析步骤 + 派生缓存（27 步），输出统一落在 `insights/`）。两个管线运行器共用 `pipeline_common.py` 的步骤选择与顺序执行实现（含未知脚本名校验），其单元测试见 `tests/test_pipeline_common.py`。
 
-运行环境：`pip install -r requirements.txt`；公共工具位于 `analysis_utils.py`（含概率校准、阈值指标、单元内秩相关、长度分箱/十分位表/固定权重时间序列等跨脚本复用工具），单元测试见 `tests/`（`python3 -m unittest discover -s tests`，覆盖 `analysis_utils.py`、`framing_analysis.py` 及标题/标题正文组合/多样性/符号/近重复/互动载体/作者层分解/家族迁移/语气/具体性/互动引导语/标点排版/篇章连接/跨轴综合/正文自重复/经验叙述/情绪效价/领域异质性分析的纯函数、数据审计辅助函数与共享管线运行器）。提交前运行 `python3 ci_gate.py`（语法、核心数据完整性、JSONL 首行可解析）；论文与 fork 两条管线均使用固定随机种子，可独立重跑；所有 `.jsonl` / `.csv.gz` 研究数据只读，派生缓存写入系统临时目录。
+运行环境：`pip install -r requirements.txt`；公共工具位于 `analysis_utils.py`（含概率校准、阈值指标、单元内秩相关、长度分箱/十分位表/固定权重时间序列等跨脚本复用工具），单元测试见 `tests/`（`python3 -m unittest discover -s tests`，覆盖 `analysis_utils.py`、`framing_analysis.py` 及标题/标题正文组合/标题-正文词汇耦合/多样性/符号/近重复/互动载体/作者层分解/家族迁移/语气/具体性/互动引导语/标点排版/篇章连接/跨轴综合/正文自重复/经验叙述/情绪效价/领域异质性分析的纯函数、数据审计辅助函数与共享管线运行器）。提交前运行 `python3 ci_gate.py`（语法、核心数据完整性、JSONL 首行可解析）；论文与 fork 两条管线均使用固定随机种子，可独立重跑；所有 `.jsonl` / `.csv.gz` 研究数据只读，派生缓存写入系统临时目录。
 
 中文字体由 `setup_chinese_fonts()` 自动解析：依次扫描 `REDNOTE_FONT_DIR`、`assets/fonts/`、系统字体目录（Noto Sans CJK/SC、思源黑体、文泉驿等），找不到时回退下载 Noto Sans SC（另含单色 emoji 字体）并缓存到 `~/.cache/rednote-vibe/fonts`；也可用 `REDNOTE_FONT_PATH` 直接指定字体文件，或设 `REDNOTE_FONT_DOWNLOAD=0` 禁用联网下载。写回 CSV 时使用内容比较（`write_csv_gz_if_changed`），内容未变则不触碰文件；`paper_drift.py --figs-only` 可只重绘图表、完全不写 `paper_exploring_scores.csv.gz`。
 
@@ -449,7 +460,7 @@ pip install -r requirements.txt
 python3 -m unittest discover -s tests   # 合成数据单元测试，数秒完成
 python3 ci_gate.py                      # 语法 + 受保护数据 + JSONL 首行校验
 python3 run_paper_pipeline.py           # 论文管线
-python3 run_fork_pipeline.py --list     # 查看 26 个深潜步骤
+python3 run_fork_pipeline.py --list     # 查看 27 个深潜步骤
 python3 run_fork_pipeline.py            # 运行全部深潜分析
 ```
 

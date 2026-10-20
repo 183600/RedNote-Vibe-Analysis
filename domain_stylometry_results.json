@@ -1,0 +1,1462 @@
+{
+ "meta": {
+  "scores_path": "/home/runner/work/RedNote-Vibe-Analysis/RedNote-Vibe-Analysis/paper_exploring_scores.csv.gz",
+  "month_from": "202301",
+  "human_clean_to": "202206",
+  "hi_threshold": 0.9,
+  "min_domain_n": 300,
+  "min_month_n": 50,
+  "min_half_n": 100,
+  "n_boot": 300,
+  "boot_seed": 42,
+  "alignment": {
+   "month": 0,
+   "domain": 0,
+   "content_len": 0
+  },
+  "note": "人类/AIGC 为 5 折折外 P(AI)，探索集为 out-of-sample p_ai；探索集逐记录，未去重；未知领域不参与排名与耦合分析。"
+ },
+ "penetration": {
+  "健康": {
+   "human_clean": {
+    "n": 7536,
+    "mean": 0.1663,
+    "median": 0.0803,
+    "hi_share": 0.0068,
+    "hi_ci_low": 0.0052,
+    "hi_ci_high": 0.0089
+   },
+   "aigc": {
+    "n": 1122,
+    "mean": 0.7991,
+    "median": 0.9222,
+    "hi_share": 0.5463,
+    "hi_ci_low": 0.5171,
+    "hi_ci_high": 0.5753
+   },
+   "exploring": {
+    "n": 9758,
+    "mean": 0.4895,
+    "median": 0.4876,
+    "hi_share": 0.1849,
+    "hi_ci_low": 0.1773,
+    "hi_ci_high": 0.1927
+   },
+   "human_vs_aigc_auc": 0.9484,
+   "excess_hi_pp": 17.81
+  },
+  "穿搭": {
+   "human_clean": {
+    "n": 4106,
+    "mean": 0.2129,
+    "median": 0.1206,
+    "hi_share": 0.0168,
+    "hi_ci_low": 0.0133,
+    "hi_ci_high": 0.0212
+   },
+   "aigc": {
+    "n": 1141,
+    "mean": 0.8421,
+    "median": 0.9601,
+    "hi_share": 0.6468,
+    "hi_ci_low": 0.6186,
+    "hi_ci_high": 0.674
+   },
+   "exploring": {
+    "n": 12675,
+    "mean": 0.36,
+    "median": 0.1711,
+    "hi_share": 0.166,
+    "hi_ci_low": 0.1596,
+    "hi_ci_high": 0.1726
+   },
+   "human_vs_aigc_auc": 0.9393,
+   "excess_hi_pp": 14.92
+  },
+  "美食": {
+   "human_clean": {
+    "n": 6916,
+    "mean": 0.1935,
+    "median": 0.1089,
+    "hi_share": 0.0108,
+    "hi_ci_low": 0.0087,
+    "hi_ci_high": 0.0136
+   },
+   "aigc": {
+    "n": 939,
+    "mean": 0.7915,
+    "median": 0.908,
+    "hi_share": 0.5154,
+    "hi_ci_low": 0.4835,
+    "hi_ci_high": 0.5473
+   },
+   "exploring": {
+    "n": 2537,
+    "mean": 0.4827,
+    "median": 0.463,
+    "hi_share": 0.2196,
+    "hi_ci_low": 0.2039,
+    "hi_ci_high": 0.2361
+   },
+   "human_vs_aigc_auc": 0.9379,
+   "excess_hi_pp": 20.88
+  },
+  "职场": {
+   "human_clean": {
+    "n": 3433,
+    "mean": 0.1418,
+    "median": 0.0584,
+    "hi_share": 0.0023,
+    "hi_ci_low": 0.0012,
+    "hi_ci_high": 0.0046
+   },
+   "aigc": {
+    "n": 843,
+    "mean": 0.793,
+    "median": 0.8962,
+    "hi_share": 0.4935,
+    "hi_ci_low": 0.4598,
+    "hi_ci_high": 0.5272
+   },
+   "exploring": {
+    "n": 8724,
+    "mean": 0.4686,
+    "median": 0.4532,
+    "hi_share": 0.1413,
+    "hi_ci_low": 0.1342,
+    "hi_ci_high": 0.1488
+   },
+   "human_vs_aigc_auc": 0.9621,
+   "excess_hi_pp": 13.9
+  },
+  "宠物": {
+   "human_clean": {
+    "n": 1369,
+    "mean": 0.149,
+    "median": 0.0713,
+    "hi_share": 0.0029,
+    "hi_ci_low": 0.0011,
+    "hi_ci_high": 0.0075
+   },
+   "aigc": {
+    "n": 169,
+    "mean": 0.7191,
+    "median": 0.832,
+    "hi_share": 0.3964,
+    "hi_ci_low": 0.3258,
+    "hi_ci_high": 0.4717
+   },
+   "exploring": {
+    "n": 1830,
+    "mean": 0.432,
+    "median": 0.3558,
+    "hi_share": 0.1694,
+    "hi_ci_low": 0.1529,
+    "hi_ci_high": 0.1873
+   },
+   "human_vs_aigc_auc": 0.9348,
+   "excess_hi_pp": 16.65
+  },
+  "学习": {
+   "human_clean": {
+    "n": 2816,
+    "mean": 0.1355,
+    "median": 0.0544,
+    "hi_share": 0.0043,
+    "hi_ci_low": 0.0024,
+    "hi_ci_high": 0.0074
+   },
+   "aigc": {
+    "n": 243,
+    "mean": 0.6869,
+    "median": 0.7944,
+    "hi_share": 0.3663,
+    "hi_ci_low": 0.3082,
+    "hi_ci_high": 0.4285
+   },
+   "exploring": {
+    "n": 1168,
+    "mean": 0.3926,
+    "median": 0.3085,
+    "hi_share": 0.1284,
+    "hi_ci_low": 0.1104,
+    "hi_ci_high": 0.1488
+   },
+   "human_vs_aigc_auc": 0.9224,
+   "excess_hi_pp": 12.41
+  },
+  "运动": {
+   "human_clean": {
+    "n": 911,
+    "mean": 0.185,
+    "median": 0.1082,
+    "hi_share": 0.0077,
+    "hi_ci_low": 0.0037,
+    "hi_ci_high": 0.0158
+   },
+   "aigc": {
+    "n": 97,
+    "mean": 0.7537,
+    "median": 0.8764,
+    "hi_share": 0.4433,
+    "hi_ci_low": 0.3485,
+    "hi_ci_high": 0.5424
+   },
+   "exploring": {
+    "n": 1595,
+    "mean": 0.4864,
+    "median": 0.4781,
+    "hi_share": 0.2207,
+    "hi_ci_low": 0.201,
+    "hi_ci_high": 0.2417
+   },
+   "human_vs_aigc_auc": 0.9178,
+   "excess_hi_pp": 21.3
+  },
+  "情感": {
+   "human_clean": {
+    "n": 4519,
+    "mean": 0.1535,
+    "median": 0.0677,
+    "hi_share": 0.0046,
+    "hi_ci_low": 0.003,
+    "hi_ci_high": 0.0071
+   },
+   "aigc": {
+    "n": 1099,
+    "mean": 0.784,
+    "median": 0.894,
+    "hi_share": 0.4904,
+    "hi_ci_low": 0.461,
+    "hi_ci_high": 0.52
+   },
+   "exploring": {
+    "n": 15728,
+    "mean": 0.4287,
+    "median": 0.3606,
+    "hi_share": 0.1785,
+    "hi_ci_low": 0.1726,
+    "hi_ci_high": 0.1846
+   },
+   "human_vs_aigc_auc": 0.9503,
+   "excess_hi_pp": 17.39
+  },
+  "旅行": {
+   "human_clean": {
+    "n": 4196,
+    "mean": 0.1261,
+    "median": 0.0551,
+    "hi_share": 0.0012,
+    "hi_ci_low": 0.0005,
+    "hi_ci_high": 0.0028
+   },
+   "aigc": {
+    "n": 837,
+    "mean": 0.7907,
+    "median": 0.8964,
+    "hi_share": 0.4898,
+    "hi_ci_low": 0.4561,
+    "hi_ci_high": 0.5237
+   },
+   "exploring": {
+    "n": 8691,
+    "mean": 0.49,
+    "median": 0.4787,
+    "hi_share": 0.1411,
+    "hi_ci_low": 0.1339,
+    "hi_ci_high": 0.1485
+   },
+   "human_vs_aigc_auc": 0.9658,
+   "excess_hi_pp": 13.99
+  },
+  "心理": {
+   "human_clean": {
+    "n": 1851,
+    "mean": 0.0759,
+    "median": 0.0322,
+    "hi_share": 0.0,
+    "hi_ci_low": 0.0,
+    "hi_ci_high": 0.0021
+   },
+   "aigc": {
+    "n": 764,
+    "mean": 0.7486,
+    "median": 0.8425,
+    "hi_share": 0.3901,
+    "hi_ci_low": 0.3561,
+    "hi_ci_high": 0.4251
+   },
+   "exploring": {
+    "n": 11797,
+    "mean": 0.4302,
+    "median": 0.4053,
+    "hi_share": 0.1078,
+    "hi_ci_low": 0.1024,
+    "hi_ci_high": 0.1135
+   },
+   "human_vs_aigc_auc": 0.9707,
+   "excess_hi_pp": 10.78
+  },
+  "未知": {
+   "human_clean": {
+    "n": 0,
+    "mean": null,
+    "median": null,
+    "hi_share": null,
+    "hi_ci_low": null,
+    "hi_ci_high": null
+   },
+   "aigc": {
+    "n": 0,
+    "mean": null,
+    "median": null,
+    "hi_share": null,
+    "hi_ci_low": null,
+    "hi_ci_high": null
+   },
+   "exploring": {
+    "n": 16978,
+    "mean": 0.5377,
+    "median": 0.5526,
+    "hi_share": 0.2503,
+    "hi_ci_low": 0.2439,
+    "hi_ci_high": 0.2569
+   },
+   "human_vs_aigc_auc": null,
+   "excess_hi_pp": null
+  }
+ },
+ "halfyear": {
+  "halves": [
+   "2023H1",
+   "2023H2",
+   "2024H1",
+   "2024H2",
+   "2025H1"
+  ],
+  "domains": {
+   "健康": {
+    "2023H1": {
+     "n": 50,
+     "hi_share": null,
+     "hi_ci_low": null,
+     "hi_ci_high": null,
+     "mean": 0.4921
+    },
+    "2023H2": {
+     "n": 186,
+     "mean": 0.4829,
+     "median": 0.4538,
+     "hi_share": 0.1183,
+     "hi_ci_low": 0.0794,
+     "hi_ci_high": 0.1726
+    },
+    "2024H1": {
+     "n": 756,
+     "mean": 0.4612,
+     "median": 0.4169,
+     "hi_share": 0.1614,
+     "hi_ci_low": 0.1369,
+     "hi_ci_high": 0.1893
+    },
+    "2024H2": {
+     "n": 1740,
+     "mean": 0.4728,
+     "median": 0.4501,
+     "hi_share": 0.1506,
+     "hi_ci_low": 0.1345,
+     "hi_ci_high": 0.1681
+    },
+    "2025H1": {
+     "n": 7026,
+     "mean": 0.4969,
+     "median": 0.5052,
+     "hi_share": 0.1977,
+     "hi_ci_low": 0.1885,
+     "hi_ci_high": 0.2072
+    }
+   },
+   "穿搭": {
+    "2023H1": {
+     "n": 0,
+     "hi_share": null,
+     "hi_ci_low": null,
+     "hi_ci_high": null,
+     "mean": null
+    },
+    "2023H2": {
+     "n": 0,
+     "hi_share": null,
+     "hi_ci_low": null,
+     "hi_ci_high": null,
+     "mean": null
+    },
+    "2024H1": {
+     "n": 54,
+     "hi_share": null,
+     "hi_ci_low": null,
+     "hi_ci_high": null,
+     "mean": 0.4524
+    },
+    "2024H2": {
+     "n": 2672,
+     "mean": 0.3945,
+     "median": 0.2695,
+     "hi_share": 0.1811,
+     "hi_ci_low": 0.167,
+     "hi_ci_high": 0.1962
+    },
+    "2025H1": {
+     "n": 9949,
+     "mean": 0.3502,
+     "median": 0.1665,
+     "hi_share": 0.1618,
+     "hi_ci_low": 0.1547,
+     "hi_ci_high": 0.1692
+    }
+   },
+   "美食": {
+    "2023H1": {
+     "n": 7,
+     "hi_share": null,
+     "hi_ci_low": null,
+     "hi_ci_high": null,
+     "mean": 0.4276
+    },
+    "2023H2": {
+     "n": 35,
+     "hi_share": null,
+     "hi_ci_low": null,
+     "hi_ci_high": null,
+     "mean": 0.5277
+    },
+    "2024H1": {
+     "n": 367,
+     "mean": 0.4973,
+     "median": 0.4785,
+     "hi_share": 0.2452,
+     "hi_ci_low": 0.204,
+     "hi_ci_high": 0.2917
+    },
+    "2024H2": {
+     "n": 818,
+     "mean": 0.481,
+     "median": 0.474,
+     "hi_share": 0.2115,
+     "hi_ci_low": 0.1849,
+     "hi_ci_high": 0.2408
+    },
+    "2025H1": {
+     "n": 1310,
+     "mean": 0.4788,
+     "median": 0.4559,
+     "hi_share": 0.2183,
+     "hi_ci_low": 0.1968,
+     "hi_ci_high": 0.2415
+    }
+   },
+   "职场": {
+    "2023H1": {
+     "n": 102,
+     "mean": 0.3847,
+     "median": 0.3029,
+     "hi_share": 0.0686,
+     "hi_ci_low": 0.0336,
+     "hi_ci_high": 0.1349
+    },
+    "2023H2": {
+     "n": 217,
+     "mean": 0.4573,
+     "median": 0.4204,
+     "hi_share": 0.1198,
+     "hi_ci_low": 0.0831,
+     "hi_ci_high": 0.1698
+    },
+    "2024H1": {
+     "n": 483,
+     "mean": 0.42,
+     "median": 0.3566,
+     "hi_share": 0.118,
+     "hi_ci_low": 0.0922,
+     "hi_ci_high": 0.1498
+    },
+    "2024H2": {
+     "n": 1173,
+     "mean": 0.4299,
+     "median": 0.376,
+     "hi_share": 0.1125,
+     "hi_ci_low": 0.0957,
+     "hi_ci_high": 0.1319
+    },
+    "2025H1": {
+     "n": 6749,
+     "mean": 0.4804,
+     "median": 0.4801,
+     "hi_share": 0.1498,
+     "hi_ci_low": 0.1415,
+     "hi_ci_high": 0.1585
+    }
+   },
+   "宠物": {
+    "2023H1": {
+     "n": 27,
+     "hi_share": null,
+     "hi_ci_low": null,
+     "hi_ci_high": null,
+     "mean": 0.519
+    },
+    "2023H2": {
+     "n": 75,
+     "hi_share": null,
+     "hi_ci_low": null,
+     "hi_ci_high": null,
+     "mean": 0.5116
+    },
+    "2024H1": {
+     "n": 294,
+     "mean": 0.4098,
+     "median": 0.339,
+     "hi_share": 0.1327,
+     "hi_ci_low": 0.0986,
+     "hi_ci_high": 0.1762
+    },
+    "2024H2": {
+     "n": 513,
+     "mean": 0.4218,
+     "median": 0.334,
+     "hi_share": 0.152,
+     "hi_ci_low": 0.1236,
+     "hi_ci_high": 0.1857
+    },
+    "2025H1": {
+     "n": 921,
+     "mean": 0.4358,
+     "median": 0.363,
+     "hi_share": 0.1889,
+     "hi_ci_low": 0.165,
+     "hi_ci_high": 0.2155
+    }
+   },
+   "学习": {
+    "2023H1": {
+     "n": 4,
+     "hi_share": null,
+     "hi_ci_low": null,
+     "hi_ci_high": null,
+     "mean": 0.6971
+    },
+    "2023H2": {
+     "n": 31,
+     "hi_share": null,
+     "hi_ci_low": null,
+     "hi_ci_high": null,
+     "mean": 0.3406
+    },
+    "2024H1": {
+     "n": 181,
+     "mean": 0.347,
+     "median": 0.2737,
+     "hi_share": 0.0994,
+     "hi_ci_low": 0.0638,
+     "hi_ci_high": 0.1517
+    },
+    "2024H2": {
+     "n": 324,
+     "mean": 0.3881,
+     "median": 0.3103,
+     "hi_share": 0.1204,
+     "hi_ci_low": 0.0893,
+     "hi_ci_high": 0.1603
+    },
+    "2025H1": {
+     "n": 628,
+     "mean": 0.4088,
+     "median": 0.3197,
+     "hi_share": 0.1449,
+     "hi_ci_low": 0.1195,
+     "hi_ci_high": 0.1746
+    }
+   },
+   "运动": {
+    "2023H1": {
+     "n": 15,
+     "hi_share": null,
+     "hi_ci_low": null,
+     "hi_ci_high": null,
+     "mean": 0.4668
+    },
+    "2023H2": {
+     "n": 49,
+     "hi_share": null,
+     "hi_ci_low": null,
+     "hi_ci_high": null,
+     "mean": 0.4356
+    },
+    "2024H1": {
+     "n": 227,
+     "mean": 0.5025,
+     "median": 0.4977,
+     "hi_share": 0.2291,
+     "hi_ci_low": 0.1792,
+     "hi_ci_high": 0.288
+    },
+    "2024H2": {
+     "n": 460,
+     "mean": 0.4768,
+     "median": 0.4628,
+     "hi_share": 0.1913,
+     "hi_ci_low": 0.158,
+     "hi_ci_high": 0.2297
+    },
+    "2025H1": {
+     "n": 844,
+     "mean": 0.4905,
+     "median": 0.4868,
+     "hi_share": 0.237,
+     "hi_ci_low": 0.2095,
+     "hi_ci_high": 0.2668
+    }
+   },
+   "情感": {
+    "2023H1": {
+     "n": 203,
+     "mean": 0.3974,
+     "median": 0.3628,
+     "hi_share": 0.0887,
+     "hi_ci_low": 0.0568,
+     "hi_ci_high": 0.1358
+    },
+    "2023H2": {
+     "n": 484,
+     "mean": 0.4172,
+     "median": 0.3234,
+     "hi_share": 0.1591,
+     "hi_ci_low": 0.1292,
+     "hi_ci_high": 0.1943
+    },
+    "2024H1": {
+     "n": 1346,
+     "mean": 0.3938,
+     "median": 0.2871,
+     "hi_share": 0.1471,
+     "hi_ci_low": 0.1292,
+     "hi_ci_high": 0.167
+    },
+    "2024H2": {
+     "n": 3084,
+     "mean": 0.4013,
+     "median": 0.288,
+     "hi_share": 0.1673,
+     "hi_ci_low": 0.1546,
+     "hi_ci_high": 0.1809
+    },
+    "2025H1": {
+     "n": 10611,
+     "mean": 0.4422,
+     "median": 0.3852,
+     "hi_share": 0.1884,
+     "hi_ci_low": 0.1811,
+     "hi_ci_high": 0.1959
+    }
+   },
+   "旅行": {
+    "2023H1": {
+     "n": 32,
+     "hi_share": null,
+     "hi_ci_low": null,
+     "hi_ci_high": null,
+     "mean": 0.495
+    },
+    "2023H2": {
+     "n": 91,
+     "hi_share": null,
+     "hi_ci_low": null,
+     "hi_ci_high": null,
+     "mean": 0.3797
+    },
+    "2024H1": {
+     "n": 501,
+     "mean": 0.4574,
+     "median": 0.4395,
+     "hi_share": 0.1118,
+     "hi_ci_low": 0.0871,
+     "hi_ci_high": 0.1424
+    },
+    "2024H2": {
+     "n": 2325,
+     "mean": 0.4548,
+     "median": 0.423,
+     "hi_share": 0.1183,
+     "hi_ci_low": 0.1058,
+     "hi_ci_high": 0.132
+    },
+    "2025H1": {
+     "n": 5742,
+     "mean": 0.5088,
+     "median": 0.5182,
+     "hi_share": 0.1536,
+     "hi_ci_low": 0.1445,
+     "hi_ci_high": 0.1632
+    }
+   },
+   "心理": {
+    "2023H1": {
+     "n": 168,
+     "mean": 0.3382,
+     "median": 0.2508,
+     "hi_share": 0.0893,
+     "hi_ci_low": 0.0549,
+     "hi_ci_high": 0.1421
+    },
+    "2023H2": {
+     "n": 347,
+     "mean": 0.3949,
+     "median": 0.3016,
+     "hi_share": 0.0836,
+     "hi_ci_low": 0.0588,
+     "hi_ci_high": 0.1174
+    },
+    "2024H1": {
+     "n": 1141,
+     "mean": 0.405,
+     "median": 0.3579,
+     "hi_share": 0.0894,
+     "hi_ci_low": 0.0742,
+     "hi_ci_high": 0.1074
+    },
+    "2024H2": {
+     "n": 2486,
+     "mean": 0.4179,
+     "median": 0.3852,
+     "hi_share": 0.099,
+     "hi_ci_low": 0.0878,
+     "hi_ci_high": 0.1113
+    },
+    "2025H1": {
+     "n": 7655,
+     "mean": 0.4416,
+     "median": 0.4334,
+     "hi_share": 0.115,
+     "hi_ci_low": 0.108,
+     "hi_ci_high": 0.1223
+    }
+   }
+  },
+  "composition": {
+   "2023H1": {
+    "健康": 0.046,
+    "穿搭": 0.0,
+    "美食": 0.0064,
+    "职场": 0.0938,
+    "宠物": 0.0248,
+    "学习": 0.0037,
+    "运动": 0.0138,
+    "情感": 0.1866,
+    "旅行": 0.0294,
+    "心理": 0.1544
+   },
+   "2023H2": {
+    "健康": 0.0849,
+    "穿搭": 0.0,
+    "美食": 0.016,
+    "职场": 0.099,
+    "宠物": 0.0342,
+    "学习": 0.0141,
+    "运动": 0.0224,
+    "情感": 0.2209,
+    "旅行": 0.0415,
+    "心理": 0.1584
+   },
+   "2024H1": {
+    "健康": 0.0679,
+    "穿搭": 0.0049,
+    "美食": 0.033,
+    "职场": 0.0434,
+    "宠物": 0.0264,
+    "学习": 0.0163,
+    "运动": 0.0204,
+    "情感": 0.1209,
+    "旅行": 0.045,
+    "心理": 0.1025
+   },
+   "2024H2": {
+    "健康": 0.0843,
+    "穿搭": 0.1295,
+    "美食": 0.0396,
+    "职场": 0.0568,
+    "宠物": 0.0249,
+    "学习": 0.0157,
+    "运动": 0.0223,
+    "情感": 0.1494,
+    "旅行": 0.1127,
+    "心理": 0.1205
+   },
+   "2025H1": {
+    "健康": 0.1245,
+    "穿搭": 0.1763,
+    "美食": 0.0232,
+    "职场": 0.1196,
+    "宠物": 0.0163,
+    "学习": 0.0111,
+    "运动": 0.015,
+    "情感": 0.188,
+    "旅行": 0.1017,
+    "心理": 0.1356
+   }
+  }
+ },
+ "penalty": {
+  "健康": {
+   "n": 9758,
+   "mean_p_ai": 0.4895,
+   "likes": {
+    "beta": -0.0307,
+    "ci_low": -0.0621,
+    "ci_high": 0.0389,
+    "n_obs": 9476,
+    "n_months": 17,
+    "raw_rho": -0.062,
+    "raw_p": 8.781395751431336e-10,
+    "within_month_rho": -0.0541,
+    "neg_month_share": 0.5294
+   },
+   "collections": {
+    "beta": -0.0102,
+    "ci_low": -0.0447,
+    "ci_high": 0.0625,
+    "n_obs": 9476,
+    "n_months": 17,
+    "raw_rho": -0.0488,
+    "raw_p": 1.4156478176292982e-06,
+    "within_month_rho": -0.0409,
+    "neg_month_share": 0.4706
+   },
+   "comments": {
+    "beta": -0.0331,
+    "ci_low": -0.0516,
+    "ci_high": 0.0029,
+    "n_obs": 9476,
+    "n_months": 17,
+    "raw_rho": -0.054,
+    "raw_p": 9.454352134059426e-08,
+    "within_month_rho": -0.048,
+    "neg_month_share": 0.5882
+   }
+  },
+  "穿搭": {
+   "n": 12675,
+   "mean_p_ai": 0.36,
+   "likes": {
+    "beta": -0.0369,
+    "ci_low": -0.0622,
+    "ci_high": -0.0131,
+    "n_obs": 12621,
+    "n_months": 12,
+    "raw_rho": -0.0241,
+    "raw_p": 0.006601706065457549,
+    "within_month_rho": -0.0344,
+    "neg_month_share": 0.8333
+   },
+   "collections": {
+    "beta": -0.0353,
+    "ci_low": -0.0581,
+    "ci_high": -0.013,
+    "n_obs": 12621,
+    "n_months": 12,
+    "raw_rho": -0.0236,
+    "raw_p": 0.008000922569110088,
+    "within_month_rho": -0.0344,
+    "neg_month_share": 0.8333
+   },
+   "comments": {
+    "beta": 0.007,
+    "ci_low": -0.0126,
+    "ci_high": 0.026,
+    "n_obs": 12621,
+    "n_months": 12,
+    "raw_rho": 0.0407,
+    "raw_p": 4.534459330108078e-06,
+    "within_month_rho": 0.036,
+    "neg_month_share": 0.25
+   }
+  },
+  "美食": {
+   "n": 2537,
+   "mean_p_ai": 0.4827,
+   "likes": {
+    "beta": 0.0122,
+    "ci_low": -0.0131,
+    "ci_high": 0.0425,
+    "n_obs": 2432,
+    "n_months": 16,
+    "raw_rho": 0.0053,
+    "raw_p": 0.7899757841059778,
+    "within_month_rho": 0.0041,
+    "neg_month_share": 0.4375
+   },
+   "collections": {
+    "beta": 0.0206,
+    "ci_low": -0.0039,
+    "ci_high": 0.0529,
+    "n_obs": 2432,
+    "n_months": 16,
+    "raw_rho": 0.0011,
+    "raw_p": 0.9567545035578758,
+    "within_month_rho": -0.0023,
+    "neg_month_share": 0.4375
+   },
+   "comments": {
+    "beta": 0.0634,
+    "ci_low": 0.0412,
+    "ci_high": 0.0881,
+    "n_obs": 2432,
+    "n_months": 16,
+    "raw_rho": 0.0863,
+    "raw_p": 1.3592416127541042e-05,
+    "within_month_rho": 0.0791,
+    "neg_month_share": 0.0625
+   }
+  },
+  "职场": {
+   "n": 8724,
+   "mean_p_ai": 0.4686,
+   "likes": {
+    "beta": -0.139,
+    "ci_low": -0.2008,
+    "ci_high": -0.1031,
+    "n_obs": 8327,
+    "n_months": 16,
+    "raw_rho": -0.1336,
+    "raw_p": 4.8510049237177054e-36,
+    "within_month_rho": -0.1389,
+    "neg_month_share": 0.875
+   },
+   "collections": {
+    "beta": -0.1479,
+    "ci_low": -0.2018,
+    "ci_high": -0.1125,
+    "n_obs": 8327,
+    "n_months": 16,
+    "raw_rho": -0.1429,
+    "raw_p": 4.804914498055332e-41,
+    "within_month_rho": -0.15,
+    "neg_month_share": 0.875
+   },
+   "comments": {
+    "beta": -0.0238,
+    "ci_low": -0.0968,
+    "ci_high": 0.014,
+    "n_obs": 8327,
+    "n_months": 16,
+    "raw_rho": -0.0288,
+    "raw_p": 0.007140144273607761,
+    "within_month_rho": -0.0271,
+    "neg_month_share": 0.6875
+   }
+  },
+  "宠物": {
+   "n": 1830,
+   "mean_p_ai": 0.432,
+   "likes": {
+    "beta": -0.1246,
+    "ci_low": -0.1816,
+    "ci_high": -0.0423,
+    "n_obs": 1633,
+    "n_months": 15,
+    "raw_rho": -0.1253,
+    "raw_p": 7.544597229283598e-08,
+    "within_month_rho": -0.1223,
+    "neg_month_share": 0.7333
+   },
+   "collections": {
+    "beta": -0.1053,
+    "ci_low": -0.1519,
+    "ci_high": -0.0305,
+    "n_obs": 1633,
+    "n_months": 15,
+    "raw_rho": -0.1154,
+    "raw_p": 7.486454024348622e-07,
+    "within_month_rho": -0.1131,
+    "neg_month_share": 0.7333
+   },
+   "comments": {
+    "beta": -0.0335,
+    "ci_low": -0.0926,
+    "ci_high": 0.0551,
+    "n_obs": 1633,
+    "n_months": 15,
+    "raw_rho": -0.0323,
+    "raw_p": 0.16745710503787606,
+    "within_month_rho": -0.0385,
+    "neg_month_share": 0.5333
+   }
+  },
+  "学习": {
+   "n": 1168,
+   "mean_p_ai": 0.3926,
+   "likes": {
+    "beta": -0.097,
+    "ci_low": -0.1593,
+    "ci_high": -0.0307,
+    "n_obs": 811,
+    "n_months": 9,
+    "raw_rho": -0.1154,
+    "raw_p": 7.702241303678549e-05,
+    "within_month_rho": -0.1414,
+    "neg_month_share": 0.7778
+   },
+   "collections": {
+    "beta": -0.099,
+    "ci_low": -0.1489,
+    "ci_high": -0.0419,
+    "n_obs": 811,
+    "n_months": 9,
+    "raw_rho": -0.1141,
+    "raw_p": 9.338125892389179e-05,
+    "within_month_rho": -0.1338,
+    "neg_month_share": 0.7778
+   },
+   "comments": {
+    "beta": -0.0428,
+    "ci_low": -0.1061,
+    "ci_high": 0.0261,
+    "n_obs": 811,
+    "n_months": 9,
+    "raw_rho": -0.0291,
+    "raw_p": 0.3206871066903946,
+    "within_month_rho": -0.0401,
+    "neg_month_share": 0.5556
+   }
+  },
+  "运动": {
+   "n": 1595,
+   "mean_p_ai": 0.4864,
+   "likes": {
+    "beta": -0.0335,
+    "ci_low": -0.0676,
+    "ci_high": 0.0044,
+    "n_obs": 1372,
+    "n_months": 13,
+    "raw_rho": -0.0448,
+    "raw_p": 0.07369975829422967,
+    "within_month_rho": -0.0615,
+    "neg_month_share": 0.6154
+   },
+   "collections": {
+    "beta": -0.0105,
+    "ci_low": -0.049,
+    "ci_high": 0.0385,
+    "n_obs": 1372,
+    "n_months": 13,
+    "raw_rho": -0.0356,
+    "raw_p": 0.15501551044840017,
+    "within_month_rho": -0.0501,
+    "neg_month_share": 0.6923
+   },
+   "comments": {
+    "beta": 0.0084,
+    "ci_low": -0.0383,
+    "ci_high": 0.0503,
+    "n_obs": 1372,
+    "n_months": 13,
+    "raw_rho": 0.0134,
+    "raw_p": 0.5933437228431548,
+    "within_month_rho": -0.0015,
+    "neg_month_share": 0.3846
+   }
+  },
+  "情感": {
+   "n": 15728,
+   "mean_p_ai": 0.4287,
+   "likes": {
+    "beta": -0.1074,
+    "ci_low": -0.1218,
+    "ci_high": -0.0822,
+    "n_obs": 15525,
+    "n_months": 24,
+    "raw_rho": -0.1209,
+    "raw_p": 2.7432306513519554e-52,
+    "within_month_rho": -0.1045,
+    "neg_month_share": 0.7917
+   },
+   "collections": {
+    "beta": -0.1083,
+    "ci_low": -0.1273,
+    "ci_high": -0.0836,
+    "n_obs": 15525,
+    "n_months": 24,
+    "raw_rho": -0.1322,
+    "raw_p": 3.1243711047171887e-62,
+    "within_month_rho": -0.1186,
+    "neg_month_share": 0.8333
+   },
+   "comments": {
+    "beta": 0.013,
+    "ci_low": -0.0011,
+    "ci_high": 0.0252,
+    "n_obs": 15525,
+    "n_months": 24,
+    "raw_rho": 0.0281,
+    "raw_p": 0.0004175082273276431,
+    "within_month_rho": 0.0364,
+    "neg_month_share": 0.4167
+   }
+  },
+  "旅行": {
+   "n": 8691,
+   "mean_p_ai": 0.49,
+   "likes": {
+    "beta": -0.0771,
+    "ci_low": -0.1004,
+    "ci_high": -0.0464,
+    "n_obs": 8477,
+    "n_months": 15,
+    "raw_rho": -0.115,
+    "raw_p": 5.7663367367456206e-27,
+    "within_month_rho": -0.0909,
+    "neg_month_share": 0.8
+   },
+   "collections": {
+    "beta": -0.0712,
+    "ci_low": -0.0949,
+    "ci_high": -0.0446,
+    "n_obs": 8477,
+    "n_months": 15,
+    "raw_rho": -0.1136,
+    "raw_p": 2.3214430175637564e-26,
+    "within_month_rho": -0.09,
+    "neg_month_share": 0.8
+   },
+   "comments": {
+    "beta": -0.0397,
+    "ci_low": -0.0584,
+    "ci_high": -0.0147,
+    "n_obs": 8477,
+    "n_months": 15,
+    "raw_rho": -0.0667,
+    "raw_p": 4.923046241894221e-10,
+    "within_month_rho": -0.0431,
+    "neg_month_share": 0.6
+   }
+  },
+  "心理": {
+   "n": 11797,
+   "mean_p_ai": 0.4302,
+   "likes": {
+    "beta": -0.0827,
+    "ci_low": -0.1033,
+    "ci_high": -0.0621,
+    "n_obs": 11645,
+    "n_months": 24,
+    "raw_rho": -0.0866,
+    "raw_p": 4.2585402319190856e-21,
+    "within_month_rho": -0.0834,
+    "neg_month_share": 0.75
+   },
+   "collections": {
+    "beta": -0.0771,
+    "ci_low": -0.1053,
+    "ci_high": -0.0548,
+    "n_obs": 11645,
+    "n_months": 24,
+    "raw_rho": -0.087,
+    "raw_p": 3.0054382300260527e-21,
+    "within_month_rho": -0.0824,
+    "neg_month_share": 0.8333
+   },
+   "comments": {
+    "beta": -0.0476,
+    "ci_low": -0.0717,
+    "ci_high": -0.0242,
+    "n_obs": 11645,
+    "n_months": 24,
+    "raw_rho": -0.0544,
+    "raw_p": 3.2682163170803075e-09,
+    "within_month_rho": -0.0474,
+    "neg_month_share": 0.6667
+   }
+  },
+  "未知": {
+   "n": 16978,
+   "mean_p_ai": 0.5377,
+   "likes": {
+    "beta": -0.0481,
+    "ci_low": -0.0712,
+    "ci_high": -0.0265,
+    "n_obs": 16953,
+    "n_months": 28,
+    "raw_rho": -0.1245,
+    "raw_p": 1.1539109815672223e-59,
+    "within_month_rho": -0.1202,
+    "neg_month_share": 0.9286
+   },
+   "collections": {
+    "beta": -0.0282,
+    "ci_low": -0.0487,
+    "ci_high": -0.0112,
+    "n_obs": 16953,
+    "n_months": 28,
+    "raw_rho": -0.1272,
+    "raw_p": 3.6171319941901277e-62,
+    "within_month_rho": -0.1245,
+    "neg_month_share": 0.9643
+   },
+   "comments": {
+    "beta": -0.0208,
+    "ci_low": -0.0371,
+    "ci_high": -0.0044,
+    "n_obs": 16953,
+    "n_months": 28,
+    "raw_rho": -0.0658,
+    "raw_p": 9.792130716182218e-18,
+    "within_month_rho": -0.0611,
+    "neg_month_share": 0.8929
+   }
+  }
+ },
+ "family": {
+  "domains": {
+   "健康": {
+    "n": 1122,
+    "shares": {
+     "gpt": 0.238,
+     "deepseek": 0.2175,
+     "gemini": 0.1676,
+     "anthropic": 0.1114,
+     "glm": 0.1034,
+     "qwen": 0.1622
+    }
+   },
+   "穿搭": {
+    "n": 1141,
+    "shares": {
+     "gpt": 0.2252,
+     "deepseek": 0.2472,
+     "gemini": 0.1402,
+     "anthropic": 0.1096,
+     "glm": 0.1034,
+     "qwen": 0.1744
+    }
+   },
+   "美食": {
+    "n": 939,
+    "shares": {
+     "gpt": 0.246,
+     "deepseek": 0.18,
+     "gemini": 0.1821,
+     "anthropic": 0.099,
+     "glm": 0.1171,
+     "qwen": 0.1757
+    }
+   },
+   "职场": {
+    "n": 843,
+    "shares": {
+     "gpt": 0.2171,
+     "deepseek": 0.2278,
+     "gemini": 0.1839,
+     "anthropic": 0.1044,
+     "glm": 0.1079,
+     "qwen": 0.159
+    }
+   },
+   "宠物": {
+    "n": 169,
+    "shares": {
+     "gpt": 0.284,
+     "deepseek": 0.2012,
+     "gemini": 0.1598,
+     "anthropic": 0.1065,
+     "glm": 0.1065,
+     "qwen": 0.142
+    }
+   },
+   "学习": {
+    "n": 243,
+    "shares": {
+     "gpt": 0.2593,
+     "deepseek": 0.1852,
+     "gemini": 0.177,
+     "anthropic": 0.107,
+     "glm": 0.0864,
+     "qwen": 0.1852
+    }
+   },
+   "运动": {
+    "n": 97,
+    "shares": {
+     "gpt": 0.2577,
+     "deepseek": 0.1959,
+     "gemini": 0.134,
+     "anthropic": 0.1134,
+     "glm": 0.1031,
+     "qwen": 0.1959
+    }
+   },
+   "情感": {
+    "n": 1099,
+    "shares": {
+     "gpt": 0.2448,
+     "deepseek": 0.2411,
+     "gemini": 0.1401,
+     "anthropic": 0.0855,
+     "glm": 0.1083,
+     "qwen": 0.1802
+    }
+   },
+   "旅行": {
+    "n": 837,
+    "shares": {
+     "gpt": 0.2497,
+     "deepseek": 0.2067,
+     "gemini": 0.1446,
+     "anthropic": 0.1051,
+     "glm": 0.1159,
+     "qwen": 0.178
+    }
+   },
+   "心理": {
+    "n": 764,
+    "shares": {
+     "gpt": 0.233,
+     "deepseek": 0.2225,
+     "gemini": 0.1584,
+     "anthropic": 0.089,
+     "glm": 0.1204,
+     "qwen": 0.1767
+    }
+   }
+  },
+  "chi2": 48.79,
+  "p": 0.32323839904229984,
+  "cramers_v": 0.0367,
+  "dof": 45
+ },
+ "coupling": {
+  "domains": [
+   "健康",
+   "穿搭",
+   "美食",
+   "职场",
+   "宠物",
+   "学习",
+   "运动",
+   "情感",
+   "旅行",
+   "心理"
+  ],
+  "excess_hi_pp": [
+   17.81,
+   14.92,
+   20.88,
+   13.9,
+   16.65,
+   12.41,
+   21.3,
+   17.39,
+   13.99,
+   10.78
+  ],
+  "likes_beta": [
+   -0.0307,
+   -0.0369,
+   0.0122,
+   -0.139,
+   -0.1246,
+   -0.097,
+   -0.0335,
+   -0.1074,
+   -0.0771,
+   -0.0827
+  ],
+  "spearman_rho": 0.5758,
+  "spearman_p": 0.08155281477260244,
+  "n_domains": 10
+ },
+ "dedup_sensitivity": {
+  "available": true,
+  "n_records": 91481,
+  "n_notes": 60125,
+  "n_duplicate_rows": 31356,
+  "max_abs_delta_pp": 0.44,
+  "domains": {
+   "健康": {
+    "n_records": 9758,
+    "n_notes": 5448,
+    "hi_share_records": 0.1849,
+    "hi_share_notes": 0.187,
+    "delta_pp": 0.21
+   },
+   "穿搭": {
+    "n_records": 12675,
+    "n_notes": 6719,
+    "hi_share_records": 0.166,
+    "hi_share_notes": 0.1649,
+    "delta_pp": -0.11
+   },
+   "美食": {
+    "n_records": 2537,
+    "n_notes": 2537,
+    "hi_share_records": 0.2196,
+    "hi_share_notes": 0.2196,
+    "delta_pp": 0.0
+   },
+   "职场": {
+    "n_records": 8724,
+    "n_notes": 5062,
+    "hi_share_records": 0.1413,
+    "hi_share_notes": 0.1448,
+    "delta_pp": 0.35
+   },
+   "宠物": {
+    "n_records": 1830,
+    "n_notes": 1830,
+    "hi_share_records": 0.1694,
+    "hi_share_notes": 0.1694,
+    "delta_pp": 0.0
+   },
+   "学习": {
+    "n_records": 1168,
+    "n_notes": 1168,
+    "hi_share_records": 0.1284,
+    "hi_share_notes": 0.1284,
+    "delta_pp": 0.0
+   },
+   "运动": {
+    "n_records": 1595,
+    "n_notes": 1595,
+    "hi_share_records": 0.2207,
+    "hi_share_notes": 0.2207,
+    "delta_pp": 0.0
+   },
+   "情感": {
+    "n_records": 15728,
+    "n_notes": 8986,
+    "hi_share_records": 0.1785,
+    "hi_share_notes": 0.1796,
+    "delta_pp": 0.11
+   },
+   "旅行": {
+    "n_records": 8691,
+    "n_notes": 4622,
+    "hi_share_records": 0.1411,
+    "hi_share_notes": 0.1428,
+    "delta_pp": 0.17
+   },
+   "心理": {
+    "n_records": 11797,
+    "n_notes": 6487,
+    "hi_share_records": 0.1078,
+    "hi_share_notes": 0.1122,
+    "delta_pp": 0.44
+   },
+   "未知": {
+    "n_records": 16978,
+    "n_notes": 15671,
+    "hi_share_records": 0.2503,
+    "hi_share_notes": 0.2531,
+    "delta_pp": 0.28
+   }
+  }
+ }
+}

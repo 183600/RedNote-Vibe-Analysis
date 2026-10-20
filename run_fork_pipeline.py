@@ -6,7 +6,7 @@
 或全量扫描原始 JSONL，互不写坏对方输出，可以任意单独重跑。
 
 用法：
-  python3 run_fork_pipeline.py                     # 运行全部 25 步
+  python3 run_fork_pipeline.py                     # 运行全部 26 步
   python3 run_fork_pipeline.py --list              # 只打印步骤
   python3 run_fork_pipeline.py --from 3            # 从第 3 步开始
   python3 run_fork_pipeline.py --only detector_diagnostics.py family_lexicon_analysis.py
@@ -67,6 +67,8 @@ STEPS = [
      "经验叙述：自我指称/亲历证据/时间锚点/感官体验/关系他人的跨子集差异、长度匹配、P(AI) 梯度、判别力、互动与季度趋势 -> experiential_results.{json,md} + 2 图"),
     ("affect_analysis.py",
      "情绪与效价：喜悦/喜爱依恋/焦虑担忧/悲伤失落/愤怒批评、正负复合与净效价的跨子集差异、长度匹配、P(AI) 梯度、判别力、互动与季度趋势 -> affect_results.{json,md} + 2 图"),
+    ("domain_stylometry_analysis.py",
+     "领域异质性：分域高置信渗透/人类基线、半年度构成、领域内 FE 互动惩罚、家族构成与渗透-惩罚耦合 -> domain_stylometry_results.{json,md} + 2 图"),
     ("data_audit.py",
      "数据质量审计：文件清单、schema 覆盖、缺失/重复/短正文、features 与 scores 行序及清洗长度漂移 -> data_audit_results.{json,md} + 1 图"),
 ]

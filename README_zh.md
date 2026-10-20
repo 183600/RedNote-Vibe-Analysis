@@ -8,7 +8,7 @@
 - [📄 论文](#-论文)
 - [📊 Fork 分析](#-fork-分析)
   - [数据集概览](#数据集概览) · [词频相关性矩阵](#词频相关性矩阵) · [关键发现](#关键发现) · [常见词分析](#常见词助词虚词分析)
-  - 深潜分析：[deep_dive](#深潜分析deep_dive_analysispy) · [framing](#框架模板化分析framing_analysispy) · [title_style](#标题端ai-味分析title_style_analysispy) · [title_body](#标题正文-ai-味组合title_body_congruence_analysispy) · [diversity](#文本多样性与节奏深潜diversity_analysispy) · [detector](#检测器诊断detector_diagnosticspy) · [family_lexicon](#模型家族词表指纹family_lexicon_analysispy) · [engagement_structure](#互动结构与ai-味惩罚分解engagement_structure_analysispy) · [engagement_drivers](#互动惩罚的逐特征载体engagement_drivers_analysispy) · [author_style](#作者层分解作者间-vs-人内author_style_analysispy) · [symbol](#话题标签与表情生态symbol_analysispy) · [near_duplicate](#近重复内容与模板复用near_duplicate_analysispy) · [family_transfer](#风格家族迁移野外高-ai-味帖的构成与互动回报family_transfer_analysispy) · [stance](#语气情态层谨慎断言强化与呼语stance_analysispy) · [concreteness](#具体性层数字单位量值地名与模糊量词concreteness_analysispy) · [cta](#互动引导语层评论点赞收藏关注转发与催购cta_analysispy) · [typography](#标点与排版层感叹号结构与短行排版typography_analysispy) · [discourse](#篇章连接层因果转折递进序列举例与总结discourse_analysispy) · [axis_synthesis](#跨轴综合五轴风格指标的共现结构独立信号与互动堆叠axis_synthesis_analysispy) · [redundancy](#正文自重复与句式复读redundancy_analysispy) · [experiential](#经验叙述与自我披露experiential_analysispy) · [affect](#情绪与效价affect_analysispy) · [data_audit](#数据质量审计data_auditpy)
+  - 深潜分析：[deep_dive](#深潜分析deep_dive_analysispy) · [framing](#框架模板化分析framing_analysispy) · [title_style](#标题端ai-味分析title_style_analysispy) · [title_body](#标题正文-ai-味组合title_body_congruence_analysispy) · [diversity](#文本多样性与节奏深潜diversity_analysispy) · [detector](#检测器诊断detector_diagnosticspy) · [family_lexicon](#模型家族词表指纹family_lexicon_analysispy) · [engagement_structure](#互动结构与ai-味惩罚分解engagement_structure_analysispy) · [engagement_drivers](#互动惩罚的逐特征载体engagement_drivers_analysispy) · [author_style](#作者层分解作者间-vs-人内author_style_analysispy) · [symbol](#话题标签与表情生态symbol_analysispy) · [near_duplicate](#近重复内容与模板复用near_duplicate_analysispy) · [family_transfer](#风格家族迁移野外高-ai-味帖的构成与互动回报family_transfer_analysispy) · [stance](#语气情态层谨慎断言强化与呼语stance_analysispy) · [concreteness](#具体性层数字单位量值地名与模糊量词concreteness_analysispy) · [cta](#互动引导语层评论点赞收藏关注转发与催购cta_analysispy) · [typography](#标点与排版层感叹号结构与短行排版typography_analysispy) · [discourse](#篇章连接层因果转折递进序列举例与总结discourse_analysispy) · [axis_synthesis](#跨轴综合五轴风格指标的共现结构独立信号与互动堆叠axis_synthesis_analysispy) · [redundancy](#正文自重复与句式复读redundancy_analysispy) · [experiential](#经验叙述与自我披露experiential_analysispy) · [affect](#情绪与效价affect_analysispy) · [domain_stylometry](#领域异质性渗透互动惩罚与家族构成domain_stylometry_analysispy) · [data_audit](#数据质量审计data_auditpy)
   - [生成的可视化图表](#生成的可视化图表) · [分析脚本](#分析脚本)
 - [参考资料](#参考资料)
 - [许可证](#许可证)
@@ -25,7 +25,9 @@
 
 - `training_set_human.jsonl` — 人类撰写的帖子（LLM 出现前，2022 年 11 月之前）
 - `training_set_aigc.jsonl` — 由 17 个 LLM 生成的帖子
-- `exploration_set.jsonl` — LLM 出现后的帖子（2023–2025），用于时序分析
+- `exploring_set.jsonl` — LLM 出现后的帖子（2023–2025），用于时序分析
+
+各子集的字段名并不完全一致：`training_set_human.jsonl` 用 `desc`、`liked_count`、`collected_count`、`comments_count`（没有 `note_content`/`likes`）；`training_set_aigc.jsonl` 用 `note_content`，但没有时间与互动字段。`exploring_set.jsonl` 混合两种 schema：45.1% 的记录为 `note_content` + `likes`/`collections`/`comments`，54.9% 为 `desc` + `liked_count`/`collected_count`/`comments_count`；`domain` 覆盖 81.4%，`user_id` 仅覆盖 36.3%，部分笔记以两种 schema 各出现一次。分析脚本通过 `analysis_utils.py` 统一这些差异。
 
 ## 📄 论文
 
@@ -313,6 +315,16 @@
 5. **互动回报：喜爱依恋三端为正，悲伤/愤怒压点赞收藏但抬评论**：控制 P(AI)、正文长度与标签数后（n=48,954、106 个单元、整群 bootstrap 300 次），喜爱依恋点赞 β=+0.032 [+0.020, +0.048]、收藏 +0.020 [+0.005, +0.038]、评论 +0.042 [+0.022, +0.063]；悲伤失落点赞 -0.017 [-0.031, -0.004]、收藏 -0.025 [-0.038, -0.013]、评论 +0.040 [+0.024, +0.060]；愤怒批评点赞 -0.020 [-0.039, -0.000]、收藏 -0.024 [-0.044, -0.005]、评论 +0.023 [+0.003, +0.043]；喜悦仅评论 -0.029 [-0.044, -0.014]。同期 P(AI) 仍三端全负（-0.054/-0.037/-0.085）。
 6. **家族与时间：Gemini 最正向，DeepSeek 最克制；负向密度缓慢上升**：AIGC 家族正向密度 Gemini 1.552 / Claude 1.225 / GLM 1.158 / GPT 1.113 / DeepSeek 1.038 / Qwen 1.029，净效价 Gemini +1.180、DeepSeek +0.635。探索集季度趋势中，负向合计 0.380→0.491（ρ=+0.733，p=0.025），焦虑在固定领域权重后 +0.767（p=0.016）；喜悦原始 +0.750（p=0.020）但固定权重后仅 +0.317（p=0.406），净效价无显著趋势（观察性关联，不作因果解读）。
 
+### 领域异质性：渗透、互动惩罚与家族构成（`domain_stylometry_analysis.py`）
+
+既有深潜回答「AI 味怎么写」，本分析回答「AI 味集中在哪些内容领域、代价是否相同」。只读三份 `paper_features_*.csv.gz`、`paper_exploring_scores.csv.gz` 与保存的稳健检测器；human/AIGC 用 5 折折外 P(AI)，探索集用持久化 out-of-sample `p_ai`。人类基线取 ≤2022.06 干净窗口，探索集取 ≥2023.01；分域互动模型沿用月份 FE + 正文长度/标签控制 + 按月份整群 bootstrap 300 次。结果图在 `insights/domain_penetration.png`、`domain_penalty.png`，数据在 `domain_stylometry_results.json` 与 `.md`：
+
+1. **渗透有明确领域梯度**：高置信（≥0.9）占比运动 22.1%、美食 22.0%、健康 18.5%、情感 17.8%、宠物 16.9%、穿搭 16.6%、职场 14.1%、旅行 14.1%、学习 12.8%、心理 10.8%；相对各自前 LLM 基线（0.0%–1.7%）增量为 +10.8 至 +21.3 pp。未知桶 25.0%，但它是缺失领域汇总，不参与排名；按 note_id 去重后各已标注领域占比与逐记录口径最大差异仅 0.4 pp，排序不变。
+2. **检测器不是只认领域词**：领域内 human-vs-AIGC AUC 0.918–0.971；该口径比 `paper_robustness.py` 的留一领域 AUC 0.914–0.949 更容易，不能直接比较，但两者都说明领域固定后仍有可分性。
+3. **互动惩罚集中在职场/宠物/情感/学习/心理/旅行/穿搭**：控制月份、正文长度与标签数后，点赞端 β 分别为职场 -0.139、宠物 -0.125、情感 -0.107、学习 -0.097、心理 -0.083、旅行 -0.077、穿搭 -0.037（7/10 领域 CI 完全低于 0）；健康 -0.031、运动 -0.034、美食 +0.012 的 CI 跨 0。收藏端排序相近，评论端大多接近 0（已标注领域中仅心理/旅行/美食显著）。
+4. **时间与构成必须一起读**：高置信占比的半年度变化被领域构成强烈混杂——未知桶 2023H1 44.1%、2024H1 51.9%、2025H1 8.9%，穿搭 2024H1 仅 54 条、2025H1 占 17.6%。因此这里只做领域内描述，平台层面的时间趋势仍以 `paper_drift.py` 的固定领域权重序列为准。
+5. **家族构成与渗透/惩罚的关系较弱**：AIGC 训练集的领域×家族构成整体不显著（χ²=48.8, p=0.32, Cramér's V=0.037；每领域仅 97–1,141 条）；领域渗透增量与点赞 β 的描述性 Spearman ρ=+0.58（p=0.08，n=10），方向显示高渗透领域并未更受罚，但样本只有 10 个领域，不能因果化。
+
 ### 数据质量审计（`data_audit.py`）
 
 对三个 JSONL 与四个派生表做只读审计：文件清单、顶层 schema 覆盖、空/短正文、重复 note_id 与重复正文、领域与时间缺失、features 缺失列，以及 JSONL↔features↔scores 的行数、原始字段行序与清洗长度漂移。结果图在 `insights/data_audit.png`，数据在 `data_audit_results.json` 与 `data_audit_results.md`。
@@ -374,6 +386,8 @@
 | `insights/experiential_gradient.png` | 经验叙述梯度图（P(AI) 十分位曲线、逐词单元内 ρ、互动偏效应森林图（点赞/收藏/评论）、家族指纹热力图、季度趋势、单标记与联合 AUC） |
 | `insights/affect_lexicon.png` | 情绪与效价图（三子集五类情绪/正负复合/净效价密度、逐词 AIGC−人类过量/欠用） |
 | `insights/affect_gradient.png` | 情绪梯度图（P(AI) 十分位曲线、逐词单元内 ρ、互动偏效应森林图（点赞/收藏/评论）、家族指纹热力图、季度趋势、单标记与联合 AUC） |
+| `insights/domain_penetration.png` | 领域渗透图（分域高置信占比与 Wilson CI、人类基线/AIGC 参照、半年度热图与领域构成、渗透增量散点） |
+| `insights/domain_penalty.png` | 领域惩罚图（点赞/收藏 FE 森林图、月内秩相关、领域×家族构成热图、渗透增量×惩罚耦合） |
 | `insights/data_audit.png` | 数据审计图（三语料规模、质量标记比例、清洗长度漂移分布、原始字段行序不一致数） |
 | `output/` | 领域、话题、互动等探索性图表合集 |
 | `paper_figs/` | 论文管线图表（检测器、漂移、互动、稳健性） |
@@ -416,12 +430,13 @@
 - `redundancy_analysis.py` - 正文自重复：片段复读率/句间最大相似度/近重复句占比/复读句首占比的跨子集长度匹配差异、探索集 P(AI) 梯度（单元内 ρ 与长度分层 ρ）、互动偏效应（点赞/收藏/评论，月份×领域 FE + 整群 bootstrap CI）、家族/模型指纹与季度趋势（输出 `insights/redundancy_*.png`、`redundancy_results.json/md`）
 - `experiential_analysis.py` - 经验叙述与自我披露：自我指称/亲历证据/时间锚点/感官体验/关系他人五类先验词表的跨子集发生率与密度、长度匹配差异、P(AI) 梯度（含长度分层）、human/AIGC 判别力、互动偏效应（点赞/收藏/评论）、家族指纹与季度趋势（输出 `insights/experiential_*.png`、`experiential_results.json/md`）
 - `affect_analysis.py` - 情绪与效价：喜悦/喜爱依恋/焦虑担忧/悲伤失落/愤怒批评五类先验词表 + 正负复合/净效价的跨子集密度、长度匹配差异、P(AI) 梯度（含长度分层）、human/AIGC 判别力、互动偏效应（点赞/收藏/评论）、家族指纹与季度趋势（输出 `insights/affect_*.png`、`affect_results.json/md`）
+- `domain_stylometry_analysis.py` - 领域异质性：分域高置信渗透与人类基线、领域内 human/AIGC 判别力、半年度占比与领域构成、分域月份 FE 互动惩罚（长度/标签控制 + 整群 bootstrap CI）、AIGC 家族构成与渗透-惩罚耦合（输出 `insights/domain_*.png`、`domain_stylometry_results.json/md`）
 - `data_audit.py` - 只读数据质量审计：文件清单、schema 覆盖、空/短正文、重复 note_id/正文、缺失领域与时间、features 缺失列、JSONL↔features↔scores 行数与行序、清洗长度漂移（输出 `insights/data_audit.png`、`data_audit_results.json/md`）
 - `quick_start.py` - BERT 基线训练
 
-深潜分析套件可一键顺序执行：`python3 run_fork_pipeline.py`（`--list` / `--from N` / `--only 脚本名`，编排 deep_dive / framing / title_style / title_body_congruence / diversity / detector_diagnostics / family_lexicon / engagement_structure / engagement_drivers / author_style / user_clustering / symbol / near_duplicate / family_transfer / stance / concreteness / cta / typography / discourse / axis_synthesis / redundancy / experiential / affect / data_audit 共 24 个分析步骤 + 派生缓存，输出统一落在 `insights/`）。两个管线运行器共用 `pipeline_common.py` 的步骤选择与顺序执行实现（含未知脚本名校验），其单元测试见 `tests/test_pipeline_common.py`。
+深潜分析套件可一键顺序执行：`python3 run_fork_pipeline.py`（`--list` / `--from N` / `--only 脚本名`，编排 deep_dive / framing / title_style / title_body_congruence / diversity / detector_diagnostics / family_lexicon / engagement_structure / engagement_drivers / author_style / user_clustering / symbol / near_duplicate / family_transfer / stance / concreteness / cta / typography / discourse / axis_synthesis / redundancy / experiential / affect / domain_stylometry / data_audit 共 25 个分析步骤 + 派生缓存（26 步），输出统一落在 `insights/`）。两个管线运行器共用 `pipeline_common.py` 的步骤选择与顺序执行实现（含未知脚本名校验），其单元测试见 `tests/test_pipeline_common.py`。
 
-运行环境：`pip install -r requirements.txt`；公共工具位于 `analysis_utils.py`（含概率校准、阈值指标、单元内秩相关、长度分箱/十分位表/固定权重时间序列等跨脚本复用工具），单元测试见 `tests/`（`python3 -m unittest discover -s tests`，覆盖 `analysis_utils.py`、`framing_analysis.py` 及标题/标题正文组合/多样性/符号/近重复/互动载体/作者层分解/家族迁移/语气/具体性/互动引导语/标点排版/篇章连接/跨轴综合/正文自重复/经验叙述/情绪效价分析的纯函数、数据审计辅助函数与共享管线运行器）。提交前运行 `python3 ci_gate.py`（语法、核心数据完整性、JSONL 首行可解析）；论文与 fork 两条管线均使用固定随机种子，可独立重跑；所有 `.jsonl` / `.csv.gz` 研究数据只读，派生缓存写入系统临时目录。
+运行环境：`pip install -r requirements.txt`；公共工具位于 `analysis_utils.py`（含概率校准、阈值指标、单元内秩相关、长度分箱/十分位表/固定权重时间序列等跨脚本复用工具），单元测试见 `tests/`（`python3 -m unittest discover -s tests`，覆盖 `analysis_utils.py`、`framing_analysis.py` 及标题/标题正文组合/多样性/符号/近重复/互动载体/作者层分解/家族迁移/语气/具体性/互动引导语/标点排版/篇章连接/跨轴综合/正文自重复/经验叙述/情绪效价/领域异质性分析的纯函数、数据审计辅助函数与共享管线运行器）。提交前运行 `python3 ci_gate.py`（语法、核心数据完整性、JSONL 首行可解析）；论文与 fork 两条管线均使用固定随机种子，可独立重跑；所有 `.jsonl` / `.csv.gz` 研究数据只读，派生缓存写入系统临时目录。
 
 中文字体由 `setup_chinese_fonts()` 自动解析：依次扫描 `REDNOTE_FONT_DIR`、`assets/fonts/`、系统字体目录（Noto Sans CJK/SC、思源黑体、文泉驿等），找不到时回退下载 Noto Sans SC（另含单色 emoji 字体）并缓存到 `~/.cache/rednote-vibe/fonts`；也可用 `REDNOTE_FONT_PATH` 直接指定字体文件，或设 `REDNOTE_FONT_DOWNLOAD=0` 禁用联网下载。写回 CSV 时使用内容比较（`write_csv_gz_if_changed`），内容未变则不触碰文件；`paper_drift.py --figs-only` 可只重绘图表、完全不写 `paper_exploring_scores.csv.gz`。
 
@@ -434,7 +449,7 @@ pip install -r requirements.txt
 python3 -m unittest discover -s tests   # 合成数据单元测试，数秒完成
 python3 ci_gate.py                      # 语法 + 受保护数据 + JSONL 首行校验
 python3 run_paper_pipeline.py           # 论文管线
-python3 run_fork_pipeline.py --list     # 查看 25 个深潜步骤
+python3 run_fork_pipeline.py --list     # 查看 26 个深潜步骤
 python3 run_fork_pipeline.py            # 运行全部深潜分析
 ```
 

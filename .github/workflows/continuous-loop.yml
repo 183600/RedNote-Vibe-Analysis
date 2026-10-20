@@ -862,10 +862,11 @@ jobs:
               break
             fi
 
-            # ----- 四个阶段：perf -> bug -> improve -> clean -----
+            # ----- 阶段：perf 已停用（perf 的 opencode 调用已注释掉）→ bug -> improve -> clean -----
             # improve 为新增的「改进这个项目」阶段（指定 xuen 模型）；
             # 原 ada-squash 的 apply 阶段（检查算力申请.md）因本仓库无该文件而移除。
-            for phase in perf bug improve clean; do
+            # for phase in perf bug improve clean; do
+            for phase in bug improve clean; do
               PHASE_MODEL=""
               PHASE_MODEL_BROKEN=0
               case "$phase" in

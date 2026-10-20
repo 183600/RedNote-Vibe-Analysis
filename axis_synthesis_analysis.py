@@ -167,6 +167,52 @@ def within_cell_rank_z(values, groups) -> np.ndarray:
     return out
 
 
+def _average_ranks_matrix(values: np.ndarray) -> np.ndarray:
+    """按列计算并列平均秩（1-based），与逐列 `average_ranks` 逐位一致。"""
+    n = values.shape[0]
+    sorter = np.argsort(values, axis=0)
+    inv = np.argsort(sorter, axis=0)
+    sorted_values = np.take_along_axis(values, sorter, axis=0)
+    obs = np.ones(values.shape, dtype=bool)
+    if n > 1:
+        obs[1:] = sorted_values[1:] != sorted_values[:-1]
+    rows = np.arange(n, dtype=np.intp)[:, None]
+    group_start = np.maximum.accumulate(np.where(obs, rows, 0), axis=0)
+    # 每行所属并列段之后的第一个起点（不存在则为 n），即段的右开边界。
+    start_pos = np.where(obs, rows, n)
+    suffix_next = np.empty_like(start_pos)
+    suffix_next[-1] = n
+    if n > 1:
+        suffix_next[:-1] = np.minimum.accumulate(
+            start_pos[:0:-1], axis=0)[::-1]
+    ranks_sorted = 0.5 * (group_start + suffix_next + 1)
+    return np.take_along_axis(ranks_sorted, inv, axis=0)
+
+
+def within_cell_rank_z_matrix(values, groups) -> np.ndarray:
+    """对多列数值一次性做单元内平均秩 z-score，等价于逐列调用
+    `within_cell_rank_z`，但把每单元 30 次一维排序合并为一次二维排序。
+
+    常量列、含缺失值的列以及未覆盖的记录保持 NaN，与单列版本口径一致。
+    """
+    v = np.asarray(values, dtype=float)
+    if v.ndim != 2:
+        raise ValueError("values must be 2-D")
+    out = np.full(v.shape, np.nan)
+    for idx in groups:
+        vc = v[idx]
+        if vc.size == 0:
+            continue
+        valid = ~np.isnan(vc).any(axis=0) & (np.ptp(vc, axis=0) != 0.0)
+        valid_idx = np.flatnonzero(valid)
+        if valid_idx.size == 0:
+            continue
+        z = _average_ranks_matrix(vc[:, valid_idx])
+        z = (z - z.mean(axis=0)) / z.std(axis=0)
+        out[np.ix_(idx, valid_idx)] = z
+    return out
+
+
 def composite_z(z_matrix: np.ndarray) -> pd.DataFrame:
     """把 30 列类别 z-score 按轴取均值（自动跳过 NaN 列）。
 
@@ -608,8 +654,7 @@ def main() -> None:
     body_all = expl["body_len"].astype(float)
     dens_all = expl["counts"].astype(float) / np.maximum(body_all, 1)[:, None] * 100
     dens = dens_all[sel]
-    z = np.column_stack([within_cell_rank_z(dens[:, i], groups)
-                         for i in range(N_CAT)])
+    z = within_cell_rank_z_matrix(dens, groups)
     z_df = pd.DataFrame(z, columns=ALL_CATEGORIES)
     corr_cat = z_df.corr()
     comp_df = composite_z(z)

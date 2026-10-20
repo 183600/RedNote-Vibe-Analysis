@@ -154,7 +154,8 @@ def scan_corpus(path: str) -> dict:
     cached = body_cache(word_counts, max_entries=60_000)
     for rec in iter_cached(path):
         n_total += 1
-        body = clean_body(content_of(rec))
+        content = content_of(rec)
+        body = clean_body(content)
         length = len(body)
         counts = cached(body)
         body_len.append(length)
@@ -168,7 +169,7 @@ def scan_corpus(path: str) -> dict:
         month.append(f"{dt.year:04d}{dt.month:02d}" if dt else None)
         meta.append(int(has_meta) + int(bool(likes_v)) + int(bool(colls))
                     + int(bool(comms)) + int(dt is not None)
-                    + int(bool(content_of(rec).strip())))
+                    + int(bool(content.strip())))
         family.append(rec.get("model_family") or "")
         model.append(rec.get("model") or "")
         total = 0

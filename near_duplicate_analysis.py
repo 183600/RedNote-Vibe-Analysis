@@ -271,10 +271,15 @@ def select_verify_pairs(keys: np.ndarray, counts: np.ndarray,
     """
     if keys.size == 0:
         return keys
-    a = (keys // n_docs).astype(np.int64)
-    b = (keys % n_docs).astype(np.int64)
-    keep = (counts >= 2) | ((counts == 1)
-                            & (np.minimum(lengths[a], lengths[b]) <= k))
+    # 多键候选无条件保留；只对「仅共享 1 个链接键」的少数候选解码文档对，
+    # 避免为全部候选同时构造两份 int64 下标数组（内存与时间都更省）。
+    keep = counts >= 2
+    single = counts == 1
+    if single.any():
+        one = keys[single]
+        a = one // n_docs
+        b = one % n_docs
+        keep[single] = np.minimum(lengths[a], lengths[b]) <= k
     return keys[keep]
 
 
@@ -318,7 +323,7 @@ def _verify_bounds(work: np.ndarray, n_chunks: int) -> list[tuple[int, int]]:
 def verified_pairs(keys: np.ndarray, counts: np.ndarray, sets: list[np.ndarray],
                    min_j: float = MIN_J, k: int = SKETCH_K,
                    lengths: np.ndarray | None = None,
-                   parallel: bool = False):
+                   parallel: bool = False, return_stats: bool = False):
     """候选对精确校验：返回 J ≥ min_j 的 (相似度, i, j) 列表（降序）。
 
     候选对的「共享链接键数 ≥ 2 或短文档单键」筛选见 `select_verify_pairs`；
@@ -326,22 +331,27 @@ def verified_pairs(keys: np.ndarray, counts: np.ndarray, sets: list[np.ndarray],
     `lengths` 可传入已算好的各文档 unique 5-gram 数以避免重复计算。
     `parallel=True` 且候选对足够多时按工作量分块走 fork 进程池；分块拼接
     后整体排序，结果与串行调用逐位一致；默认串行（单元测试路径）。
+    `return_stats=True` 时额外返回筛选后的候选数，省去调用方再做一次相同
+    的筛选与文档对解码。
     """
     n_docs = len(sets)
     if lengths is None:
         lengths = np.fromiter((s.size for s in sets), dtype=np.int64,
                               count=n_docs)
     sel = select_verify_pairs(keys, counts, lengths, n_docs, k)
+    n_selected = int(sel.size)
+    work = None
     if sel.size:
         la = lengths[sel // n_docs]
         lb = lengths[sel % n_docs]
         min_len = np.minimum(la, lb)
         # J ≤ min_len / (la + lb - min_len)：达不到 min_j 的对直接跳过
         # （数学上不可能命中，结果与逐对精确校验完全一致）。
-        sel = sel[(1.0 + min_j) * min_len >= min_j * (la + lb)]
+        mask = (1.0 + min_j) * min_len >= min_j * (la + lb)
+        sel = sel[mask]
+        work = min_len[mask]
     pairs: list[tuple[float, int, int]] = []
     if parallel and sel.size >= _VERIFY_PARALLEL_MIN:
-        work = np.minimum(lengths[sel // n_docs], lengths[sel % n_docs])
         bounds = _verify_bounds(work, _VERIFY_CHUNKS)
         _VERIFY_CTX.update(sets=sets, sel=sel, n_docs=n_docs, min_j=min_j)
         try:
@@ -359,7 +369,7 @@ def verified_pairs(keys: np.ndarray, counts: np.ndarray, sets: list[np.ndarray],
             if sim >= min_j:
                 pairs.append((sim, i, j))
     pairs.sort(reverse=True)
-    return pairs
+    return (pairs, n_selected) if return_stats else pairs
 
 
 def within_max_j(dataset: np.ndarray, pairs, n_docs: int) -> np.ndarray:
@@ -1122,11 +1132,10 @@ def main() -> int:
         del part_lens
         keys, counts = candidate_pair_keys_flat(hv, doc_ids, n_docs)
         del hv, doc_ids
-        n_verified = int(select_verify_pairs(keys, counts, shingle_counts,
-                                             n_docs).size)
+        pairs, n_verified = verified_pairs(
+            keys, counts, store, lengths=shingle_counts, parallel=True,
+            return_stats=True)
         print(f"[近重复] 候选对 {keys.size:,}（校验子集 {n_verified:,}）")
-        pairs = verified_pairs(keys, counts, store, lengths=shingle_counts,
-                               parallel=True)
         n_candidate_pairs = int(keys.size)
         del keys, counts
         within_j = within_max_j(dataset, pairs, n_docs)

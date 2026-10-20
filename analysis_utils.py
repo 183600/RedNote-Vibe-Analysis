@@ -1176,7 +1176,19 @@ def engagement_of(rec: dict) -> tuple[int, int, int]:
 def _parse_local_time_str(s: str) -> datetime | None:
     if not s.isdigit():
         return None
+    # 数据集中的时间戳几乎都是纯 ASCII 的 YYYYMMDDHH / YYYYMMDD；直接切片
+    # 转 int 再构造 datetime，比 strptime 的格式解析快一个数量级，且对合法/
+    # 非法日期的接受范围与 strptime 完全一致（越界月份/日期同样抛 ValueError）。
+    # 非 ASCII 数字（str.isdigit 为真）仍走原 strptime 路径以保持逐位一致。
     try:
+        if s.isascii():
+            if len(s) >= 10:
+                t = s[:10]
+                return datetime(int(t[:4]), int(t[4:6]), int(t[6:8]),
+                                int(t[8:10]))
+            if len(s) == 8:
+                return datetime(int(s[:4]), int(s[4:6]), int(s[6:8]))
+            return None
         if len(s) >= 10:
             return datetime.strptime(s[:10], "%Y%m%d%H")
         if len(s) == 8:
@@ -1930,7 +1942,10 @@ def write_gz_if_changed(data: bytes, path: str) -> bool:
             pass
     tmp = f"{path}.tmp"
     with open(tmp, "wb") as f:
-        with gzip.GzipFile(fileobj=f, mode="wb", mtime=0) as gz:
+        # 6 级压缩约为 9 级速度的 4–5 倍，文件仅大约 4%；派生数据文件
+        # 以可复算为主要目的，解压内容才是判断是否变化的唯一口径。
+        with gzip.GzipFile(fileobj=f, mode="wb", mtime=0,
+                           compresslevel=6) as gz:
             gz.write(data)
     os.replace(tmp, path)
     return True
@@ -1966,7 +1981,8 @@ def write_gz_from_path_if_changed(src_path: str, path: str) -> bool:
             pass
     tmp = f"{path}.tmp"
     with open(src_path, "rb") as src, open(tmp, "wb") as f:
-        with gzip.GzipFile(fileobj=f, mode="wb", mtime=0) as gz:
+        with gzip.GzipFile(fileobj=f, mode="wb", mtime=0,
+                           compresslevel=6) as gz:
             shutil.copyfileobj(src, gz, length=1 << 20)
     os.replace(tmp, path)
     return True

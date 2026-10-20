@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import re
 from collections import defaultdict, Counter
 
 from analysis_utils import BASE
@@ -16,12 +15,6 @@ cross_topic_words = [
     u'最后', u'记录吧就现在', u'运动', u'汗颜', u'种草', u'飞吻', u'记住',
     u'大学生', u'总结', u'职场', u'穿搭', u'上海', u'但是', u'宝子们', u'个月'
 ]
-# 逐 token 做 O(1) 成员判断（列表成员判断是 O(35)）；结果列表仍按原列表顺序生成，
-# 排序的并列顺序不变。
-_CROSS_TOPIC_WORDS = frozenset(cross_topic_words)
-# 全文件共用一个预编译 CJK 正则（原先在内层循环里反复编译/查找）
-_CJK_RUN_RE = re.compile(r"[\u4e00-\u9fff]+")
-
 # 主要话题
 major_domains = [u'\u60c5\u611f', u'\u7a7f\u642d', u'\u5fc3\u7406', u'\u5065\u5eb7', u'\u804c\u573a', u'\u65c5\u884c']
 domain_names = {u'\u60c5\u611f': '情感', u'\u7a7f\u642d': '穿搭', u'\u5fc3\u7406': '心理',
@@ -40,13 +33,13 @@ def main():
         if domain not in major_domains:
             continue
 
-        text = item.get("note_title", "") + " " + (
-            item.get("desc", "") or item.get("note_content", ""))
-        words = _CJK_RUN_RE.findall(text)
+        text = (item.get("note_title") or "") + " " + (
+            item.get("desc") or item.get("note_content") or "")
 
         domain_total[domain] += 1
-        for w in set(words) & _CROSS_TOPIC_WORDS:
-            domain_word_freq[domain][w] += 1
+        for w in cross_topic_words:
+            if w in text:
+                domain_word_freq[domain][w] += 1
 
     print("Domain totals:")
     for d in major_domains:

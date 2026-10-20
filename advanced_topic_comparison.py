@@ -194,7 +194,7 @@ SENTIMENT_PATTERN = re.compile("|".join(
     sorted((re.escape(w) for w in POSITIVE_WORDS | NEGATIVE_WORDS),
            key=len, reverse=True)))
 
-RE_TOPIC_TAG = re.compile(r"#\w+\[话题\]")
+RE_TOPIC_TAG = re.compile(r"#[^#\s]+\s*\[话题\]#?")
 RE_HASHTAG = re.compile(r"#(\w+)")
 RE_XHS_EMO = re.compile(r"\[[^\[\]]{1,8}R\]")
 RE_DIGITS = re.compile(r"\d+")

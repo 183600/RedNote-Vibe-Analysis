@@ -21,7 +21,7 @@ init_plot_style()
 
 warnings.filterwarnings("ignore")
 
-RE_TOPIC_TAG = re.compile(r"#\w+\[话题\]")
+RE_TOPIC_TAG = re.compile(r"#[^#\s]+\s*\[话题\]#?")
 RE_HASHTAG = re.compile(r"#(\w+)")
 RE_XHS_EMO = re.compile(r"\[[^\[\]]{1,8}R\]")
 RE_DIGITS = re.compile(r"\d+")

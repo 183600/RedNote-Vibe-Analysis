@@ -6,7 +6,7 @@ import numpy as np
 from analysis_utils import BASE
 
 
-RE_TOPIC_TAG = re.compile(r"#\w+\[话题\]")
+RE_TOPIC_TAG = re.compile(r"#[^#\s]+\s*\[话题\]#?")
 RE_HASHTAG = re.compile(r"#\w+")
 # 去掉话题标签后就只剩下汉字是有效字符：所有非汉字字符（含空白/标点/字母数字）
 # 一律作为分隔符切词，等价于原先依次把 astral/alnum/非汉字替换为空格再 split。

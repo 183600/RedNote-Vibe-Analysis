@@ -299,10 +299,10 @@ jobs:
           PROMPT_CLEAN='清理仓库中的垃圾文件和临时文件：删除 __pycache__ 目录、*.pyc、debug*.txt、debug.log、err.txt 等调试残留，删除 AI 运行过程中产生的报告类文件（如 REPORT*.md）以及其他与数据分析无关的多余内容；如果 .gitignore 缺失就补一个，至少忽略 __pycache__/ 和 *.pyc。注意：.github 目录是 CI 配置，必须原样保留，绝对不能删除、修改或移动其中任何文件，它不属于"多余的内容"；README.md 和 README_zh.md 是项目说明文档，必须保留，绝对不能删除或移动；ci_gate.py 是 CI 质量门禁脚本，必须原样保留；所有 .jsonl 和 .csv.gz 数据文件是研究数据，绝对不能删除、修改或移动，也不属于"多余的内容"；已有的分析脚本（*.py）、分析报告（*.md）和图表（*.png、output/、paper_figs/）是项目成果，除非明显重复或已损坏，否则应予保留。'
 
           # 每阶段单次调用的最大时长（秒）
-          PERF_TIMEOUT=$((60*60))     # 1h
-          BUG_TIMEOUT=$((60*60))      # 1h
-          IMPROVE_TIMEOUT=$((60*60))  # 1h（改进项目，指定使用 xuen）
-          CLEAN_TIMEOUT=$((30*60))    # 30m
+          PERF_TIMEOUT=$((3*3600))     # 3h
+          BUG_TIMEOUT=$((3*3600))      # 3h
+          IMPROVE_TIMEOUT=$((3*3600))  # 3h
+          CLEAN_TIMEOUT=$((3*3600))    # 3h
 
           # ================= 动态模型池（不写死，实时读取线上目录） =================
           # 池直接来自 `opencode models opencode` 的实时输出：模型上新自动入池、
@@ -847,7 +847,7 @@ jobs:
               echo "[test-gate] 剩余时间不足以安排修复，仅记录失败"
               return 0
             fi
-            if [ "$TG_FIX_BUDGET" -gt 2700 ]; then TG_FIX_BUDGET=2700; fi
+            if [ "$TG_FIX_BUDGET" -gt 10800 ]; then TG_FIX_BUDGET=10800; fi
             {
               echo '本仓库的测试跑不通，请修复。复现方式：在仓库根目录运行 bash /tmp/tg_run.sh。'
               echo
